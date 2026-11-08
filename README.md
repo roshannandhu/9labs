@@ -4,6 +4,8 @@ Interactive frontend demo of the Nine Labs Solutions homepage, built from the cl
 (`docs/CLIENT_BRIEF.md`). It is a fully static site meant for **client review and approval**.
 The admin panel, database, e-mail delivery and real AI come next (see `docs/PROJECT_PLAN.md`).
 
+> **Next step (in progress):** the hero is being rebuilt as **Concept A, "Light-built 9"**, and the old concepts are being removed. Read [`docs/HERO_CONCEPT_A.md`](docs/HERO_CONCEPT_A.md) first.
+
 ## What's inside
 
 | Section | Highlights |
