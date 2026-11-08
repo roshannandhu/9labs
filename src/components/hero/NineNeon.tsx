@@ -6,7 +6,7 @@ import { GLYPHS, NINE_VB, type GlyphKey } from "./nine-path";
  * the glyph outline (blue core, purple halo, white-hot centre) and light that travels along
  * it. 100% SVG + CSS — pathLength="1" lets CSS draw it on before any JavaScript loads.
  */
-export function NineNeon({ className = "", glyph = "grotesk" }: { className?: string; glyph?: GlyphKey }) {
+export function NineNeon({ className = "", glyph = "sora" }: { className?: string; glyph?: GlyphKey }) {
   const d = GLYPHS[glyph].d;
   const vb = `0 0 ${NINE_VB.w} ${NINE_VB.h}`;
   return (

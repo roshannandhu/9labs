@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { DEFAULT_SETTINGS, useDemo, type Concept, type MotionPref } from "@/components/providers/DemoSettings";
 
 const CONCEPTS: { id: Concept; code: string; name: string; note: string }[] = [
-  { id: "cinematic", code: "C", name: "Cinematic 3D · recommended", note: "Chrome & neon 9 on a blueprint floor, flowing light, orbit tracks; camera flies as you scroll." },
+  { id: "cinematic", code: "C", name: "Glass 9 · recommended", note: "A Sora 9 assembles from light, crystallises into glass over a mirror sea and bends the NINE LABS wordmark." },
   { id: "neon", code: "A", name: "Neon Line", note: "SVG neon tube drawn on a blueprint. Lightest & fastest." },
   { id: "particles", code: "B", name: "Particle Grid", note: "Glowing particles assemble from the grid; react to the cursor." },
 ];
@@ -83,11 +83,12 @@ export function ConceptLab() {
 
             <fieldset className="mb-5">
               <legend className="label-mono mb-2">The 9 typeface</legend>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {(
                   [
-                    ["grotesk", "Space Grotesk", "Matches headlines"],
-                    ["outfit", "Outfit Black", "Heavier, geometric"],
+                    ["sora", "Sora", "ExtraBold · default"],
+                    ["grotesk", "Grotesk", "Space Grotesk"],
+                    ["outfit", "Outfit", "Black, geometric"],
                   ] as const
                 ).map(([id, name, note]) => (
                   <button
@@ -95,7 +96,7 @@ export function ConceptLab() {
                     type="button"
                     onClick={() => set({ glyph: id })}
                     aria-pressed={settings.glyph === id}
-                    className={`rounded-2xl border p-3 text-left transition-colors ${
+                    className={`rounded-2xl border p-2.5 text-left transition-colors ${
                       settings.glyph === id ? "border-nl-purple/70 bg-nl-purple/10" : "border-white/10 hover:border-white/25"
                     }`}
                   >

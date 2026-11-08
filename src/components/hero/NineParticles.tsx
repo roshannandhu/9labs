@@ -10,7 +10,7 @@ import { useDemo } from "@/components/providers/DemoSettings";
  * into the 9 along its drawing direction. The cursor pushes them away; they spring back.
  * Canvas 2D with pre-rendered glow sprites and additive blending; paused off-screen.
  */
-export default function NineParticles({ className = "", glyph = "grotesk" }: { className?: string; glyph?: GlyphKey }) {
+export default function NineParticles({ className = "", glyph = "sora" }: { className?: string; glyph?: GlyphKey }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { settings, reduced } = useDemo();

@@ -7,6 +7,7 @@ import StarBorder from "@/components/reactbits/StarBorder";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { ShaderGradient } from "@/components/background/ShaderGradient";
 import { SectionLabel } from "@/components/layout/SectionLabel";
+import { SpringHeading } from "@/components/layout/SpringHeading";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
 export function ClosingCta() {
@@ -40,9 +41,12 @@ export function ClosingCta() {
           <SectionLabel index="06" className="justify-center">
             Contact
           </SectionLabel>
-          <h2 id="contact-title" className="mt-5 text-[clamp(2.4rem,7vw,5.2rem)] font-semibold leading-[0.98] tracking-[-0.045em]">
-            Ready to cross <span className="text-gradient">the bridge?</span>
-          </h2>
+          <SpringHeading
+            id="contact-title"
+            text="Ready to cross"
+            accent="the bridge?"
+            className="mt-5 text-[clamp(2.4rem,7vw,5.2rem)] font-semibold leading-[0.98] tracking-[-0.045em]"
+          />
           <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-nl-ink sm:text-lg">
             Tell us where you want to go. Your goals reach us, our expertise reaches you — and together we get across.
           </p>

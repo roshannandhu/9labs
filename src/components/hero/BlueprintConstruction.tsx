@@ -5,7 +5,7 @@ import { GLYPHS, NINE_VB, type GlyphKey } from "./nine-path";
  * registration marks). They draw first, then the neon 9 is drawn over them —
  * "we plan and build with precision". Same 400×600 coordinate system as the glyph.
  */
-export function BlueprintConstruction({ className = "", glyph = "grotesk" }: { className?: string; glyph?: GlyphKey }) {
+export function BlueprintConstruction({ className = "", glyph = "sora" }: { className?: string; glyph?: GlyphKey }) {
   const { x0, y0, x1, y1 } = GLYPHS[glyph].bounds;
   const w = x1 - x0;
   const cx = (x0 + x1) / 2;

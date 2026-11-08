@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Inter, JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { site } from "@/content/site";
 import { DemoSettingsProvider } from "@/components/providers/DemoSettings";
@@ -11,7 +11,7 @@ import { CustomCursor } from "@/components/layout/CustomCursor";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { ConceptLab } from "@/components/lab/ConceptLab";
 
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display-src", display: "swap" });
+const display = Sora({ subsets: ["latin"], variable: "--font-display-src", display: "swap" });
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans-src", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-src", display: "swap", weight: ["400", "500"] });
 

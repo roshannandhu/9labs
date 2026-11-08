@@ -20,7 +20,7 @@ export type DemoSettings = {
 
 export const DEFAULT_SETTINGS: DemoSettings = {
   concept: "cinematic",
-  glyph: "grotesk",
+  glyph: "sora",
   blue: "#3b82ff",
   purple: "#b98cff",
   grid: 0.06,
@@ -41,7 +41,7 @@ type Ctx = {
 };
 
 const DemoContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "nl-demo-settings-v3";
+const STORAGE_KEY = "nl-demo-settings-v4";
 
 const CONCEPT_ALIASES: Record<string, Concept> = {
   a: "neon",

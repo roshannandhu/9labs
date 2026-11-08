@@ -7,6 +7,8 @@ import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { BridgeIllustration } from "./BridgeIllustration";
+import { RoadmapAscent } from "./RoadmapAscent";
+import { SpringHeading } from "@/components/layout/SpringHeading";
 import { useDemo } from "@/components/providers/DemoSettings";
 
 const VALUE_ICONS: Record<string, React.ReactNode> = {
@@ -95,41 +97,15 @@ export function About() {
         </div>
       </div>
 
-      {/* How we work — ascending steps */}
-      <div className="container-x mt-16 sm:mt-20">
-        <div className="relative grid gap-5 md:grid-cols-3 md:items-end">
-          <svg className="pointer-events-none absolute inset-x-0 -top-6 hidden h-[120px] w-full md:block" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M40 110 L600 70 L1160 10" fill="none" stroke="url(#steps-line)" strokeWidth="1" strokeDasharray="4 6" vectorEffect="non-scaling-stroke" />
-            <defs>
-              <linearGradient id="steps-line" x1="0" x2="1">
-                <stop offset="0" style={{ stopColor: "var(--nl-blue)" }} />
-                <stop offset="1" style={{ stopColor: "var(--nl-purple)" }} />
-              </linearGradient>
-            </defs>
-          </svg>
-          {a.steps.map((st, i) => (
-            <AnimatedContent key={st.n} distance={50} duration={1} delay={i * 0.12} ease="expo.out" className={i === 1 ? "md:mb-10" : i === 2 ? "md:mb-20" : ""}>
-              <div className="group relative rounded-3xl border border-white/10 bg-[linear-gradient(160deg,#0d0f17,#07080c)] p-6 transition-colors hover:border-nl-purple/50 sm:p-7">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm tracking-[0.2em] text-nl-purple">{st.n}</span>
-                  <span className="h-2 w-2 rotate-45 border border-nl-purple bg-nl-purple/40 shadow-[0_0_10px_var(--nl-purple)]" />
-                </div>
-                <h3 className="mt-5 text-xl font-semibold sm:text-[22px]">{st.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-nl-ink">{st.text}</p>
-              </div>
-            </AnimatedContent>
-          ))}
-        </div>
-      </div>
+      {/* How we work — Roadmap Ascent */}
+      <RoadmapAscent />
 
       {/* Values */}
       <div className="container-x mt-24 sm:mt-28">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <SectionLabel index="03">Our values</SectionLabel>
-            <h2 className="mt-4 text-[clamp(1.8rem,3.6vw,2.8rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-              What we stand on.
-            </h2>
+            <SpringHeading text="What we stand on." className="mt-4 text-[clamp(1.8rem,3.6vw,2.8rem)] font-semibold leading-[1.05] tracking-[-0.03em]" />
           </div>
           <p className="max-w-[40ch] text-[15px] text-nl-ink">Five values that hold the bridge up — in every campaign, video, event and strategy.</p>
         </div>

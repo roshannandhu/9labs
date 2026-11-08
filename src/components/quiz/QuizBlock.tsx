@@ -7,6 +7,7 @@ import TextType from "@/components/reactbits/TextType";
 import StarBorder from "@/components/reactbits/StarBorder";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
+import { SpringHeading } from "@/components/layout/SpringHeading";
 
 export function QuizBlock() {
   const quiz = useQuiz();
@@ -27,9 +28,12 @@ export function QuizBlock() {
             <SectionLabel index="04" className="justify-center">
               The 9 Quiz
             </SectionLabel>
-            <h2 id="quiz-title" className="mt-5 text-[clamp(2.6rem,8vw,6rem)] font-semibold leading-[0.95] tracking-[-0.045em]">
-              Meet <span className="text-gradient">The 9 Quiz.</span>
-            </h2>
+            <SpringHeading
+              id="quiz-title"
+              text="Meet"
+              accent="The 9 Quiz."
+              className="mt-5 text-[clamp(2.6rem,8vw,6rem)] font-semibold leading-[0.95] tracking-[-0.045em]"
+            />
             <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-white/75 sm:text-lg">{q.text}</p>
 
             {/* faux input */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { site } from "@/content/site";
@@ -8,29 +8,63 @@ import { useDemo } from "@/components/providers/DemoSettings";
 import ClickSpark from "@/components/reactbits/ClickSpark";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
+import { SpringHeading } from "@/components/layout/SpringHeading";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Book3D } from "./Book3D";
 import { BookDialog } from "./BookDialog";
 
 const BW = "clamp(168px, 17vw, 210px)";
+/** Halo colours keyed to each cover (Spectra). */
+const HALO: Record<string, [string, string]> = {
+  blue: ["var(--nl-blue)", "var(--nl-blue-soft)"],
+  purple: ["var(--nl-purple)", "var(--nl-purple)"],
+  duo: ["var(--nl-blue)", "var(--nl-purple)"],
+};
 const BH = `calc(${BW} * 1.45)`;
 
 export function Ebooks() {
-  const { settings } = useDemo();
+  const { settings, reduced } = useDemo();
   const [openSlug, setOpenSlug] = useState<string | null>(null);
+  const shelfWide = useMediaQuery("(min-width: 768px)");
+  const section = useRef<HTMLElement>(null);
+  // Spectra: the focused book lifts and casts a halo in its cover colour. Hover/focus wins;
+  // otherwise the shelf gently auto-cycles while it is on screen (wide layouts, full motion).
+  const [hover, setHover] = useState<number | null>(null);
+  const [auto, setAuto] = useState(0);
+  const [inView, setInView] = useState(false);
+  const cycling = shelfWide && !reduced && inView && hover === null && !openSlug;
+  const focus = hover ?? (shelfWide && !reduced ? auto : null);
+
+  useEffect(() => {
+    const el = section.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!cycling) return;
+    const t = window.setInterval(() => setAuto((a) => (a + 1) % site.ebooks.length), 4000);
+    return () => window.clearInterval(t);
+  }, [cycling]);
   const openBook = site.ebooks.find((b) => b.slug === openSlug) ?? null;
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal target exists only on the client
   useEffect(() => setMounted(true), []);
 
   return (
-    <section id="ebooks" aria-labelledby="ebooks-title" className="relative py-24 sm:py-32">
+    <section id="ebooks" ref={section} aria-labelledby="ebooks-title" className="relative py-24 sm:py-32">
       <div className="container-x">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
             <SectionLabel index="05">Free e-books</SectionLabel>
-            <h2 id="ebooks-title" className="mt-4 text-[clamp(2rem,4.6vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em]">
-              Principles, not tricks. <span className="text-gradient">Free to read.</span>
-            </h2>
+            <SpringHeading
+              id="ebooks-title"
+              text="Principles, not tricks."
+              accent="Free to read."
+              className="mt-4 text-[clamp(2rem,4.6vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em]"
+            />
           </div>
           <p className="max-w-[44ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">
             Three short e-books that explain how growth really works — and how we work. Pick one, open it, and we’ll send it to your inbox.
@@ -45,7 +79,20 @@ export function Ebooks() {
 
           {site.ebooks.map((b, i) => (
             <AnimatedContent key={b.slug} distance={60} duration={1} delay={i * 0.12} ease="expo.out">
-              <article className="shelf-item group flex flex-col items-center text-center">
+              <article
+                className="shelf-item group relative isolate flex flex-col items-center text-center"
+                data-focus={focus === i}
+                data-dim={focus !== null && focus !== i}
+                onPointerEnter={(e) => e.pointerType === "mouse" && setHover(i)}
+                onPointerLeave={() => setHover(null)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+              >
+                <span
+                  className="spectra-halo"
+                  style={{ ["--halo" as string]: HALO[b.tone][0], ["--halo2" as string]: HALO[b.tone][1], top: `calc(${BH} * 0.5)` }}
+                  aria-hidden="true"
+                />
                 <button
                   type="button"
                   onClick={() => setOpenSlug(b.slug)}
@@ -54,7 +101,7 @@ export function Ebooks() {
                   data-cursor="Open"
                 >
                   <span
-                    className="pointer-events-none absolute -bottom-6 left-1/2 h-10 w-[120%] -translate-x-1/2 rounded-[50%] opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-100"
+                    className="pointer-events-none absolute -bottom-6 left-1/2 h-10 w-[120%] -translate-x-1/2 rounded-[50%] opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-100 group-data-[focus=true]:opacity-100"
                     style={{ background: b.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)" }}
                     aria-hidden="true"
                   />

@@ -170,10 +170,17 @@ export function Hero() {
         {concept === "cinematic" && gl === "ok" && (
           <div ref={nineWrap} className="absolute inset-0">
             <NineCinematic
+              key={tier}
               progress={progress}
               tier={tier}
+              play={show3d}
               onReady={() => setCanvasReady(true)}
-              onSlow={() => setGl("no")}
+              onSlow={() => {
+                // Two-step guard: high → low tier, then low → neon poster.
+                setCanvasReady(false);
+                if (tier === "high") setTierOverride("low");
+                else setGl("no");
+              }}
               perfGuard={perfGuard}
               className={`transition-opacity duration-[1400ms] ease-out ${show3d ? "opacity-100" : "opacity-0"}`}
             />
