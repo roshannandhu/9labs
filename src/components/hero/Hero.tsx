@@ -291,7 +291,7 @@ export function Hero() {
           >
             {splitWords("Marketing, events and technology,", 0.18)}
             <span className="sm:block">
-              <span className="rise-in text-gradient inline-block pb-[0.08em]" style={{ animationDelay: "0.42s" }}>
+              <span className="rise-in font-accent text-gradient inline-block pb-[0.08em]" style={{ animationDelay: "0.42s" }}>
                 built to deliver results.
               </span>
             </span>

@@ -60,7 +60,7 @@ export function SpringHeading({ text, accent, id, className = "", as = "h2" }: P
       ))}
       {accent && (
         <span className="inline-block overflow-hidden pb-[0.1em] align-bottom">
-          <span data-spring className="text-gradient inline-block will-change-transform">
+          <span data-spring className="font-accent text-gradient inline-block will-change-transform">
             {accent}
           </span>
         </span>

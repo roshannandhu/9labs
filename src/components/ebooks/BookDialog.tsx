@@ -12,16 +12,16 @@ import { LeadForm, type LeadValues } from "./LeadForm";
 
 type Phase = "fly" | "front" | "open" | "closing";
 
-function Inside({ book, onNext }: { book: Ebook; onNext?: () => void }) {
+function Inside({ book }: { book: Ebook }) {
   return (
-    <div className="flex h-full flex-col overflow-y-auto overscroll-contain p-6 sm:p-7">
+    <div className="flex h-full flex-col p-6 sm:p-7">
       <p className="label-mono !text-[10px] !text-nl-purple">Inside this book</p>
       <h3 className="mt-2 text-[22px] font-semibold leading-tight">{book.title}</h3>
       <p className="mt-1.5 text-[13px] leading-snug text-nl-ink">{book.subtitle}</p>
       <ol className="mt-5 space-y-2.5">
         {book.chapters.map((c, i) => (
           <li key={c} className="flex items-baseline gap-3 border-b border-white/[0.06] pb-2.5 text-[13.5px] text-white/85">
-            <span className="font-mono text-[11px] text-nl-purple">{String(i + 1).padStart(2, "0")}</span>
+            <span className="text-[11px] font-semibold text-nl-purple">{String(i + 1).padStart(2, "0")}</span>
             {c}
           </li>
         ))}
@@ -31,16 +31,38 @@ function Inside({ book, onNext }: { book: Ebook; onNext?: () => void }) {
         <span className="rounded-full border border-white/10 px-2.5 py-1">PDF</span>
         <span className="rounded-full border border-white/10 px-2.5 py-1">{book.readTime}</span>
       </div>
-      {onNext && (
-        <>
-          <button type="button" className="btn btn-primary btn-sm mt-5 w-full !min-h-[46px]" onClick={onNext}>
-            Get it free
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <p className="label-mono mt-2.5 text-center !text-[9.5px] !text-white/35">or swipe to turn the page</p>
-        </>
+    </div>
+  );
+}
+
+/** Collapsed contents list for the phone's single-page form — the book opens straight to the
+    form (that's the whole point of opening it), with "what's inside" one tap away above it. */
+function ChaptersDisclosure({ book }: { book: Ebook }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="text-[13px] font-medium text-white/80">
+          What&rsquo;s inside <span className="text-white/40">· {book.chapters.length} chapters</span>
+        </span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`shrink-0 text-white/50 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true">
+          <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <ol className="space-y-2 px-4 pb-4">
+          {book.chapters.map((c, i) => (
+            <li key={c} className="flex items-baseline gap-2.5 text-[12.5px] text-white/75">
+              <span className="text-[10.5px] font-semibold text-nl-purple">{String(i + 1).padStart(2, "0")}</span>
+              {c}
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );
@@ -77,9 +99,6 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   const wide = useMediaQuery("(min-width: 768px)", true);
   const [phase, setPhase] = useState<Phase>(reduced ? "open" : "fly");
   const [lead, setLead] = useState<LeadValues | null>(null);
-  // phone: one page at a time — "inside" (contents) turns over to "form"
-  const [step, setStep] = useState<"inside" | "form">("inside");
-  const swipe = useRef<number | null>(null);
   const formPage = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -103,6 +122,13 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
       window.clearTimeout(b);
     };
   }, [reduced]);
+
+  // Once the book is open, the form is already on screen — put the cursor straight into it.
+  useEffect(() => {
+    if (reduced || phase !== "open" || lead) return;
+    const t = window.setTimeout(() => formPage.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }), 650);
+    return () => window.clearTimeout(t);
+  }, [phase, reduced, lead]);
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -139,19 +165,14 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
 
   const isOpen = phase === "open";
   const turned = !!lead;
-  const toForm = () => {
-    setStep("form");
-    // once the page has turned, put the cursor in the first field
-    if (!reduced) window.setTimeout(() => formPage.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }), 1100);
-  };
 
-  // Phone single page: as wide as the screen allows, a little taller than a real book so the form fits.
-  const mw = "min(92vw, 380px, calc((100svh - 130px) / 1.6))";
-  const mh = `calc(${mw} * 1.6)`;
-
-  // Page size for the open spread (desktop/tablet).
+  // Page size for the open spread (desktop/tablet): left page = contents, right page = form.
   const pw = "min(372px, 42vw, calc((100svh - 120px) / 1.42))";
   const ph = `calc(${pw} * 1.42)`;
+
+  // Phone: one page, as wide as the screen allows — the form, visible the moment the cover opens.
+  const mw = "min(92vw, 400px, calc((100svh - 150px) / 1.3))";
+  const mh = `calc(${mw} * 1.3)`;
 
   return (
     <motion.div
@@ -196,7 +217,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
               turned={turned}
               insideCover={<Inside book={book} />}
               firstPage={
-                <div className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined}>
+                <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined}>
                   <LeadForm book={book} onDone={setLead} />
                 </div>
               }
@@ -204,23 +225,11 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
             />
           </motion.div>
         ) : (
-          /* Phone: the same book, one page at a time. The cover swings open onto "Inside this book";
-             "Get it free" (or a swipe) turns the page, and the form is on the next page of the book.
-             After sending, the same page shows the confirmation. */
-          <div
-            className="flex w-full flex-col items-center"
-            onPointerDown={(e) => {
-              swipe.current = e.clientX;
-            }}
-            onPointerUp={(e) => {
-              const x0 = swipe.current;
-              swipe.current = null;
-              if (x0 == null || !isOpen || turned) return;
-              const dx = e.clientX - x0;
-              if (dx < -50 && step === "inside") toForm();
-              else if (dx > 50 && step === "form") setStep("inside");
-            }}
-          >
+          /* Phone: a single page. The cover opens straight onto the form — that's what someone
+             tapped "get the free e-book" to do — with the chapter list one tap away above it,
+             not a page they have to get past first. Sending the form turns the same page over
+             to the confirmation, exactly like the desktop spread's right-hand page. */
+          <div className="flex w-full flex-col items-center">
             <motion.div layoutId={`book-${book.slug}`} className="book-scene" transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
               <Book3D
                 book={book}
@@ -230,39 +239,17 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
                 ry={phase === "fly" ? "24deg" : "0deg"}
                 rx={phase === "fly" ? "4deg" : "0deg"}
                 open={isOpen}
-                turned={step === "form"}
-                insideCover={<div className="h-full" />}
+                turned={turned}
+                insideCover={<div className="h-full" aria-hidden="true" />}
                 firstPage={
-                  <div className="h-full" aria-hidden={!isOpen || step === "form" ? true : undefined} inert={!isOpen || step === "form"}>
-                    <Inside book={book} onNext={toForm} />
+                  <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-5" aria-hidden={turned || !isOpen ? true : undefined} inert={turned || !isOpen}>
+                    <ChaptersDisclosure book={book} />
+                    <LeadForm book={book} onDone={setLead} compact />
                   </div>
                 }
-                underPage={
-                  <div ref={formPage} className="relative h-full overflow-y-auto overscroll-contain p-5" aria-hidden={step !== "form" ? true : undefined} inert={step !== "form"}>
-                    {turned ? (
-                      <Success book={book} lead={lead} onBack={close} />
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setStep("inside")}
-                          className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-white/50 transition-colors hover:text-white"
-                        >
-                          ‹ Contents
-                        </button>
-                        <LeadForm book={book} onDone={setLead} compact />
-                      </>
-                    )}
-                  </div>
-                }
+                underPage={turned ? <Success book={book} lead={lead} onBack={close} /> : null}
               />
             </motion.div>
-            {/* page dots */}
-            <div className="mt-5 flex items-center gap-2" aria-hidden="true">
-              {(["inside", "form"] as const).map((p) => (
-                <span key={p} className={`h-1.5 rounded-full transition-all duration-500 ${step === p ? "w-6 bg-nl-purple shadow-[0_0_10px_var(--nl-purple)]" : "w-1.5 bg-white/25"}`} />
-              ))}
-            </div>
           </div>
         )}
       </div>

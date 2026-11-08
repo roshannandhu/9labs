@@ -6,6 +6,15 @@ The admin panel, database, e-mail delivery and real AI come next (see `docs/PROJ
 
 > **Hero: Concept A, "Light-built 9"** (spec and decisions: [`docs/HERO_CONCEPT_A.md`](docs/HERO_CONCEPT_A.md)). The earlier glass and particle concepts were removed at the owner's request.
 
+> **Studio, not software (Nov 2026):** the owner felt the UI read as an engineering tool rather than a
+> creative agency's. Removed: the dimension/REV/lat-long readouts on the hero's drafting lines, the
+> CAD plus-mark grid layer, film grain, the service cards' corner brackets and outlined ghost numbers,
+> and the About bridge diagram's monospace labels (now a pure shape plus a normal-HTML caption that
+> wraps instead of forcing the diagram to scroll sideways on phones). Added an italic serif accent
+> (Fraunces) for headline emphasis words, and small labels moved from monospace onto the brand sans.
+> Also fixed: the e-book's phone page opened to a contents page instead of the form — it now opens
+> straight to the form, with the chapter list one tap away above it, matching the desktop spread.
+
 ## What's inside
 
 | Section | Highlights |

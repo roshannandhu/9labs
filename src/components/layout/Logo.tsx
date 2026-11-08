@@ -20,7 +20,7 @@ export function Logo({ className = "", compact = false }: { className?: string; 
       {!compact && (
         <span className="flex flex-col leading-none">
           <span className="font-display text-[15px] font-semibold tracking-[0.06em] text-white">NINE LABS</span>
-          <span className="mt-1 font-mono text-[8.5px] tracking-[0.42em] text-white/45">SOLUTIONS</span>
+          <span className="mt-1 text-[8.5px] font-semibold tracking-[0.3em] text-white/45">SOLUTIONS</span>
         </span>
       )}
     </span>

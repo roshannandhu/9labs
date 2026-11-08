@@ -18,7 +18,9 @@ export function ConceptLab() {
   if (process.env.NEXT_PUBLIC_DEMO_LAB === "false") return null;
 
   return (
-    <div className="fixed bottom-5 left-5 z-[75] sm:bottom-6 sm:left-6">
+    // Demo-only control, hidden on phones so a visitor judging the real site never sees it
+    // (and it cannot cover the full-width buttons/content down there).
+    <div className="fixed bottom-5 left-5 z-[75] hidden sm:block sm:bottom-6 sm:left-6">
       <AnimatePresence>
         {open && (
           <motion.div

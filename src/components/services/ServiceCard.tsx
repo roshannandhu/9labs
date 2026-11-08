@@ -70,22 +70,17 @@ export function ServiceCard({ service: s, mode, active, className = "", style }:
       {/* cursor spotlight + active glow */}
       <span className="svc-spot pointer-events-none absolute inset-0" aria-hidden="true" />
       <span className="svc-glow pointer-events-none absolute inset-0 rounded-[inherit]" aria-hidden="true" />
-      {/* blueprint corner marks */}
-      <span className="absolute left-3 top-3 h-3 w-3 border-l border-t border-white/25" aria-hidden="true" />
-      <span className="absolute right-3 top-3 h-3 w-3 border-r border-t border-white/25" aria-hidden="true" />
-      <span className="absolute bottom-3 left-3 h-3 w-3 border-b border-l border-white/25" aria-hidden="true" />
-      <span className="absolute bottom-3 right-3 h-3 w-3 border-b border-r border-white/25" aria-hidden="true" />
 
       <div className="relative flex items-start justify-between gap-4">
-        <span className="label-mono !text-[10px]">Activity {num} / 09</span>
-        <span className="text-stroke font-display text-[64px] font-bold leading-[0.8] tracking-[-0.04em] transition-[-webkit-text-stroke-color] duration-700 sm:text-[88px] group-data-[on=true]:[-webkit-text-stroke-color:color-mix(in_srgb,var(--nl-purple)_55%,transparent)]">
+        <span className="label-mono !text-[10px]">{num} / 09</span>
+        <span className="svc-num grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] font-display text-[13px] font-semibold text-white/60 transition-colors duration-500 group-data-[on=true]:border-nl-purple/50 group-data-[on=true]:bg-nl-purple/15 group-data-[on=true]:text-white">
           {num}
         </span>
       </div>
 
-      {stack && <div className="relative -mt-2">{text}</div>}
+      {stack && <div className="relative mt-5">{text}</div>}
 
-      <div className={`relative flex items-center gap-5 sm:gap-7 ${stack ? "mt-6" : "mt-3 sm:mt-1"}`}>
+      <div className={`relative flex items-center gap-5 sm:gap-7 ${stack ? "mt-6" : "mt-5 sm:mt-6"}`}>
         <div className="svc-icon relative grid h-[104px] w-[104px] shrink-0 place-items-center rounded-3xl border border-white/10 bg-white/[0.02] text-nl-blue-soft sm:h-[128px] sm:w-[128px]">
           <span className="absolute inset-x-3 top-1/2 h-px bg-white/[0.06]" aria-hidden="true" />
           <span className="absolute inset-y-3 left-1/2 w-px bg-white/[0.06]" aria-hidden="true" />
@@ -95,7 +90,7 @@ export function ServiceCard({ service: s, mode, active, className = "", style }:
         </div>
         <ul className="flex min-w-0 flex-col gap-2.5" aria-label="Capabilities">
           {s.tags.map((t, i) => (
-            <li key={t} className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-white/60 sm:text-xs">
+            <li key={t} className="flex items-center gap-2.5 text-[12px] font-medium uppercase tracking-[0.1em] text-white/60 sm:text-[12.5px]">
               <span className="relative h-px w-5 shrink-0 bg-white/20">
                 <span
                   className="absolute inset-y-0 left-0 w-full origin-left bg-nl-purple transition-transform duration-700 ease-[cubic-bezier(.16,1,.3,1)] group-data-[on=true]:scale-x-100 scale-x-0"

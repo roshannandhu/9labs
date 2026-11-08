@@ -32,9 +32,11 @@ function hangers() {
 }
 
 /**
- * The brand idea, drawn: a blueprint suspension bridge that builds itself as you scroll,
- * with traffic moving in both directions — your goals (blue) reach us, our expertise
- * (purple) reaches you — meeting at the 9 in the middle.
+ * The brand idea, drawn: a suspension bridge that builds itself as you scroll, with traffic
+ * moving in both directions — your goals (blue) reach us, our expertise (purple) reaches
+ * you — meeting at the 9 in the middle. A pure shape with no lettering baked into it, so it
+ * scales to any width (phone included) without ever needing to scroll sideways; the caption
+ * lives in normal HTML underneath where it can wrap and stay readable at any size.
  */
 export function BridgeIllustration() {
   const { reduced } = useDemo();
@@ -51,7 +53,7 @@ export function BridgeIllustration() {
         .from(q(".br-deck"), { drawSVG: "50% 50%", duration: 1, ease: "none" }, 0.2)
         .from(q(".br-cable"), { drawSVG: "0%", duration: 1.2, stagger: 0.15, ease: "none" }, 0.6)
         .from(q(".br-hanger"), { drawSVG: "0%", duration: 0.4, stagger: 0.02, ease: "none" }, 1.2)
-        .from(q(".br-label"), { opacity: 0, y: 8, duration: 0.5, stagger: 0.08 }, 1.4);
+        .from(q(".br-mark"), { opacity: 0, scale: 0.6, transformOrigin: "center", duration: 0.5, stagger: 0.15 }, 1.3);
     },
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
@@ -119,25 +121,9 @@ export function BridgeIllustration() {
       <path className="br-deck" d={`M${X0} ${DECK_Y} H${X1}`} {...stroke} stroke="white" strokeOpacity="0.75" strokeWidth={1.6} />
       <path className="br-deck" d={`M${X0} ${DECK_Y + 12} H${X1}`} {...stroke} stroke="white" strokeOpacity="0.18" strokeWidth={1} />
 
-      {/* end anchors */}
-      <g className="br-label">
-        <rect x={X0 - 6} y={DECK_Y - 6} width="12" height="12" fill="var(--nl-black)" stroke="var(--nl-blue)" strokeWidth="1.5" />
-        <text x={X0 - 6} y={DECK_Y + 44} className="font-mono text-[13px] tracking-[0.2em] fill-white/70">
-          YOUR BUSINESS
-        </text>
-      </g>
-      <g className="br-label">
-        <rect x={X1 - 6} y={DECK_Y - 6} width="12" height="12" fill="var(--nl-black)" stroke="var(--nl-purple)" strokeWidth="1.5" />
-        <text x={X1 + 6} y={DECK_Y + 44} textAnchor="end" className="font-mono text-[13px] tracking-[0.2em] fill-white/70">
-          YOUR RESULTS
-        </text>
-      </g>
-      <text x={210} y={DECK_Y - 18} className="br-label font-mono text-[12px] tracking-[0.2em]" style={{ fill: "var(--nl-blue-soft)" }}>
-        YOUR GOALS →
-      </text>
-      <text x={990} y={DECK_Y + 34} textAnchor="end" className="br-label font-mono text-[12px] tracking-[0.2em]" style={{ fill: "var(--nl-purple)" }}>
-        ← OUR EXPERTISE
-      </text>
+      {/* end markers */}
+      <circle className="br-mark" cx={X0} cy={DECK_Y} r="5" fill="var(--nl-black)" stroke="var(--nl-blue)" strokeWidth="1.5" />
+      <circle className="br-mark" cx={X1} cy={DECK_Y} r="5" fill="var(--nl-black)" stroke="var(--nl-purple)" strokeWidth="1.5" />
 
       {/* two-way traffic */}
       {!reduced && (
@@ -154,7 +140,7 @@ export function BridgeIllustration() {
       )}
 
       {/* meeting point: the 9 */}
-      <g className="br-label" transform={`translate(600 ${DECK_Y})`}>
+      <g className="br-mark" transform={`translate(600 ${DECK_Y})`}>
         <g style={{ transformBox: "fill-box", transformOrigin: "center", animation: reduced ? undefined : "meet-flash 4.8s ease-in-out infinite" }}>
           <circle r="26" fill="var(--nl-black)" stroke="var(--nl-purple)" strokeOpacity="0.8" strokeWidth="1.5" filter="url(#br-glow)" />
           <circle r="34" fill="none" stroke="white" strokeOpacity="0.12" strokeDasharray="2 5" />
@@ -163,9 +149,6 @@ export function BridgeIllustration() {
           9
         </text>
       </g>
-      <text x={600} y={DECK_Y + 66} textAnchor="middle" className="br-label font-mono text-[11px] tracking-[0.24em] fill-white/45">
-        TOGETHER, WE GET ACROSS
-      </text>
     </svg>
   );
 }

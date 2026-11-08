@@ -114,7 +114,7 @@ function ServicesStack({ reduced }: { reduced: boolean }) {
       {/* progress along the bridge: 07 / 09 */}
       <div className="sticky z-40 mb-5" style={{ top: "calc(var(--nav-h) + 8px)" }}>
         <div className="flex items-center gap-3 rounded-full border border-white/10 bg-[#07080c]/95 px-4 py-2 shadow-[0_10px_30px_-12px_rgba(0,0,0,.9)]">
-          <span className="font-mono text-[11px] tracking-[0.16em] text-white/50" aria-live="polite">
+          <span className="text-[11px] font-semibold tracking-[0.1em] text-white/50" aria-live="polite">
             <span className="text-nl-purple">{pad(active + 1)}</span> / 09
           </span>
           <span className="relative h-px flex-1 bg-white/10" aria-hidden="true">
@@ -123,7 +123,7 @@ function ServicesStack({ reduced }: { reduced: boolean }) {
               style={{ transform: `scaleX(${(active + 1) / N})` }}
             />
           </span>
-          <span className="max-w-[42%] truncate font-mono text-[10px] uppercase tracking-[0.14em] text-white/60">{services[active].short}</span>
+          <span className="max-w-[42%] truncate text-[11px] font-medium uppercase tracking-[0.08em] text-white/60">{services[active].short}</span>
         </div>
       </div>
 

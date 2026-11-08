@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 /**
  * Fixed blueprint grid behind the whole page (pure CSS layers, see globals.css):
- * minor + major lines, plus marks at some crossings, a slow drift, a vignette, and a
+ * minor + major lines, a slow drift, a vignette, and a
  * brighter "hot" grid revealed in a soft circle around the cursor, lines near the hero 9
  * lit as if by its glow, and a ±4 px mouse parallax. Fades to a fainter level after the
  * hero so it never competes with the sections below.
@@ -51,8 +51,9 @@ export function BlueprintGrid() {
           put(g, "--nr", `${Math.round(Math.max(160, b.height * 0.75))}px`);
         } else put(g, "--ny", "-9999px");
       }
-      const fade = Math.min(1, window.scrollY / (window.innerHeight * 0.9));
-      put(r, "--bp-opacity", (1 - fade * 0.45).toFixed(2));
+      // fades well past the hero so it never competes with the content below (brief: "more faintly")
+      const fade = Math.min(1, window.scrollY / (window.innerHeight * 0.75));
+      put(r, "--bp-opacity", (1 - fade * 0.72).toFixed(2));
     };
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(apply);
@@ -76,7 +77,6 @@ export function BlueprintGrid() {
   return (
     <div ref={root} className="bp-root" aria-hidden="true">
       <div className="bp-grid" />
-      <div className="bp-plus" />
       <div ref={hot} className="bp-hot">
         <div className="bp-grid bp-grid--hot" />
       </div>

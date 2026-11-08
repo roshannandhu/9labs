@@ -94,7 +94,7 @@ export function Footer() {
 
       <div className="container-x flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pb-24 pt-6 text-[12.5px] text-white/45 sm:flex-row sm:pb-24">
         <p>{site.footer.copyright}</p>
-        <p className="font-mono text-[11px] tracking-[0.18em]">DUBAI SOUTH · UAE · 24.89° N 55.16° E</p>
+        <p>Dubai South, Dubai, UAE</p>
       </div>
     </footer>
   );
