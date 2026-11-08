@@ -69,7 +69,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
       <h3 className="mt-1 text-[19px] font-semibold leading-tight">Where should we send it?</h3>
       <p className="mt-1 text-[12.5px] leading-snug text-nl-ink">We’ll email you a private download link for “{book.title}”.</p>
 
-      <div className={`mt-4 flex flex-col ${compact ? "gap-3.5" : "gap-2.5"}`}>
+      <div className={`mb-5 mt-4 flex flex-col ${compact ? "gap-3.5" : "gap-2.5"}`}>
         <div>
           <label htmlFor={`${uid}-name`} className="mb-1 block text-[12px] font-medium text-white/70">
             Full name
@@ -168,7 +168,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
           />
         </div>
         <div>
-          <label className="flex cursor-pointer items-start gap-2.5 text-[11.5px] leading-snug text-white/60">
+          <label className={`flex cursor-pointer items-start gap-2.5 text-[11.5px] leading-snug text-white/60 ${compact ? "py-1.5" : ""}`}>
             <input
               type="checkbox"
               checked={v.consent}
@@ -177,7 +177,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
                 setTouched((t) => ({ ...t, consent: true }));
               }}
               aria-invalid={!!show("consent")}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--nl-purple)]"
+              className={`mt-0.5 shrink-0 accent-[var(--nl-purple)] ${compact ? "h-5 w-5" : "h-4 w-4"}`}
             />
             <span>I agree to receive this e-book and occasional updates from Nine Labs Solutions. Unsubscribe anytime.</span>
           </label>

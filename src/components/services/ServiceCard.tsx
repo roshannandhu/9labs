@@ -29,6 +29,29 @@ export function ServiceCard({ service: s, mode, active, className = "", style }:
 
   const isOn = mode === "pin" ? active : inView;
   const num = String(s.n).padStart(2, "0");
+  // Stacked cards (phones/tablets) are mostly covered by the next card, and only their top band
+  // stays visible — so there the name and one-liner come first, the icon and tags after.
+  const stack = mode === "stack";
+
+  const text = (
+    <>
+      <h3 className="text-[22px] font-semibold leading-tight sm:text-[26px]">{s.title}</h3>
+      <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-nl-ink">{s.description}</p>
+    </>
+  );
+  const cta = (
+    <button
+      type="button"
+      onClick={() => quiz.open(`I'm interested in ${s.title.toLowerCase()} for my business. `)}
+      className={`link-glow inline-flex items-center gap-2 text-sm font-medium text-white ${stack ? "" : "mt-5"}`}
+      data-cursor="Ask"
+    >
+      Talk to us about this
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
 
   return (
     <article
@@ -60,7 +83,9 @@ export function ServiceCard({ service: s, mode, active, className = "", style }:
         </span>
       </div>
 
-      <div className="relative mt-3 flex items-center gap-5 sm:mt-1 sm:gap-7">
+      {stack && <div className="relative -mt-2">{text}</div>}
+
+      <div className={`relative flex items-center gap-5 sm:gap-7 ${stack ? "mt-6" : "mt-3 sm:mt-1"}`}>
         <div className="svc-icon relative grid h-[104px] w-[104px] shrink-0 place-items-center rounded-3xl border border-white/10 bg-white/[0.02] text-nl-blue-soft sm:h-[128px] sm:w-[128px]">
           <span className="absolute inset-x-3 top-1/2 h-px bg-white/[0.06]" aria-hidden="true" />
           <span className="absolute inset-y-3 left-1/2 w-px bg-white/[0.06]" aria-hidden="true" />
@@ -83,21 +108,14 @@ export function ServiceCard({ service: s, mode, active, className = "", style }:
         </ul>
       </div>
 
-      <div className="relative mt-auto pt-7">
-        <h3 className="text-[22px] font-semibold leading-tight sm:text-[26px]">{s.title}</h3>
-        <p className="mt-2.5 max-w-[46ch] text-[15px] leading-relaxed text-nl-ink">{s.description}</p>
-        <button
-          type="button"
-          onClick={() => quiz.open(`I'm interested in ${s.title.toLowerCase()} for my business. `)}
-          className="link-glow mt-5 inline-flex items-center gap-2 text-sm font-medium text-white"
-          data-cursor="Ask"
-        >
-          Talk to us about this
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
+      {stack ? (
+        <div className="relative mt-auto pt-6">{cta}</div>
+      ) : (
+        <div className="relative mt-auto pt-7">
+          {text}
+          {cta}
+        </div>
+      )}
     </article>
   );
 }

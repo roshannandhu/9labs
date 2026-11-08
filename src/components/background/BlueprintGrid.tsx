@@ -24,23 +24,35 @@ export function BlueprintGrid() {
     let mx = -999;
     let my = -999;
     const fine = window.matchMedia("(pointer: fine)").matches;
+    // Write a custom property only when its value really changes: every write to a masked,
+    // full-screen layer forces a repaint, which is what made phones flicker on scroll.
+    const last = new Map<string, string>();
+    const put = (el: HTMLElement, k: string, v: string) => {
+      const key = k + (el === g ? "g" : el === h ? "h" : "r");
+      if (last.get(key) === v) return;
+      last.set(key, v);
+      el.style.setProperty(k, v);
+    };
 
     const apply = () => {
       raf = 0;
-      h.style.setProperty("--mx", `${mx}px`);
-      h.style.setProperty("--my", `${my}px`);
+      put(h, "--mx", `${mx}px`);
+      put(h, "--my", `${my}px`);
       if (mx > -999) {
         r.style.setProperty("--px", `${((mx / window.innerWidth) * 2 - 1) * -4}px`);
         r.style.setProperty("--py", `${((my / window.innerHeight) * 2 - 1) * -4}px`);
       }
-      if (nine) {
+      // grid lit by the 9: desktop only (hidden on touch in CSS), and only while the hero is on screen
+      if (nine && fine) {
         const b = nine.getBoundingClientRect();
-        g.style.setProperty("--nx", `${b.left + b.width / 2}px`);
-        g.style.setProperty("--ny", `${b.top + b.height * 0.5}px`);
-        g.style.setProperty("--nr", `${Math.max(160, b.height * 0.75)}px`);
+        if (b.bottom > -40 && b.top < window.innerHeight) {
+          put(g, "--nx", `${Math.round(b.left + b.width / 2)}px`);
+          put(g, "--ny", `${Math.round(b.top + b.height * 0.5)}px`);
+          put(g, "--nr", `${Math.round(Math.max(160, b.height * 0.75))}px`);
+        } else put(g, "--ny", "-9999px");
       }
       const fade = Math.min(1, window.scrollY / (window.innerHeight * 0.9));
-      r.style.setProperty("--bp-opacity", String(1 - fade * 0.45));
+      put(r, "--bp-opacity", (1 - fade * 0.45).toFixed(2));
     };
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(apply);

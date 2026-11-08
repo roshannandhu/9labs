@@ -12,9 +12,9 @@ import { LeadForm, type LeadValues } from "./LeadForm";
 
 type Phase = "fly" | "front" | "open" | "closing";
 
-function Inside({ book }: { book: Ebook }) {
+function Inside({ book, onNext }: { book: Ebook; onNext?: () => void }) {
   return (
-    <div className="flex h-full flex-col p-6 sm:p-7">
+    <div className="flex h-full flex-col overflow-y-auto overscroll-contain p-6 sm:p-7">
       <p className="label-mono !text-[10px] !text-nl-purple">Inside this book</p>
       <h3 className="mt-2 text-[22px] font-semibold leading-tight">{book.title}</h3>
       <p className="mt-1.5 text-[13px] leading-snug text-nl-ink">{book.subtitle}</p>
@@ -31,6 +31,17 @@ function Inside({ book }: { book: Ebook }) {
         <span className="rounded-full border border-white/10 px-2.5 py-1">PDF</span>
         <span className="rounded-full border border-white/10 px-2.5 py-1">{book.readTime}</span>
       </div>
+      {onNext && (
+        <>
+          <button type="button" className="btn btn-primary btn-sm mt-5 w-full !min-h-[46px]" onClick={onNext}>
+            Get it free
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <p className="label-mono mt-2.5 text-center !text-[9.5px] !text-white/35">or swipe to turn the page</p>
+        </>
+      )}
     </div>
   );
 }
@@ -66,6 +77,10 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   const wide = useMediaQuery("(min-width: 768px)", true);
   const [phase, setPhase] = useState<Phase>(reduced ? "open" : "fly");
   const [lead, setLead] = useState<LeadValues | null>(null);
+  // phone: one page at a time — "inside" (contents) turns over to "form"
+  const [step, setStep] = useState<"inside" | "form">("inside");
+  const swipe = useRef<number | null>(null);
+  const formPage = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
 
@@ -124,6 +139,15 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
 
   const isOpen = phase === "open";
   const turned = !!lead;
+  const toForm = () => {
+    setStep("form");
+    // once the page has turned, put the cursor in the first field
+    if (!reduced) window.setTimeout(() => formPage.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }), 1100);
+  };
+
+  // Phone single page: as wide as the screen allows, a little taller than a real book so the form fits.
+  const mw = "min(92vw, 380px, calc((100svh - 130px) / 1.6))";
+  const mh = `calc(${mw} * 1.6)`;
 
   // Page size for the open spread (desktop/tablet).
   const pw = "min(372px, 42vw, calc((100svh - 120px) / 1.42))";
@@ -131,7 +155,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] overflow-y-auto"
+      className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -172,7 +196,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
               turned={turned}
               insideCover={<Inside book={book} />}
               firstPage={
-                <div className="h-full p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined}>
+                <div className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined}>
                   <LeadForm book={book} onDone={setLead} />
                 </div>
               }
@@ -180,38 +204,65 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
             />
           </motion.div>
         ) : (
-          <div className="flex w-full max-w-sm flex-col items-center">
+          /* Phone: the same book, one page at a time. The cover swings open onto "Inside this book";
+             "Get it free" (or a swipe) turns the page, and the form is on the next page of the book.
+             After sending, the same page shows the confirmation. */
+          <div
+            className="flex w-full flex-col items-center"
+            onPointerDown={(e) => {
+              swipe.current = e.clientX;
+            }}
+            onPointerUp={(e) => {
+              const x0 = swipe.current;
+              swipe.current = null;
+              if (x0 == null || !isOpen || turned) return;
+              const dx = e.clientX - x0;
+              if (dx < -50 && step === "inside") toForm();
+              else if (dx > 50 && step === "form") setStep("inside");
+            }}
+          >
             <motion.div layoutId={`book-${book.slug}`} className="book-scene" transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
               <Book3D
                 book={book}
-                w="150px"
-                h="214px"
-                d="24px"
-                ry={phase === "fly" ? "24deg" : isOpen ? "-16deg" : "0deg"}
-                bx={isOpen ? "40px" : "0px"}
+                w={mw}
+                h={mh}
+                d="22px"
+                ry={phase === "fly" ? "24deg" : "0deg"}
+                rx={phase === "fly" ? "4deg" : "0deg"}
                 open={isOpen}
-                insideCover={
-                  <div className="flex h-full flex-col justify-center p-3">
-                    <p className="label-mono !text-[8px] !text-nl-purple">Inside</p>
-                    <ul className="mt-2 space-y-1">
-                      {book.chapters.map((c) => (
-                        <li key={c} className="text-[9px] leading-tight text-white/75">
-                          · {c}
-                        </li>
-                      ))}
-                    </ul>
+                turned={step === "form"}
+                insideCover={<div className="h-full" />}
+                firstPage={
+                  <div className="h-full" aria-hidden={!isOpen || step === "form" ? true : undefined} inert={!isOpen || step === "form"}>
+                    <Inside book={book} onNext={toForm} />
+                  </div>
+                }
+                underPage={
+                  <div ref={formPage} className="relative h-full overflow-y-auto overscroll-contain p-5" aria-hidden={step !== "form" ? true : undefined} inert={step !== "form"}>
+                    {turned ? (
+                      <Success book={book} lead={lead} onBack={close} />
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setStep("inside")}
+                          className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-white/50 transition-colors hover:text-white"
+                        >
+                          ‹ Contents
+                        </button>
+                        <LeadForm book={book} onDone={setLead} compact />
+                      </>
+                    )}
                   </div>
                 }
               />
             </motion.div>
-            <motion.div
-              className="glass relative mt-8 w-full rounded-3xl p-5"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: reduced ? 0 : 0.8, duration: 0.5 }}
-            >
-              {turned ? <Success book={book} lead={lead} onBack={close} /> : <LeadForm book={book} onDone={setLead} compact />}
-            </motion.div>
+            {/* page dots */}
+            <div className="mt-5 flex items-center gap-2" aria-hidden="true">
+              {(["inside", "form"] as const).map((p) => (
+                <span key={p} className={`h-1.5 rounded-full transition-all duration-500 ${step === p ? "w-6 bg-nl-purple shadow-[0_0_10px_var(--nl-purple)]" : "w-1.5 bg-white/25"}`} />
+              ))}
+            </div>
           </div>
         )}
       </div>
