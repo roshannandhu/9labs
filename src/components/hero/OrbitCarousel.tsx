@@ -18,16 +18,24 @@ export type OrbitFx = {
   drop: number;
   /** extra ring tilt in degrees (mouse) */
   tilt: number;
+  /** mouse position, -1..1: the ring drifts a few px against the 9 for depth */
+  px: number;
+  py: number;
+  /** 0..1 on scroll: the items converge and swell toward the Services cards */
+  gather: number;
 };
 
-/** The 9's height inside the stage: 84% of it, capped so it never gets absurd on huge screens. */
-export const nineHeight = (stageH: number) => Math.min(stageH * 0.84, 640);
+/** The 9's height inside the stage: 88% of it, capped so it never gets absurd on huge screens. */
+export const NINE_FRAC = 0.88;
+export const nineHeight = (stageH: number) => Math.min(stageH * NINE_FRAC, 760);
 
 type Props = {
   children: React.ReactNode;
   active: number;
   onActive: (i: number) => void;
   fx: React.RefObject<OrbitFx>;
+  /** The bridge dot has reached the 9: the hero gives it a heartbeat. */
+  onBeat?: () => void;
   className?: string;
 };
 
@@ -37,7 +45,7 @@ const STEP = (Math.PI * 2) / N;
 const FRONT = Math.PI / 2; // bottom of the ellipse = closest to the viewer
 const TAU = Math.PI * 2;
 const GLIDE = 1300; // ms an item takes to glide to the front
-const HOLD = 3100; // ms it holds there (≈ 40 s per full loop at speed 1)
+const HOLD = 3600; // ms it holds there (≈ 44 s per full loop at speed 1)
 const INTRO_AT = 2000; // ms: items fly in once the 9 is lit…
 const INTRO_FLY = 900; // …each over this long, the front one last
 const T7 = Math.tan((LEAN * Math.PI) / 180);
@@ -71,7 +79,7 @@ const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
  * item to the front and the second opens its service. While an item holds the front, one short
  * purple bridge arc links it to the 9 with a light dot running both ways.
  */
-export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarousel({ children, active, onActive, fx, className = "" }, ref) {
+export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarousel({ children, active, onActive, fx, onBeat, className = "" }, ref) {
   const { reduced, settings } = useDemo();
   const stageRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
@@ -80,6 +88,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
   const ringFront = useRef<SVGPathElement>(null);
   const arcRefs = useRef<(SVGPathElement | null)[]>([]);
   const arcGroup = useRef<SVGGElement>(null);
+  const pylonRef = useRef<SVGPathElement>(null);
 
   const st = useRef({
     rot: FRONT, // item 0 starts at the front
@@ -93,6 +102,10 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     last: 0,
     active: 0,
     tiltCur: 0,
+    pxCur: 0,
+    pyCur: 0,
+    beatTimer: 0,
+    dead: false,
     pointer: "mouse",
     geo: null as Geo | null,
     sides: new Array<string>(N).fill(""),
@@ -106,10 +119,12 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
   const speedRef = useRef(settings.orbitSpeed);
   const reducedRef = useRef(reduced);
   const onActiveRef = useRef(onActive);
+  const onBeatRef = useRef(onBeat);
   useEffect(() => {
     speedRef.current = settings.orbitSpeed;
     reducedRef.current = reduced;
     onActiveRef.current = onActive;
+    onBeatRef.current = onBeat;
   });
 
   const glide = useCallback((to: number, dur = GLIDE) => {
@@ -172,9 +187,15 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       const dt = Math.min(0.05, (now - s.last) / 1000);
       s.last = now;
       const g = s.geo;
-      if (!g || s.offscreen || document.hidden) return;
+      if (!g || document.hidden) return;
       const isReduced = reducedRef.current;
-      const fxv = fx.current ?? { spread: 1, fade: 1, drop: 0, tilt: 0 };
+      const fxv = fx.current ?? { spread: 1, fade: 1, drop: 0, tilt: 0, px: 0, py: 0, gather: 0 };
+      // Pause when the stage is off-screen — except while the items are still riding down into
+      // Services (they are visible there although the stage itself has scrolled away). One last
+      // frame runs after they fade out so nothing is left frozen on screen.
+      const live = fxv.fade > 0.001;
+      if (s.offscreen && !live && s.dead) return;
+      s.dead = !live;
 
       // --- motion state -------------------------------------------------------------
       if (!s.drag?.moved) {
@@ -201,12 +222,16 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       // --- layout -------------------------------------------------------------------
       const tIntro = now - s.start;
       const introDone = isReduced || tIntro > INTRO_AT + INTRO_FLY + 500;
-      s.tiltCur += (fxv.tilt - s.tiltCur) * (1 - Math.exp(-dt * 4));
+      const ease = 1 - Math.exp(-dt * 4);
+      s.tiltCur += (fxv.tilt - s.tiltCur) * ease;
+      s.pxCur += (fxv.px - s.pxCur) * ease;
+      s.pyCur += (fxv.py - s.pyCur) * ease;
       const tilt = ((-LEAN + s.tiltCur) * Math.PI) / 180;
       const cosT = Math.cos(tilt);
       const sinT = Math.sin(tilt);
-      const cx = g.w / 2;
-      const cy = g.h / 2;
+      // the ring drifts a few px against the 9 (which the hero moves the other way): depth
+      const cx = g.w / 2 + s.pxCur * 9;
+      const cy = g.h / 2 + s.pyCur * 6;
       const rx = g.rx * fxv.spread;
       const ry = g.ry * fxv.spread;
       const far = Math.max(g.w, g.h) * 0.9;
@@ -219,7 +244,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         const sn = Math.sin(th);
         const x = rx * Math.cos(th);
         const y = ry * sn;
-        let X = x * cosT - y * sinT;
+        let X = (x * cosT - y * sinT) * (1 - 0.62 * fxv.gather);
         let Y = x * sinT + y * cosT;
         const d = (sn + 1) / 2;
         Y += fxv.drop * (0.55 + 0.45 * d);
@@ -242,7 +267,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         if (!el) continue;
         const { x, y, d } = pts[i];
         const e = isReduced ? 1 : clamp01((tIntro - INTRO_AT - d * 450) / 300);
-        const scale = 0.62 + 0.78 * Math.pow(d, 1.6);
+        const scale = (0.62 + 0.78 * Math.pow(d, 1.6)) * (1 + 0.55 * fxv.gather);
         const op = (0.4 + 0.6 * Math.pow(d, 1.2)) * e * fxv.fade;
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
         el.style.opacity = op.toFixed(3);
@@ -287,10 +312,12 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       if (arcGroup.current) {
         const H9 = nineHeight(g.h);
         const W9 = (H9 * NINE_VB.w) / NINE_VB.h;
-        const gy = 300; // glyph units: the right edge of the 9's bowl, where light enters it
+        const gy = 300; // glyph units: the right edge of the 9's bowl, where the bridge lands
         const gx = 392 - T7 * (gy - 309);
-        const tx = cx + (gx / NINE_VB.w - 0.5) * W9;
-        const ty = cy + (gy / NINE_VB.h - 0.5) * H9;
+        // the 9 sits a few px against the ring (depth), so land on where it really is
+        const tx = cx - s.pxCur * 9 - s.pxCur * 7 + (gx / NINE_VB.w - 0.5) * W9;
+        const ty = cy - s.pyCur * 6 - s.pyCur * 5 + (gy / NINE_VB.h - 0.5) * H9;
+        const pylonH = Math.max(14, H9 * 0.06);
         const c = pts[best];
         const mx = (c.x + tx) / 2;
         const my = (c.y + ty) / 2;
@@ -303,12 +330,28 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
           qx = 2 * mx - qx;
           qy = 2 * my - qy;
         }
-        const d = `M${c.x.toFixed(1)} ${c.y.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`;
+        // the cable lands on top of a small pylon standing on the 9's edge: a bridge that builds itself
+        const ey = ty - pylonH;
+        const d = `M${c.x.toFixed(1)} ${c.y.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${tx.toFixed(1)} ${ey.toFixed(1)}`;
         for (const el of arcRefs.current) el?.setAttribute("d", d);
-        const on = settled && introDone && fxv.fade > 0.6;
+        pylonRef.current?.setAttribute(
+          "d",
+          `M${tx.toFixed(1)} ${(ty + pylonH * 0.3).toFixed(1)}V${ey.toFixed(1)}M${(tx - 5).toFixed(1)} ${(ey + 5).toFixed(1)}H${(tx + 5).toFixed(1)}`,
+        );
+        // (off as soon as the page scrolls: the 9 is docking away, so the bridge has nothing to land on)
+        const on = settled && introDone && fxv.fade > 0.6 && fxv.drop < 40;
         if (on !== s.arcOn) {
           s.arcOn = on;
           arcGroup.current.dataset.on = on ? "true" : "false";
+          // pylon 0.35 s + cable 0.6 s, then the dot: it reaches the 9 at ~2.15 s, then every 2.4 s
+          window.clearTimeout(s.beatTimer);
+          if (on && !isReduced) {
+            const tick = () => {
+              onBeatRef.current?.();
+              s.beatTimer = window.setTimeout(tick, 2400);
+            };
+            s.beatTimer = window.setTimeout(tick, 2150);
+          }
         }
       }
 
@@ -318,7 +361,10 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       }
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(s.beatTimer);
+    };
   }, [fx, glide]);
 
   // --- pointer: drag / swipe with inertia ------------------------------------------------
@@ -404,6 +450,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         </defs>
         <path ref={ringFront} fill="none" stroke="url(#orbit-front)" strokeWidth="1.2" style={{ opacity: 0 }} />
         <g ref={arcGroup} className="bridge-arc" data-on="false">
+          <path ref={pylonRef} className="bridge-pylon" pathLength={1} fill="none" stroke="var(--nl-purple)" strokeWidth="1.6" strokeLinecap="round" />
           {[
             { cls: "bridge-line", stroke: "var(--nl-purple)", w: 5, op: 0.35, filter: "url(#bridge-glow)" },
             { cls: "bridge-line", stroke: "var(--nl-purple)", w: 1.2, op: 0.9 },

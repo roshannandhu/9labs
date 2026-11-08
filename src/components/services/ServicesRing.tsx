@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
-import { ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { ScrollTrigger, gsap, useGSAP } from "@/lib/gsap";
 import { getLenis, registerAnchorPrefix, scrollToId } from "@/lib/scroll";
 import { ServiceCard } from "./ServiceCard";
 
@@ -21,6 +21,7 @@ export function ServicesRing({ heading }: { heading: React.ReactNode }) {
   const section = useRef<HTMLElement>(null);
   const pinWrap = useRef<HTMLDivElement>(null);
   const ring = useRef<HTMLDivElement>(null);
+  const stageEl = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLDivElement | null)[]>([]);
   const fill = useRef<HTMLDivElement>(null);
   const stRef = useRef<ScrollTrigger | null>(null);
@@ -60,6 +61,19 @@ export function ServicesRing({ heading }: { heading: React.ReactNode }) {
       });
       stRef.current = st;
       apply(0);
+      // The hero's nine items ride down and swell toward this ring: as they arrive, the cards
+      // assemble out of that light (rise, scale up, fade in), so the cover turns into the Services.
+      gsap.fromTo(
+        stageEl.current,
+        { opacity: 0.12, scale: 0.88, y: 70 },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          ease: "none",
+          scrollTrigger: { trigger: section.current, start: "top 82%", end: "top 6%", scrub: true },
+        },
+      );
       return () => {
         stRef.current = null;
       };
@@ -129,6 +143,7 @@ export function ServicesRing({ heading }: { heading: React.ReactNode }) {
 
         {/* the ring on the pool */}
         <div
+          ref={stageEl}
           className="ring-stage relative min-h-0 flex-1 cursor-grab select-none active:cursor-grabbing"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

@@ -527,6 +527,70 @@ html.lenis body {
   opacity: 0;
   transition: opacity 0.5s ease;
 }
+/* a slow current of light drifting up through the fill */
+.nine-current {
+  opacity: 0;
+  animation: nine-current 9s ease-in-out 3.2s infinite;
+}
+.nine-current--b {
+  animation-duration: 13s;
+  animation-delay: 6s;
+}
+@keyframes nine-current {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15%,
+  70% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(1250px);
+  }
+}
+/* a thin glint that travels round the edge */
+.nine-glint {
+  stroke-dasharray: 0.06 0.94;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: nine-glint 7s linear 3.4s infinite;
+}
+@keyframes nine-glint {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  6%,
+  94% {
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+/* heartbeat layer: flashed (Web Animations) when the bridge dot reaches the 9 */
+.nine-pulse {
+  opacity: 0;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-blue-soft) 55%, transparent), color-mix(in srgb, var(--nl-purple) 22%, transparent) 55%, transparent 80%);
+  filter: blur(22px);
+}
+/* 3D depth tilt toward the mouse (the hero sets the transform) */
+.nine-tilt {
+  transition: transform 0.7s var(--ease-out-expo);
+  will-change: transform;
+}
+/* drafting labels type on */
+.construct-char {
+  opacity: 0;
+  animation: fade-in 0.01s steps(1) forwards;
+}
+html[data-motion-resolved="reduce"] .nine-current,
+html[data-motion-resolved="reduce"] .nine-glint {
+  display: none;
+}
 
 /* Intro copy (CSS-first, runs before hydration → good LCP) */
 .rise-in {
@@ -676,6 +740,8 @@ html.lenis body {
     transition-duration: 0.001ms !important;
   }
   html:not([data-motion="full"]) .nine-sheen,
+  html:not([data-motion="full"]) .nine-current,
+  html:not([data-motion="full"]) .nine-glint,
   html:not([data-motion="full"]) .grain {
     display: none;
   }
@@ -1460,6 +1526,21 @@ html.has-cursor textarea {
 .orbit-label::before {
   opacity: 0.6;
 }
+/* the front item lands with a soft "click" */
+.orbit-item[data-front="true"] .orbit-tile {
+  animation: tile-land 0.8s var(--ease-out-expo);
+}
+@keyframes tile-land {
+  0% {
+    scale: 0.9;
+  }
+  55% {
+    scale: 1.1;
+  }
+  100% {
+    scale: 1;
+  }
+}
 .orbit-item[data-front="true"] .orbit-tile {
   background:
     linear-gradient(145deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.04) 45%, rgb(255 255 255 / 0.02)),
@@ -1476,14 +1557,20 @@ html.has-cursor textarea {
 }
 
 /* ---------- Bridge arc: front activity ⇄ the 9 (only while an item holds the front) ---------- */
+.bridge-pylon,
 .bridge-line {
   stroke-dasharray: 1 1;
   stroke-dashoffset: 1;
   transition: stroke-dashoffset 0.35s ease-in;
 }
+/* the bridge builds itself: pylon first, then the cable, then the light dot crosses */
+.bridge-arc[data-on="true"] .bridge-pylon {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.35s var(--ease-out-expo);
+}
 .bridge-arc[data-on="true"] .bridge-line {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 0.6s var(--ease-out-expo);
+  transition: stroke-dashoffset 0.6s var(--ease-out-expo) 0.35s;
 }
 /* one light dot: runs to the 9, then back ("your goals reach us, our expertise reaches you") */
 .bridge-dot {
@@ -1494,8 +1581,8 @@ html.has-cursor textarea {
 }
 .bridge-arc[data-on="true"] .bridge-dot {
   opacity: 1;
-  transition-delay: 0.5s;
-  animation: bridge-dot 2.4s var(--ease-in-out) 0.5s infinite alternate;
+  transition-delay: 0.95s;
+  animation: bridge-dot 1.2s var(--ease-in-out) 0.95s infinite alternate;
 }
 @keyframes bridge-dot {
   to {
@@ -1528,4 +1615,67 @@ html[data-motion-resolved="reduce"] .bridge-dot {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--nl-purple) 30%, transparent),
     0 0 28px -4px color-mix(in srgb, var(--nl-blue) 80%, transparent);
+}
+
+/* ---------- Quiz-button pulse: button → bridge line → the 9 ---------- */
+.cta-line {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation:
+    nine-draw 0.7s var(--ease-out-expo) forwards,
+    fade-out 0.5s ease 0.9s forwards;
+}
+.cta-dot {
+  stroke-dasharray: 0.001 1;
+  stroke-dashoffset: 0;
+  animation: cta-dot 0.8s var(--ease-in-out) 0.15s forwards;
+}
+@keyframes cta-dot {
+  to {
+    stroke-dashoffset: -0.999;
+  }
+}
+
+/* ---------- Bridge divider between sections ---------- */
+.bd-cable,
+.bd-pylon {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: calc(1 - var(--draw, 0));
+}
+.bd-pylon {
+  stroke-dashoffset: calc(1 - min(1, var(--draw, 0) * 2));
+}
+.bd-dot {
+  stroke-dasharray: 0.001 1;
+  stroke-dashoffset: 0;
+  opacity: 0;
+}
+.bridge-divider[data-cross="true"] .bd-dot {
+  animation:
+    bd-fade 2.6s ease 0.2s both,
+    bd-cross 2.6s var(--ease-in-out) 0.2s both;
+}
+@keyframes bd-cross {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dashoffset: -0.999;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes bd-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+}
+html[data-motion-resolved="reduce"] .bd-dot {
+  display: none;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { site } from "@/content/site";
 import { ScrollTrigger, gsap, useGSAP } from "@/lib/gsap";
@@ -8,7 +8,7 @@ import { useDemo } from "@/components/providers/DemoSettings";
 import { useQuiz } from "@/components/providers/QuizProvider";
 import { NineLight } from "./NineLight";
 import { BlueprintConstruction, LEAN } from "./BlueprintConstruction";
-import { OrbitCarousel, type OrbitFx, type OrbitHandle } from "./OrbitCarousel";
+import { NINE_FRAC, OrbitCarousel, type OrbitFx, type OrbitHandle } from "./OrbitCarousel";
 
 const services = site.services;
 const GLYPH_CY = 309 / 600; // the 9's visual centre inside its 2:3 box
@@ -25,57 +25,98 @@ function splitWords(text: string, startDelay: number, step = 0.045) {
 }
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 
 /**
  * Cover: "Light-built 9". A 9 filled with electric-blue light leans 7° forward in the exact
- * centre of a full-bleed blueprint screen; the nine activities travel a matching Saturn ring
- * around it; a fixed caption under the 9 names the front one; the copy sits below, never
- * covered. Scrolling opens the ring toward Services and (Concept Lab toggle) docks the 9 into
- * the nav logo. SVG + CSS + GSAP only.
+ * centre of a full-bleed blueprint screen and tilts toward the mouse in 3D (the grid, the 9
+ * and the ring sit at different depths). The nine activities travel a matching Saturn ring
+ * around it; a fixed caption under the 9 names the front one; a bridge builds itself between
+ * them and the 9 gives a heartbeat when the light dot arrives. Hovering the quiz button sends
+ * the same pulse into the 9. Scrolling, the ring's items ride down and swell into the Services
+ * cards while the 9 docks into the nav logo. SVG + CSS + GSAP only.
  */
 export function Hero() {
   const { settings, reduced } = useDemo();
   const quiz = useQuiz();
   const [active, setActive] = useState(0);
   const orbit = useRef<OrbitHandle>(null);
-  const fx = useRef<OrbitFx>({ spread: 1, fade: 1, drop: 0, tilt: 0 });
+  const fx = useRef<OrbitFx>({ spread: 1, fade: 1, drop: 0, tilt: 0, px: 0, py: 0, gather: 0 });
   const section = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const nineBox = useRef<HTMLDivElement>(null);
   const dock = useRef<HTMLDivElement>(null);
+  const tilt = useRef<HTMLDivElement>(null);
   const construct = useRef<HTMLDivElement>(null);
   const copy = useRef<HTMLDivElement>(null);
   const lean = useRef({ mouse: 0, dock: 0 });
+  const [pulse, setPulse] = useState<{ id: number; d: string } | null>(null);
 
   const writeLean = () => {
     const l = lean.current;
     stage.current?.style.setProperty("--lean", `${((LEAN + l.mouse) * (1 - l.dock)).toFixed(2)}deg`);
   };
 
-  // Desktop: the 9's lean and the ring's tilt follow the mouse by ±2° (the grid parallax lives in BlueprintGrid).
+  // Heartbeat: the 9 receives what the bridge brings in (one soft glow + a tiny swell).
+  const beat = useCallback(() => {
+    if (reduced || document.hidden) return;
+    const ease = "cubic-bezier(0.16, 1, 0.3, 1)";
+    nineBox.current?.querySelector(".nine-pulse")?.animate([{ opacity: 0, scale: 0.85 }, { opacity: 0.85, scale: 1.08, offset: 0.3 }, { opacity: 0, scale: 1.2 }], { duration: 1100, easing: ease });
+    dock.current?.animate([{ scale: 1 }, { scale: 1.025, offset: 0.3 }, { scale: 1 }], { duration: 900, easing: ease });
+  }, [reduced]);
+
+  // Desktop: the 9 tilts toward the mouse in 3D (±7° / ±5°), its lean moves ±2°, the ring tilts ±2°
+  // and drifts against the 9, and the grid shifts a few px (BlueprintGrid) — depth without WebGL.
   useEffect(() => {
     const sec = section.current;
     if (!sec || reduced || !window.matchMedia("(pointer: fine)").matches) return;
+    const reset = () => {
+      lean.current.mouse = 0;
+      const f = fx.current;
+      f.tilt = 0;
+      f.px = 0;
+      f.py = 0;
+      if (tilt.current) tilt.current.style.transform = "";
+      writeLean();
+    };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       const nx = (e.clientX / window.innerWidth) * 2 - 1;
-      const ny = (e.clientY / window.innerHeight) * 2 - 1;
+      const ny = Math.max(-1, Math.min(1, (e.clientY / window.innerHeight) * 2 - 1));
       lean.current.mouse = nx * 2;
-      fx.current.tilt = ny * 2;
-      writeLean();
-    };
-    const onLeave = () => {
-      lean.current.mouse = 0;
-      fx.current.tilt = 0;
+      const f = fx.current;
+      f.tilt = ny * 2;
+      f.px = nx;
+      f.py = ny;
+      if (tilt.current) {
+        tilt.current.style.transform = `perspective(1100px) translate3d(${(-nx * 7).toFixed(1)}px, ${(-ny * 5).toFixed(1)}px, 0) rotateY(${(nx * 7).toFixed(2)}deg) rotateX(${(-ny * 5).toFixed(2)}deg)`;
+      }
       writeLean();
     };
     sec.addEventListener("pointermove", onMove, { passive: true });
-    sec.addEventListener("pointerleave", onLeave);
+    sec.addEventListener("pointerleave", reset);
     return () => {
       sec.removeEventListener("pointermove", onMove);
-      sec.removeEventListener("pointerleave", onLeave);
+      sec.removeEventListener("pointerleave", reset);
     };
   }, [reduced]);
+
+  // Quiz button: a light pulse runs from the button along a bridge line into the 9.
+  const sendPulse = () => {
+    const sec = section.current;
+    const btn = sec?.querySelector<HTMLElement>("[data-cta-quiz]");
+    const nine = nineBox.current;
+    if (reduced || !sec || !btn || !nine) return;
+    const s = sec.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    const n = nine.getBoundingClientRect();
+    const x0 = b.left + b.width / 2 - s.left;
+    const y0 = b.top - s.top;
+    const x1 = n.left + n.width / 2 - s.left;
+    const y1 = n.top + n.height * 0.78 - s.top;
+    const bow = (x0 < s.width / 2 ? -1 : 1) * Math.min(220, s.width * 0.18);
+    setPulse({ id: Date.now(), d: `M${x0.toFixed(1)} ${y0.toFixed(1)}Q${(x0 + bow).toFixed(1)} ${((y0 + y1) / 2).toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}` });
+  };
 
   useGSAP(
     () => {
@@ -84,26 +125,40 @@ export function Hero() {
         f.spread = 1;
         f.fade = 1;
         f.drop = 0;
+        f.gather = 0;
         return;
       }
+      const wide = window.matchMedia("(min-width: 1024px)").matches;
 
-      // Scroll out: the ring opens like a flower and the items fall toward Services.
+      // Scroll out. Desktop: the items ride along with the page, drift down toward the Services
+      // ring and swell as they gather, fading into its cards as those rise into view.
+      // Smaller screens (Services is a stack of cards there): the ring opens and falls away.
       ScrollTrigger.create({
         trigger: section.current,
         start: "top top",
         end: "bottom top",
         onUpdate: (self) => {
           const p = self.progress;
-          f.spread = 1 + p * 1.1;
-          f.drop = p * (stage.current?.offsetHeight ?? 400) * 0.9;
-          f.fade = Math.max(0, 1 - p * 2.8); // gone before the items reach the headline
+          if (wide) {
+            // converge + sink by p ≈ 0.6, fade out just before the Services heading reaches them
+            const e = easeInOut(clamp01(p / 0.6));
+            f.spread = 1 + p * 0.2;
+            f.gather = e;
+            f.drop = window.scrollY * 0.97 + e * window.innerHeight * 0.3;
+            f.fade = clamp01(1 - (p - 0.36) / 0.28);
+          } else {
+            f.spread = 1 + p * 1.1;
+            f.gather = 0;
+            f.drop = p * (stage.current?.offsetHeight ?? 400) * 0.9;
+            f.fade = Math.max(0, 1 - p * 5); // gone before the items reach the headline
+          }
         },
       });
       gsap.to(copy.current, {
         y: -60,
         opacity: 0,
         ease: "none",
-        scrollTrigger: { trigger: section.current, start: "20% top", end: "70% top", scrub: true },
+        scrollTrigger: { trigger: section.current, start: wide ? "0% top" : "20% top", end: wide ? "20% top" : "70% top", scrub: true },
       });
       gsap.to(construct.current, {
         opacity: 0,
@@ -175,17 +230,23 @@ export function Hero() {
       id="home"
       ref={section}
       aria-labelledby="hero-title"
-      className="relative flex min-h-[100svh] flex-col overflow-x-clip pt-[var(--nav-h)] lsp:grid lsp:grid-cols-[1.1fr_1fr] lsp:items-start"
+      className="relative flex min-h-[100svh] flex-col overflow-x-clip pt-[var(--nav-h)] lsp:grid lsp:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lsp:items-start"
     >
       {/* Stage: the 9 + its ring. Full-bleed: no frame, no mask, the glow bleeds past the edges. */}
-      <div ref={stage} className="relative min-h-[clamp(220px,37svh,420px)] lg:min-h-[clamp(230px,40svh,420px)] w-full flex-1 lsp:sticky lsp:top-[var(--nav-h)] lsp:overflow-x-clip lsp:h-[calc(100svh-var(--nav-h))] lsp:min-h-0" style={{ ["--lean" as string]: `${LEAN}deg` }}>
-        <OrbitCarousel ref={orbit} active={active} onActive={setActive} fx={fx} className="!absolute inset-0">
-          <div ref={nineBox} className="relative h-[min(84%,640px)]" style={{ aspectRatio: "2 / 3" }} data-hero-nine>
+      <div
+        ref={stage}
+        className="relative min-h-[clamp(220px,37svh,420px)] w-full flex-1 sm:min-h-[clamp(300px,44svh,520px)] lg:h-[clamp(420px,58svh,800px)] lg:flex-none lsp:sticky lsp:top-[var(--nav-h)] lsp:h-[calc(100svh-var(--nav-h))] lsp:min-h-0 lsp:overflow-x-clip"
+        style={{ ["--lean" as string]: `${LEAN}deg` }}
+      >
+        <OrbitCarousel ref={orbit} active={active} onActive={setActive} fx={fx} onBeat={beat} className="!absolute inset-0">
+          <div ref={nineBox} className="relative" style={{ height: `min(${NINE_FRAC * 100}%, 760px)`, aspectRatio: "2 / 3" }} data-hero-nine>
             <div ref={construct} className="absolute inset-0">
               <BlueprintConstruction className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
             </div>
             <div ref={dock} className="absolute inset-0 will-change-transform" style={{ transformOrigin: `50% ${GLYPH_CY * 100}%` }}>
-              <NineLight className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
+              <div ref={tilt} className="nine-tilt absolute inset-0">
+                <NineLight className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
+              </div>
             </div>
           </div>
         </OrbitCarousel>
@@ -239,7 +300,16 @@ export function Hero() {
             {site.hero.sub}
           </p>
           <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center lsp:mt-4">
-            <button type="button" className="btn btn-primary rise-in" style={{ animationDelay: "0.75s" }} onClick={() => quiz.open()} data-cursor="Start">
+            <button
+              type="button"
+              data-cta-quiz
+              className="btn btn-primary rise-in"
+              style={{ animationDelay: "0.75s" }}
+              onClick={() => quiz.open()}
+              onPointerEnter={(e) => e.pointerType === "mouse" && sendPulse()}
+              onFocus={sendPulse}
+              data-cursor="Start"
+            >
               {site.hero.primaryCta}
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -251,6 +321,28 @@ export function Hero() {
           </div>
         </div>
       </div>
+
+      {/* Quiz-button pulse: a thin purple bridge line from the button into the 9, one light dot, then a heartbeat */}
+      {pulse && (
+        <svg key={pulse.id} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden="true">
+          <path d={pulse.d} pathLength={1} className="cta-line" fill="none" stroke="var(--nl-purple)" strokeWidth="1.4" strokeLinecap="round" />
+          <path
+            d={pulse.d}
+            pathLength={1}
+            className="cta-dot"
+            fill="none"
+            stroke="#f1e8ff"
+            strokeWidth="5"
+            strokeLinecap="round"
+            onAnimationEnd={(e) => {
+              if (e.animationName === "cta-dot") {
+                beat();
+                setPulse(null);
+              }
+            }}
+          />
+        </svg>
+      )}
     </section>
   );
 }

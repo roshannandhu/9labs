@@ -10,8 +10,10 @@ import { GLYPHS, NINE_VB, type GlyphKey } from "./nine-path";
  *
  * Intro (CSS keyframes): a spark traces the outline (0.6–1.6 s), then light floods the glyph
  * from the bottom up with a glowing wave crest (1.4–2.4 s) and the glow blooms to purple.
- * At rest it breathes (~5 s), a light band slides across every ~8 s, and on desktop a soft
- * hotspot follows the cursor inside the fill. The fill is opaque, so orbit items that pass
+ * At rest it breathes (~5 s), a slow current of light drifts through the fill, a thin glint
+ * travels round the edge, a light band slides across every ~8 s, and on desktop a soft
+ * hotspot follows the cursor inside the fill. `.nine-pulse` is the heartbeat layer the hero
+ * flashes when the bridge dot (or the quiz-button pulse) arrives. The fill is opaque, so orbit items that pass
  * behind the 9 are really hidden.
  */
 export function NineLight({ className = "", glyph = "sora" }: { className?: string; glyph?: GlyphKey }) {
@@ -66,6 +68,7 @@ export function NineLight({ className = "", glyph = "sora" }: { className?: stri
     <div className={`nine-lean relative ${className}`} style={{ aspectRatio: `${NINE_VB.w} / ${NINE_VB.h}` }} aria-hidden="true">
       {/* Soft blue → purple aura that bleeds past the hero's edges */}
       <div className="nine-aura pointer-events-none absolute -inset-[45%] rounded-full" />
+      <div className="nine-pulse pointer-events-none absolute -inset-[25%] rounded-full" />
 
       <svg ref={svg} viewBox={`0 0 ${NINE_VB.w} ${NINE_VB.h}`} className="absolute inset-0 h-full w-full overflow-visible">
         <defs>
@@ -90,6 +93,11 @@ export function NineLight({ className = "", glyph = "sora" }: { className?: stri
             <stop offset="0.5" stopColor="#fff" stopOpacity="0.5" />
             <stop offset="1" stopColor="#fff" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id="nl-flow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#fff" stopOpacity="0" />
+            <stop offset="0.5" style={{ stopColor: "var(--nl-blue-soft)" }} stopOpacity="0.5" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
           <radialGradient id="nl-hot">
             <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
             <stop offset="0.5" style={{ stopColor: "var(--nl-blue-soft)" }} stopOpacity="0.25" />
@@ -109,6 +117,11 @@ export function NineLight({ className = "", glyph = "sora" }: { className?: stri
             <path d={crest} fill="url(#nl-fill)" />
             <path d={crest.split(" V720")[0]} className="nine-crest" fill="none" stroke="#fff" strokeWidth="5" filter="url(#nl-soft)" />
           </g>
+          {/* A slow current of light drifting up through the fill, like power in a tube */}
+          <g transform="rotate(-14 200 300)">
+            <rect className="nine-current" x="-80" y="-420" width="560" height="320" fill="url(#nl-flow)" />
+            <rect className="nine-current nine-current--b" x="-80" y="-420" width="560" height="200" fill="url(#nl-flow)" />
+          </g>
           {/* Slow diagonal light band */}
           <g transform="rotate(18 200 300)">
             <rect className="nine-sheen" x="-260" y="-120" width="150" height="840" fill="url(#nl-band)" />
@@ -118,6 +131,9 @@ export function NineLight({ className = "", glyph = "sora" }: { className?: stri
           {/* Light catching the top-left edges (only the inner half shows: the group is clipped) */}
           <path d={d} className="nine-edge" fill="none" stroke="url(#nl-edge)" strokeWidth="6" />
         </g>
+
+        {/* A thin glint that travels round the edge, like a power-on light */}
+        <path d={d} pathLength={1} className="nine-glint" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" filter="url(#nl-soft)" />
 
         {/* The pen: outline trace + spark, melting into the edge highlight */}
         <path d={d} pathLength={1} className="nine-trace" fill="none" stroke="var(--nl-blue-soft)" strokeWidth="2" strokeLinejoin="round" />

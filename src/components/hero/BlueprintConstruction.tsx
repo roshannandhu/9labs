@@ -2,6 +2,19 @@ import { GLYPHS, NINE_VB, type GlyphKey } from "./nine-path";
 
 export const LEAN = 7; // degrees: the 9 leans forward, top to the right
 
+/** Types a label on character by character (the drafting notes "write themselves" during the intro). */
+function Typed({ text, delay }: { text: string; delay: number }) {
+  return (
+    <>
+      {Array.from(text).map((c, i) => (
+        <tspan key={i} className="construct-char" style={{ animationDelay: `${(delay + i * 0.05).toFixed(2)}s` }}>
+          {c}
+        </tspan>
+      ))}
+    </>
+  );
+}
+
 /**
  * Drafting lines around the 9 (bounding box, axes, guide circle on the bowl, dimensions,
  * the 7° lean guide, registration marks). They draw first, then the 9 is traced and filled
@@ -37,20 +50,20 @@ export function BlueprintConstruction({ className = "", glyph = "sora" }: { clas
       <g className="construct-fade" style={dl(7)}>
         <path d={`M ${x0} 30 H ${x1} M ${x0} 22 V 38 M ${x1} 22 V 38`} {...line} strokeOpacity="0.4" />
         <text x={cx} y={16} textAnchor="middle" className={label}>
-          {Math.round(w)}
+          <Typed text={String(Math.round(w))} delay={0.55} />
         </text>
       </g>
       <g className="construct-fade" style={dl(8)}>
         <path d={`M ${cx} ${cy} L ${cx + r * Math.cos(Math.PI / 4)} ${cy - r * Math.sin(Math.PI / 4)}`} {...line} strokeOpacity="0.35" />
         <circle cx={cx} cy={cy} r={2.4} fill="white" fillOpacity="0.5" />
         <text x={cx + r * 0.42} y={cy - r * 0.62} className={label}>
-          R {Math.round(r)}
+          <Typed text={`R ${Math.round(r)}`} delay={0.7} />
         </text>
       </g>
       <g className="construct-fade" style={dl(9)}>
         <path d={`M 396 ${y0} V ${y1} M 388 ${y0} H 404 M 388 ${y1} H 404`} {...line} strokeOpacity="0.36" />
         <text x={412} y={(y0 + y1) / 2} className={label} transform={`rotate(90 412 ${(y0 + y1) / 2})`} textAnchor="middle">
-          {Math.round(y1 - y0)}
+          <Typed text={String(Math.round(y1 - y0))} delay={0.85} />
         </text>
       </g>
       <g className="construct-fade" style={dl(10)} {...line} strokeOpacity="0.4">
@@ -61,13 +74,13 @@ export function BlueprintConstruction({ className = "", glyph = "sora" }: { clas
       </g>
       <g className="construct-fade" style={dl(11)}>
         <text x={4} y={606} className={label}>
-          NL—09 · REV.B
+          <Typed text="NL—09 · REV.C" delay={0.95} />
         </text>
         <text x={396} y={606} className={label} textAnchor="end">
-          {GLYPHS[glyph].label.toUpperCase()}
+          <Typed text={GLYPHS[glyph].label.toUpperCase()} delay={1.1} />
         </text>
         <text x={4} y={-6} className={label}>
-          24.89° N · 55.16° E · DUBAI SOUTH
+          <Typed text="24.89° N · 55.16° E · DUBAI SOUTH" delay={0.3} />
         </text>
       </g>
 
@@ -82,7 +95,7 @@ export function BlueprintConstruction({ className = "", glyph = "sora" }: { clas
           strokeOpacity="0.7"
         />
         <text x={bx + 14} y={y1 - ar - 10} className="font-mono text-[11px] tracking-[0.12em]" fill="var(--nl-purple)" fillOpacity="0.85">
-          7°
+          <Typed text="7°" delay={1.35} />
         </text>
       </g>
       </g>
