@@ -44,7 +44,8 @@ export const metadata: Metadata = {
     locale: "en_AE",
   },
   twitter: { card: "summary_large_image", title, description },
-  robots: { index: true, follow: true },
+  // demo builds (GitHub Pages) stay out of search engines so they never compete with the real domain
+  robots: process.env.NEXT_PUBLIC_NOINDEX === "1" ? { index: false, follow: false } : { index: true, follow: true },
   formatDetection: { telephone: false },
 };
 
