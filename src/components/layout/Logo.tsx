@@ -4,7 +4,7 @@ import { NINE_PATH } from "@/components/hero/nine-path";
 export function Logo({ className = "", compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <span className="relative grid h-9 w-9 place-items-center rounded-[10px] border border-white/10 bg-white/[0.03]">
+      <span className="logo-9 relative grid h-9 w-9 place-items-center rounded-[10px] border border-white/10 bg-white/[0.03]" data-logo-9>
         <svg viewBox="10 60 380 500" className="h-6 w-6 overflow-visible" aria-hidden="true">
           <defs>
             <linearGradient id="logo9" x1="0" y1="0" x2="0.3" y2="1">

@@ -3,11 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { GlyphKey } from "@/components/hero/nine-path";
 
-export type Concept = "neon" | "particles" | "cinematic";
 export type MotionPref = "system" | "full" | "reduce";
 
 export type DemoSettings = {
-  concept: Concept;
   glyph: GlyphKey;
   blue: string;
   purple: string;
@@ -16,14 +14,11 @@ export type DemoSettings = {
   motion: MotionPref;
   cursor: boolean;
   whatsapp: boolean;
-  /** Concept C: burning NINE LABS wordmark behind the glass 9 (off: blueprint grid + aurora only). */
-  wordmark: boolean;
-  /** Concept C: scrolling flies through the 9's bowl into the services ("cross the bridge"). */
-  portal: boolean;
+  /** On scroll the hero 9 shrinks, straightens and docks into the nav logo. */
+  logoDock: boolean;
 };
 
 export const DEFAULT_SETTINGS: DemoSettings = {
-  concept: "cinematic",
   glyph: "sora",
   blue: "#3b82ff",
   purple: "#b98cff",
@@ -32,8 +27,7 @@ export const DEFAULT_SETTINGS: DemoSettings = {
   motion: "system",
   cursor: true,
   whatsapp: true,
-  wordmark: false,
-  portal: true,
+  logoDock: true,
 };
 
 type Ctx = {
@@ -47,18 +41,8 @@ type Ctx = {
 };
 
 const DemoContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "nl-demo-settings-v5";
+const STORAGE_KEY = "nl-demo-settings-v6";
 
-const CONCEPT_ALIASES: Record<string, Concept> = {
-  a: "neon",
-  neon: "neon",
-  b: "particles",
-  particles: "particles",
-  particle: "particles",
-  c: "cinematic",
-  cinematic: "cinematic",
-  "3d": "cinematic",
-};
 
 function mixWithWhite(hex: string, amount: number) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -89,9 +73,7 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const stored = readStored();
     const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("concept");
     const next: DemoSettings = { ...DEFAULT_SETTINGS, ...stored };
-    if (fromUrl && CONCEPT_ALIASES[fromUrl.toLowerCase()]) next.concept = CONCEPT_ALIASES[fromUrl.toLowerCase()];
     if (params.get("motion") === "reduce") next.motion = "reduce";
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate client-only settings after SSR
     setSettings(next);

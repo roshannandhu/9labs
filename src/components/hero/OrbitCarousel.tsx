@@ -4,20 +4,30 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 
 import { site } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { useDemo } from "@/components/providers/DemoSettings";
-import { NINE_SPINE, NINE_VB } from "./nine-path";
+import { NINE_VB } from "./nine-path";
+import { LEAN } from "./BlueprintConstruction";
 
 export type OrbitHandle = { focusIndex: (i: number) => void; next: () => void; prev: () => void };
-export type OrbitFx = { spread: number; fade: number };
+/** Live values the hero writes (scroll + pointer) and the orbit reads every frame. */
+export type OrbitFx = {
+  /** ring radius multiplier: 1 at rest, > 1 when the ring opens on scroll */
+  spread: number;
+  /** opacity multiplier */
+  fade: number;
+  /** px the items fall toward Services on scroll (front items fall further) */
+  drop: number;
+  /** extra ring tilt in degrees (mouse) */
+  tilt: number;
+};
+
+/** The 9's height inside the stage: 84% of it, capped so it never gets absurd on huge screens. */
+export const nineHeight = (stageH: number) => Math.min(stageH * 0.84, 640);
 
 type Props = {
   children: React.ReactNode;
   active: number;
   onActive: (i: number) => void;
   fx: React.RefObject<OrbitFx>;
-  /** Draw the elliptical track the activities travel on (2D concepts; the 3D concept has its own rings). */
-  track?: boolean;
-  /** Draw the bridge arc from the front activity to its segment of the 9. */
-  bridge?: boolean;
   className?: string;
 };
 
@@ -26,56 +36,71 @@ const N = services.length;
 const STEP = (Math.PI * 2) / N;
 const FRONT = Math.PI / 2; // bottom of the ellipse = closest to the viewer
 const TAU = Math.PI * 2;
+const GLIDE = 1300; // ms an item takes to glide to the front
+const HOLD = 3100; // ms it holds there (≈ 40 s per full loop at speed 1)
+const INTRO_AT = 2000; // ms: items fly in once the 9 is lit…
+const INTRO_FLY = 900; // …each over this long, the front one last
+const T7 = Math.tan((LEAN * Math.PI) / 180);
 
-type Geo = { w: number; h: number; rx: number; ry: number; tilt: number; tile: number; hub: number };
+type Geo = { w: number; h: number; rx: number; ry: number; tile: number };
 
 function geometry(w: number, h: number): Geo {
   if (w >= 1024) {
-    const rx = Math.min(w * 0.37, 560);
-    return { w, h, rx, ry: Math.min(rx * 0.25, h * 0.38), tilt: (-7 * Math.PI) / 180, tile: 54, hub: Math.min(w, h) * 0.1 };
+    const rx = Math.min(w * 0.34, 640);
+    return { w, h, rx, ry: Math.min(rx * 0.26, h * 0.4), tile: 54 };
   }
   if (w >= 640) {
-    const rx = w * 0.41;
-    return { w, h, rx, ry: Math.min(rx * 0.3, h * 0.4), tilt: (-6 * Math.PI) / 180, tile: 50, hub: Math.min(w, h) * 0.1 };
+    const rx = w * 0.3;
+    return { w, h, rx, ry: Math.min(rx * 0.3, h * 0.4), tile: 50 };
   }
-  const rx = w * 0.4;
-  return { w, h, rx, ry: Math.min(rx * 0.44, h * 0.38), tilt: (-4 * Math.PI) / 180, tile: 44, hub: Math.min(w, h) * 0.1 };
+  // Phones: the ring is wider than the screen, so side items slide off the edges and come back
+  // (narrower when the phone is held sideways and the ring shares the screen with the copy).
+  const rx = w * (h < w * 0.8 ? 0.4 : 0.62);
+  return { w, h, rx, ry: Math.min(rx * 0.32, h * 0.36), tile: 44 };
 }
 
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 
-export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarousel(
-  { children, active, onActive, fx, track = false, bridge = true, className = "" },
-  ref,
-) {
+/**
+ * "Saturn ring": the nine activities on an ellipse tilted 7° (matching the 9's lean). Back-half
+ * items render under the opaque 9 and front-half items over it, so they really go around it.
+ * Step-and-hold: each item glides to the front, holds ~3 s, then the next one comes. Hover
+ * pauses; drag/swipe spins with inertia; arrow keys rotate; on touch the first tap brings an
+ * item to the front and the second opens its service. While an item holds the front, one short
+ * purple bridge arc links it to the 9 with a light dot running both ways.
+ */
+export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarousel({ children, active, onActive, fx, className = "" }, ref) {
   const { reduced, settings } = useDemo();
   const stageRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const anchorRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const trackRef = useRef<SVGEllipseElement>(null);
-  const trackFront = useRef<SVGEllipseElement>(null);
+  const ringBack = useRef<SVGEllipseElement>(null);
+  const ringFront = useRef<SVGPathElement>(null);
   const arcRefs = useRef<(SVGPathElement | null)[]>([]);
   const arcGroup = useRef<SVGGElement>(null);
 
   const st = useRef({
     rot: FRONT, // item 0 starts at the front
-    target: null as number | null,
+    tween: null as null | { from: number; to: number; t0: number; dur: number },
     vel: 0,
     hover: false,
     focus: false,
     offscreen: false,
-    resumeAt: 0,
+    holdUntil: 0,
     start: 0,
     last: 0,
     active: 0,
+    tiltCur: 0,
+    pointer: "mouse",
     geo: null as Geo | null,
     sides: new Array<string>(N).fill(""),
     fronts: new Array<boolean>(N).fill(false),
     z: new Array<number>(N).fill(0),
+    arcOn: false,
     drag: null as null | { id: number; x0: number; y0: number; lastX: number; lastT: number; moved: boolean },
     suppressClick: false,
-    seg: [] as { x: number; y: number }[], // midpoints of the 9's nine spine segments (glyph units)
-    arc: null as null | { x: number; y: number }, // eased end point of the bridge arc (px)
   });
 
   const speedRef = useRef(settings.orbitSpeed);
@@ -87,14 +112,22 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     onActiveRef.current = onActive;
   });
 
-  const focusIndex = useCallback((i: number) => {
+  const glide = useCallback((to: number, dur = GLIDE) => {
     const s = st.current;
-    let t = FRONT - i * STEP;
-    t += TAU * Math.round((s.rot - t) / TAU);
-    s.target = t;
+    s.tween = { from: s.rot, to, t0: performance.now(), dur };
     s.vel = 0;
-    s.resumeAt = performance.now() + 3500;
   }, []);
+
+  const focusIndex = useCallback(
+    (i: number) => {
+      const s = st.current;
+      let t = FRONT - i * STEP;
+      t += TAU * Math.round((s.rot - t) / TAU);
+      glide(t, Math.min(GLIDE, 500 + Math.abs(t - s.rot) * 900));
+      s.holdUntil = performance.now() + GLIDE + 4200;
+    },
+    [glide],
+  );
 
   useImperativeHandle(
     ref,
@@ -106,17 +139,10 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     [focusIndex],
   );
 
-  // Measure the stage (+ the midpoints of the 9's segments, for the bridge arc).
+  // Measure the stage; pause when off-screen.
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
-    const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    probe.setAttribute("d", NINE_SPINE);
-    const L = probe.getTotalLength();
-    st.current.seg = Array.from({ length: N }, (_, k) => {
-      const p = probe.getPointAtLength(((k + 0.5) / N) * L);
-      return { x: p.x, y: p.y };
-    });
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       st.current.geo = geometry(width, height);
@@ -138,6 +164,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     const s = st.current;
     s.start = performance.now();
     s.last = s.start;
+    s.holdUntil = s.start + INTRO_AT + INTRO_FLY + 1000 + HOLD;
     let raf = 0;
 
     const frame = (now: number) => {
@@ -147,6 +174,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       const g = s.geo;
       if (!g || s.offscreen || document.hidden) return;
       const isReduced = reducedRef.current;
+      const fxv = fx.current ?? { spread: 1, fade: 1, drop: 0, tilt: 0 };
 
       // --- motion state -------------------------------------------------------------
       if (!s.drag?.moved) {
@@ -154,45 +182,55 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
           s.rot += s.vel * dt * 60;
           s.vel *= Math.pow(0.92, dt * 60);
           if (Math.abs(s.vel) <= 0.0004) {
-            s.vel = 0;
-            s.target = FRONT + Math.round((s.rot - FRONT) / STEP) * STEP;
-            s.resumeAt = now + 2200;
+            glide(FRONT + Math.round((s.rot - FRONT) / STEP) * STEP, 600);
+            s.holdUntil = now + 600 + HOLD;
           }
-        } else if (s.target != null) {
-          const k = isReduced ? 1 : 1 - Math.exp(-dt * 6.5);
-          s.rot += (s.target - s.rot) * k;
-          if (Math.abs(s.target - s.rot) < 0.0005) {
-            s.rot = s.target;
-            s.target = null;
-          }
-        } else if (!isReduced && !s.hover && !s.focus && now > s.resumeAt) {
-          const period = 64 / Math.max(0.2, speedRef.current);
-          s.rot += (TAU / period) * dt;
+        } else if (s.tween) {
+          const tw = s.tween;
+          const k = isReduced ? 1 : clamp01((now - tw.t0) / tw.dur);
+          s.rot = tw.from + (tw.to - tw.from) * easeInOut(k);
+          if (k >= 1) s.tween = null;
+        } else if (!isReduced && !s.hover && !s.focus && now > s.holdUntil) {
+          const hold = HOLD / Math.max(0.2, speedRef.current);
+          glide(FRONT + Math.round((s.rot - FRONT) / STEP) * STEP - STEP);
+          s.holdUntil = now + GLIDE + hold;
         }
       }
+      const settled = !s.tween && !s.drag?.moved && Math.abs(s.vel) <= 0.0004;
 
       // --- layout -------------------------------------------------------------------
-      const intro = isReduced ? 1 : easeOutExpo(Math.max(0, Math.min(1, (now - s.start - 1100) / 1500)));
-      const fxv = fx.current ?? { spread: 1, fade: 1 };
-      const spread = (0.35 + 0.65 * intro) * fxv.spread;
+      const tIntro = now - s.start;
+      const introDone = isReduced || tIntro > INTRO_AT + INTRO_FLY + 500;
+      s.tiltCur += (fxv.tilt - s.tiltCur) * (1 - Math.exp(-dt * 4));
+      const tilt = ((-LEAN + s.tiltCur) * Math.PI) / 180;
+      const cosT = Math.cos(tilt);
+      const sinT = Math.sin(tilt);
       const cx = g.w / 2;
       const cy = g.h / 2;
-      const cosT = Math.cos(g.tilt);
-      const sinT = Math.sin(g.tilt);
+      const rx = g.rx * fxv.spread;
+      const ry = g.ry * fxv.spread;
+      const far = Math.max(g.w, g.h) * 0.9;
 
       let best = 0;
       let bestD = -1;
       const pts: { x: number; y: number; d: number }[] = [];
       for (let i = 0; i < N; i++) {
         const th = s.rot + i * STEP;
-        const c = Math.cos(th);
         const sn = Math.sin(th);
-        const x = g.rx * c * spread;
-        const y = g.ry * sn * spread;
-        const X = x * cosT - y * sinT;
-        const Y = x * sinT + y * cosT;
+        const x = rx * Math.cos(th);
+        const y = ry * sn;
+        let X = x * cosT - y * sinT;
+        let Y = x * sinT + y * cosT;
         const d = (sn + 1) / 2;
-        pts.push({ x: cx + X, y: cy + Y, d });
+        Y += fxv.drop * (0.55 + 0.45 * d);
+        // Intro: fly in from beyond the screen edges; the front item lands last.
+        const e = isReduced ? 1 : easeOutExpo(clamp01((tIntro - INTRO_AT - d * 450) / INTRO_FLY));
+        if (e < 1) {
+          const len = Math.hypot(X, Y) || 1;
+          X += (X / len) * far * (1 - e);
+          Y += (Y / len) * far * (1 - e);
+        }
+        pts.push({ x: cx + X, y: cy + Y, d: d * e });
         if (d > bestD) {
           bestD = d;
           best = i;
@@ -203,12 +241,12 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         const el = itemRefs.current[i];
         if (!el) continue;
         const { x, y, d } = pts[i];
-        const scale = 0.56 + 0.54 * d;
-        // Fake occlusion: items passing behind the 9 (back half, near the centre) fade further.
-        const behind = d < 0.5 ? Math.max(0, 1 - Math.abs(x - cx) / (g.w * 0.1)) : 0;
-        const op = (0.26 + 0.74 * Math.pow(d, 1.5)) * (1 - 0.75 * behind) * intro * fxv.fade;
+        const e = isReduced ? 1 : clamp01((tIntro - INTRO_AT - d * 450) / 300);
+        const scale = 0.62 + 0.78 * Math.pow(d, 1.6);
+        const op = (0.4 + 0.6 * Math.pow(d, 1.2)) * e * fxv.fade;
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
         el.style.opacity = op.toFixed(3);
+        // Back half under the 9 (z-10), front half over it.
         const z = d > 0.5 ? 20 + Math.round(d * 10) : 1 + Math.round(d * 8);
         if (s.z[i] !== z) {
           s.z[i] = z;
@@ -226,33 +264,52 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         }
       }
 
-      // Elliptical track (2D concepts).
-      for (const el of [trackRef.current, trackFront.current]) {
-        if (!el) continue;
-        el.setAttribute("cx", cx.toFixed(1));
-        el.setAttribute("cy", cy.toFixed(1));
-        el.setAttribute("rx", (g.rx * spread).toFixed(1));
-        el.setAttribute("ry", (g.ry * spread).toFixed(1));
-        el.setAttribute("transform", `rotate(${((g.tilt * 180) / Math.PI).toFixed(2)} ${cx.toFixed(1)} ${cy.toFixed(1)})`);
-        el.style.opacity = (intro * fxv.fade).toFixed(3);
+      // Saturn ring: back half drawn under the 9, front half over it.
+      const ringOp = (isReduced ? 1 : clamp01((tIntro - INTRO_AT) / 800)) * fxv.fade;
+      const rot = `rotate(${((tilt * 180) / Math.PI).toFixed(2)} ${cx.toFixed(1)} ${cy.toFixed(1)})`;
+      if (ringBack.current) {
+        const r = ringBack.current;
+        r.setAttribute("cx", cx.toFixed(1));
+        r.setAttribute("cy", cy.toFixed(1));
+        r.setAttribute("rx", rx.toFixed(1));
+        r.setAttribute("ry", ry.toFixed(1));
+        r.setAttribute("transform", rot);
+        r.style.opacity = ringOp.toFixed(3);
+      }
+      if (ringFront.current) {
+        const r = ringFront.current;
+        r.setAttribute("d", `M${(cx - rx).toFixed(1)} ${cy.toFixed(1)}A${rx.toFixed(1)} ${ry.toFixed(1)} 0 0 0 ${(cx + rx).toFixed(1)} ${cy.toFixed(1)}`);
+        r.setAttribute("transform", rot);
+        r.style.opacity = ringOp.toFixed(3);
       }
 
-      // Bridge arc: from the front activity to its own segment of the 9, bowed around the 9's side.
-      if (arcGroup.current && s.seg.length === N) {
-        const H9 = g.h * 0.84;
+      // Bridge arc: front item → the 9's right edge, only while the item holds the front.
+      if (arcGroup.current) {
+        const H9 = nineHeight(g.h);
         const W9 = (H9 * NINE_VB.w) / NINE_VB.h;
-        const sp = s.seg[best];
-        const tx = cx + (sp.x / NINE_VB.w - 0.5) * W9;
-        const ty = cy + (sp.y / NINE_VB.h - 0.5) * H9;
-        const k = !s.arc || isReduced ? 1 : 1 - Math.exp(-dt * 5);
-        s.arc = s.arc ? { x: s.arc.x + (tx - s.arc.x) * k, y: s.arc.y + (ty - s.arc.y) * k } : { x: tx, y: ty };
+        const gy = 300; // glyph units: the right edge of the 9's bowl, where light enters it
+        const gx = 392 - T7 * (gy - 309);
+        const tx = cx + (gx / NINE_VB.w - 0.5) * W9;
+        const ty = cy + (gy / NINE_VB.h - 0.5) * H9;
         const c = pts[best];
-        const side = s.arc.x < cx ? -1 : 1;
-        const qx = cx + side * W9 * 0.78;
-        const qy = (c.y + s.arc.y) / 2 + H9 * 0.08;
-        const d = `M${c.x.toFixed(1)} ${c.y.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${s.arc.x.toFixed(1)} ${s.arc.y.toFixed(1)}`;
+        const mx = (c.x + tx) / 2;
+        const my = (c.y + ty) / 2;
+        const len = Math.hypot(tx - c.x, ty - c.y) || 1;
+        // bow the arc away from the 9 so it reads as a bridge, not a line across the glyph
+        const bow = Math.min(90, len * 0.32);
+        let qx = mx - ((ty - c.y) / len) * bow;
+        let qy = my + ((tx - c.x) / len) * bow;
+        if (Math.hypot(qx - cx, qy - cy) < Math.hypot(mx - cx, my - cy)) {
+          qx = 2 * mx - qx;
+          qy = 2 * my - qy;
+        }
+        const d = `M${c.x.toFixed(1)} ${c.y.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`;
         for (const el of arcRefs.current) el?.setAttribute("d", d);
-        arcGroup.current.style.opacity = (Math.max(0, (intro - 0.6) / 0.4) * fxv.fade).toFixed(3);
+        const on = settled && introDone && fxv.fade > 0.6;
+        if (on !== s.arcOn) {
+          s.arcOn = on;
+          arcGroup.current.dataset.on = on ? "true" : "false";
+        }
       }
 
       if (best !== s.active) {
@@ -262,10 +319,11 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [fx]);
+  }, [fx, glide]);
 
   // --- pointer: drag / swipe with inertia ------------------------------------------------
   const onPointerDown = (e: React.PointerEvent) => {
+    st.current.pointer = e.pointerType;
     if (e.button !== 0) return;
     st.current.drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, lastX: e.clientX, lastT: performance.now(), moved: false };
   };
@@ -278,7 +336,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     if (!d.moved) {
       if (Math.abs(totalX) > 8 && Math.abs(totalX) > Math.abs(totalY)) {
         d.moved = true;
-        s.target = null;
+        s.tween = null;
         s.vel = 0;
         stageRef.current?.setPointerCapture(e.pointerId);
       } else if (Math.abs(totalY) > 12) {
@@ -301,10 +359,8 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     if (s.drag.moved) {
       s.suppressClick = true;
       window.setTimeout(() => (s.suppressClick = false), 60);
-      if (Math.abs(s.vel) <= 0.0004) {
-        s.target = FRONT + Math.round((s.rot - FRONT) / STEP) * STEP;
-      }
-      s.resumeAt = performance.now() + 2500;
+      if (Math.abs(s.vel) <= 0.0004) glide(FRONT + Math.round((s.rot - FRONT) / STEP) * STEP, 600);
+      s.holdUntil = performance.now() + 2500 + HOLD;
       if (stageRef.current?.hasPointerCapture(e.pointerId)) stageRef.current.releasePointerCapture(e.pointerId);
     }
     s.drag = null;
@@ -329,54 +385,47 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       onPointerCancel={endDrag}
       data-cursor="Drag"
     >
-      {track && (
-        <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible" aria-hidden="true">
-          <defs>
-            <linearGradient id="orbit-track" x1="0" x2="1">
-              <stop offset="0" style={{ stopColor: "var(--nl-blue)" }} stopOpacity="0.15" />
-              <stop offset="0.5" style={{ stopColor: "var(--nl-purple)" }} stopOpacity="0.55" />
-              <stop offset="1" style={{ stopColor: "var(--nl-blue)" }} stopOpacity="0.15" />
-            </linearGradient>
-          </defs>
-          <ellipse ref={trackRef} fill="none" stroke="white" strokeOpacity="0.14" strokeWidth="1" strokeDasharray="2 7" style={{ opacity: 0 }} />
-          <ellipse ref={trackFront} fill="none" stroke="url(#orbit-track)" strokeWidth="1.2" style={{ opacity: 0 }} />
-        </svg>
-      )}
+      <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible" aria-hidden="true">
+        <ellipse ref={ringBack} fill="none" stroke="white" strokeOpacity="0.16" strokeWidth="1" strokeDasharray="2 7" style={{ opacity: 0 }} />
+      </svg>
 
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">{children}</div>
 
-      {bridge && (
-        <svg className="pointer-events-none absolute inset-0 z-[15] h-full w-full overflow-visible" aria-hidden="true">
-          <defs>
-            <filter id="bridge-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" />
-            </filter>
-          </defs>
-          <g ref={arcGroup} className="bridge-arc" style={{ opacity: 0 }}>
-            {[
-              { cls: "", stroke: "var(--nl-purple)", w: 5, op: 0.35, filter: "url(#bridge-glow)" },
-              { cls: "", stroke: "var(--nl-purple)", w: 1.1, op: 0.85 },
-              { cls: "bridge-pulse", stroke: "var(--nl-blue-soft)", w: 2.4, op: 1 },
-              { cls: "bridge-pulse bridge-pulse--back", stroke: "#e9dcff", w: 2.4, op: 1 },
-            ].map((l, i) => (
-              <path
-                key={i}
-                ref={(el) => {
-                  arcRefs.current[i] = el;
-                }}
-                className={l.cls}
-                pathLength={1}
-                fill="none"
-                stroke={l.stroke}
-                strokeOpacity={l.op}
-                strokeWidth={l.w}
-                strokeLinecap="round"
-                filter={l.filter}
-              />
-            ))}
-          </g>
-        </svg>
-      )}
+      <svg className="pointer-events-none absolute inset-0 z-[15] h-full w-full overflow-visible" aria-hidden="true">
+        <defs>
+          <linearGradient id="orbit-front" x1="0" x2="1">
+            <stop offset="0" style={{ stopColor: "var(--nl-blue)" }} stopOpacity="0.1" />
+            <stop offset="0.5" style={{ stopColor: "var(--nl-purple)" }} stopOpacity="0.6" />
+            <stop offset="1" style={{ stopColor: "var(--nl-blue)" }} stopOpacity="0.1" />
+          </linearGradient>
+          <filter id="bridge-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" />
+          </filter>
+        </defs>
+        <path ref={ringFront} fill="none" stroke="url(#orbit-front)" strokeWidth="1.2" style={{ opacity: 0 }} />
+        <g ref={arcGroup} className="bridge-arc" data-on="false">
+          {[
+            { cls: "bridge-line", stroke: "var(--nl-purple)", w: 5, op: 0.35, filter: "url(#bridge-glow)" },
+            { cls: "bridge-line", stroke: "var(--nl-purple)", w: 1.2, op: 0.9 },
+            { cls: "bridge-dot", stroke: "#f1e8ff", w: 4, op: 1, filter: undefined },
+          ].map((l, i) => (
+            <path
+              key={i}
+              ref={(el) => {
+                arcRefs.current[i] = el;
+              }}
+              className={l.cls}
+              pathLength={1}
+              fill="none"
+              stroke={l.stroke}
+              strokeOpacity={l.op}
+              strokeWidth={l.w}
+              strokeLinecap="round"
+              filter={l.filter}
+            />
+          ))}
+        </g>
+      </svg>
 
       <ul className="absolute inset-0 m-0 list-none p-0" aria-label="Our nine activities" onKeyDown={onKeyDown}>
         {services.map((s, i) => (
@@ -399,10 +448,16 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
               data-cursor="Explore"
               aria-label={`${s.title} — ${s.description}`}
               onClick={(e) => {
-                if (st.current.suppressClick) {
+                const st0 = st.current;
+                if (st0.suppressClick) {
                   e.preventDefault();
                   e.stopPropagation();
                   return;
+                }
+                // Touch: the first tap brings the item to the front, the second opens it.
+                if (st0.pointer !== "mouse" && i !== st0.active) {
+                  e.preventDefault();
+                  e.stopPropagation();
                 }
                 focusIndex(i);
               }}
@@ -419,7 +474,7 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
               onPointerLeave={(e) => {
                 if (e.pointerType === "mouse") {
                   st.current.hover = false;
-                  st.current.resumeAt = performance.now() + 600;
+                  st.current.holdUntil = Math.max(st.current.holdUntil, performance.now() + 900);
                 }
               }}
             >

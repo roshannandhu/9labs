@@ -21,7 +21,8 @@ export function Nav() {
       raf = 0;
       const y = window.scrollY;
       setScrolled(y > 24);
-      if (y > lastY + 8 && y > 240) setHidden(true);
+      // stay visible over the cover, so the hero 9 can dock into the logo
+      if (y > lastY + 8 && y > Math.max(240, window.innerHeight * 1.05)) setHidden(true);
       else if (y < lastY - 8 || y < 120) setHidden(false);
       lastY = y;
     };

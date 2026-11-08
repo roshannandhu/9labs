@@ -2,24 +2,14 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { DEFAULT_SETTINGS, useDemo, type Concept, type MotionPref } from "@/components/providers/DemoSettings";
+import { DEFAULT_SETTINGS, useDemo, type MotionPref } from "@/components/providers/DemoSettings";
 
-const CONCEPTS: { id: Concept; code: string; name: string; note: string }[] = [
-  {
-    id: "cinematic",
-    code: "C",
-    name: "Liquid Glass Nine · recommended",
-    note: "A glass 9 with a neon tube inside: light gathers into nine segments, the blueprint grid bends through the glass, and scrolling flies through the 9.",
-  },
-  { id: "neon", code: "A", name: "Neon Segments · lightest", note: "SVG/CSS only: a neon 9 in nine segments, one per activity. Also the mobile and low-power fallback." },
-  { id: "particles", code: "B", name: "Particle Nine", note: "Glowing particles assemble the 9 from the grid and react to the cursor." },
-];
 const BLUES = ["#3b82ff", "#2f6bff", "#4f9bff", "#1e7bff"];
 const PURPLES = ["#b98cff", "#c084fc", "#a78bfa", "#d6a6ff"];
 
 /**
- * Demo-only control panel so the client can compare hero concepts and try brand colours
- * live (the brief asks for 2–3 concepts; exact colour codes are still to be supplied).
+ * Demo-only control panel so the client can try the 9's typeface and brand colours live
+ * (exact colour codes and the final logo are still to be supplied).
  * The same kinds of settings move into the Payload admin later.
  */
 export function ConceptLab() {
@@ -45,7 +35,7 @@ export function ConceptLab() {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="label-mono !text-nl-purple">Concept Lab</p>
-                <p className="mt-1 text-[13px] leading-snug text-nl-ink">Compare hero concepts and try brand colours live. In production these live in the admin panel.</p>
+                <p className="mt-1 text-[13px] leading-snug text-nl-ink">Try the 9&rsquo;s typeface, brand colours and motion live. In production these live in the admin panel.</p>
               </div>
               <button
                 type="button"
@@ -56,35 +46,6 @@ export function ConceptLab() {
                 ✕
               </button>
             </div>
-
-            <fieldset className="mb-5">
-              <legend className="label-mono mb-2">Hero concept</legend>
-              <div className="flex flex-col gap-2">
-                {CONCEPTS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => set({ concept: c.id })}
-                    aria-pressed={settings.concept === c.id}
-                    className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${
-                      settings.concept === c.id ? "border-nl-purple/70 bg-nl-purple/10" : "border-white/10 hover:border-white/25"
-                    }`}
-                  >
-                    <span
-                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg font-mono text-xs ${
-                        settings.concept === c.id ? "bg-nl-purple text-[#0b0618]" : "bg-white/5 text-white/70"
-                      }`}
-                    >
-                      {c.code}
-                    </span>
-                    <span>
-                      <span className="block font-display text-sm font-semibold text-white">{c.name}</span>
-                      <span className="block text-xs leading-snug text-nl-dim">{c.note}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
 
             <fieldset className="mb-5">
               <legend className="label-mono mb-2">The 9 typeface</legend>
@@ -147,8 +108,7 @@ export function ConceptLab() {
               <legend className="label-mono mb-2">Elements</legend>
               <Toggle label="Custom cursor (desktop)" checked={settings.cursor} onChange={(v) => set({ cursor: v })} />
               <Toggle label="Floating WhatsApp button" checked={settings.whatsapp} onChange={(v) => set({ whatsapp: v })} />
-              <Toggle label="Portal dive on scroll (C)" checked={settings.portal} onChange={(v) => set({ portal: v })} />
-              <Toggle label="NINE LABS wordmark behind the 9 (C)" checked={settings.wordmark} onChange={(v) => set({ wordmark: v })} />
+              <Toggle label="The 9 docks into the logo on scroll" checked={settings.logoDock} onChange={(v) => set({ logoDock: v })} />
             </fieldset>
 
             <button
@@ -179,7 +139,7 @@ export function ConceptLab() {
           </svg>
         </span>
         <span className="sr-only sm:not-sr-only">
-          Concept Lab <span className="font-mono text-[11px] text-white/45">· {CONCEPTS.find((c) => c.id === settings.concept)?.code}</span>
+          Concept Lab
         </span>
       </button>
     </div>

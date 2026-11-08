@@ -1,16 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { whatsappHref } from "@/content/site";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
-/** Floating WhatsApp button — the admin will be able to switch it on/off (Concept Lab does now). */
+/**
+ * Floating WhatsApp button — the admin will be able to switch it on/off (Concept Lab does now).
+ * On phones it waits until the cover is half scrolled, so it never sits on the hero's full-width buttons.
+ */
 export function WhatsAppFab() {
   const { settings } = useDemo();
+  const [clear, setClear] = useState(false);
+  useEffect(() => {
+    const update = () => setClear(window.innerWidth >= 640 || window.scrollY > window.innerHeight * 0.5);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
   return (
     <AnimatePresence>
-      {settings.whatsapp && (
+      {settings.whatsapp && clear && (
         <motion.a
           key="wa"
           href={whatsappHref}
@@ -22,7 +37,7 @@ export function WhatsAppFab() {
           initial={{ opacity: 0, scale: 0.6, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.6, y: 20 }}
-          transition={{ delay: 1.6, type: "spring", stiffness: 260, damping: 20 }}
+          transition={{ delay: 0.3, type: "spring", stiffness: 260, damping: 20 }}
         >
           <span className="relative grid h-11 w-11 place-items-center rounded-full bg-[#25D366] text-[#06210f]">
             <span className="absolute inset-0 animate-ping rounded-full bg-[#25D366]/40 [animation-duration:2.6s]" />
