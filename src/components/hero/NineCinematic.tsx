@@ -146,7 +146,7 @@ const RIM_VERT = /* glsl */ `
     vW = wp.xyz;
     vN = normalize(mat3(modelMatrix) * normal);
     vV = normalize(cameraPosition - wp.xyz);
-    gl_Position = projectionMatrix * viewMatrix * wp;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 const RIM_FRAG = /* glsl */ `
@@ -156,7 +156,7 @@ const RIM_FRAG = /* glsl */ `
     vec3 n = normalize(vN);
     vec3 v = normalize(vV);
     float fr = pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 2.4);
-    vec3 col = mix(uA, uB, smoothstep(0.2, 0.85, fr)) * fr * 1.3;
+    vec3 col = mix(uA, uB, smoothstep(0.2, 0.85, fr)) * fr * 1.5;
     vec3 h = normalize(normalize(uL) + v);
     float spec = pow(max(dot(n, h), 0.0), 110.0) * 1.5;
     float s = (vW.x + vW.y * 0.55) - uSweep;
@@ -220,6 +220,10 @@ function Nine({
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      // drawn on the glass surface itself: pull it forward so it never z-fights (speckle)
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -4,
     }),
     [],
   );
@@ -337,18 +341,21 @@ function Nine({
         <mesh geometry={body}>
           {/* Clear glass: physical transmission refracts the grid, aurora and neon tube.
               (Dispersion is left off: it blew out to white on some GPUs/drivers in testing.) */}
+          {/* Clean, softly frosted glass: low IOR/thickness so what's behind stays readable
+              (no heavy distortion), light frost so the neon inside glows instead of smearing. */}
           <meshPhysicalMaterial
             transmission={1}
-            thickness={tier === "high" ? 0.75 : 0.55}
-            roughness={0.05}
-            ior={1.5}
-            color="#e8eeff"
+            thickness={tier === "high" ? 0.42 : 0.36}
+            roughness={0.14}
+            ior={1.28}
+            color="#ffffff"
             attenuationColor={blue}
-            attenuationDistance={3}
+            attenuationDistance={9}
             specularIntensity={1}
+            specularColor="#ffffff"
             clearcoat={1}
-            clearcoatRoughness={0.04}
-            envMapIntensity={1.25}
+            clearcoatRoughness={0.02}
+            envMapIntensity={1.6}
           />
         </mesh>
         <mesh geometry={body}>
@@ -389,7 +396,9 @@ const PLATE_FRAG = /* glsl */ `
     float plus = step(m.x, 0.55) * gridLine(c5.y, fw5.y * 3.0) + step(m.y, 0.55) * gridLine(c5.x, fw5.x * 3.0);
     vec2 q = vP / uHalf;
     float fade = 1.0 - smoothstep(0.15, 0.75, length(q * vec2(1.0, 1.25)));
-    vec3 grid = vec3(0.8, 0.86, 1.0) * (minor * 0.03 + major * 0.055 + plus * 0.12) * fade;
+    // right behind the 9 only the aurora shows (fine lines turned into stripes through the glass)
+    float clear = smoothstep(1.7, 3.1, length((vP - vec2(0.0, -0.55)) / vec2(1.0, 1.2)));
+    vec3 grid = vec3(0.8, 0.86, 1.0) * ((minor * 0.03 + plus * 0.12) * clear + major * 0.05 * (0.35 + 0.65 * clear)) * fade;
     vec2 p1 = vP - vec2(-1.0, 0.45);
     vec2 p2 = vP - vec2(1.2, -0.2);
     float a1 = exp(-dot(p1, p1) / 2.6);

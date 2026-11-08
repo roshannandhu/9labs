@@ -97,9 +97,6 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
     setSettings(next);
     setReady(true);
 
-    // Only Chromium renders SVG filters inside backdrop-filter (and exposes userAgentData).
-    document.documentElement.dataset.lens = "userAgentData" in navigator ? "on" : "off";
-
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
     setSystemReduced(mql.matches);
     const onChange = (e: MediaQueryListEvent) => setSystemReduced(e.matches);

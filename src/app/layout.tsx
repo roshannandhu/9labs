@@ -65,14 +65,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        {/* Liquid-glass lens: soft noise displacement used by .glass-lens on Chromium */}
-        <svg width="0" height="0" className="pointer-events-none absolute" aria-hidden="true" focusable="false">
-          <filter id="lg-lens" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.011 0.017" numOctaves="2" seed="9" result="noise" />
-            <feGaussianBlur in="noise" stdDeviation="2.2" result="soft" />
-            <feDisplacementMap in="SourceGraphic" in2="soft" scale="26" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </svg>
         <DemoSettingsProvider>
           <QuizProvider>
             <BlueprintGrid />

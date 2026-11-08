@@ -159,7 +159,7 @@ export function Hero() {
   const s = services[active];
 
   const focusPanel = (
-    <div className="glass glass-lens relative overflow-hidden rounded-2xl px-4 py-3.5 xl:px-5 xl:py-4">
+    <div className="glass relative overflow-hidden rounded-2xl px-4 py-3.5 xl:px-5 xl:py-4">
       <span className="absolute left-0 top-0 h-2.5 w-2.5 border-l border-t border-nl-purple/70" />
       <span className="absolute right-0 top-0 h-2.5 w-2.5 border-r border-t border-nl-purple/70" />
       <span className="absolute bottom-0 left-0 h-2.5 w-2.5 border-b border-l border-nl-purple/70" />
