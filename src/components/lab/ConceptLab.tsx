@@ -5,9 +5,14 @@ import { AnimatePresence, motion } from "motion/react";
 import { DEFAULT_SETTINGS, useDemo, type Concept, type MotionPref } from "@/components/providers/DemoSettings";
 
 const CONCEPTS: { id: Concept; code: string; name: string; note: string }[] = [
-  { id: "cinematic", code: "C", name: "Glass 9 · recommended", note: "A Sora 9 assembles from light, crystallises into glass over a mirror sea and bends the NINE LABS wordmark." },
-  { id: "neon", code: "A", name: "Neon Line", note: "SVG neon tube drawn on a blueprint. Lightest & fastest." },
-  { id: "particles", code: "B", name: "Particle Grid", note: "Glowing particles assemble from the grid; react to the cursor." },
+  {
+    id: "cinematic",
+    code: "C",
+    name: "Liquid Glass Nine · recommended",
+    note: "A glass 9 with a neon tube inside: light gathers into nine segments, the blueprint grid bends through the glass, and scrolling flies through the 9.",
+  },
+  { id: "neon", code: "A", name: "Neon Segments · lightest", note: "SVG/CSS only: a neon 9 in nine segments, one per activity. Also the mobile and low-power fallback." },
+  { id: "particles", code: "B", name: "Particle Nine", note: "Glowing particles assemble the 9 from the grid and react to the cursor." },
 ];
 const BLUES = ["#3b82ff", "#2f6bff", "#4f9bff", "#1e7bff"];
 const PURPLES = ["#b98cff", "#c084fc", "#a78bfa", "#d6a6ff"];
@@ -34,7 +39,7 @@ export function ConceptLab() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute bottom-[calc(100%+12px)] left-0 max-h-[min(78svh,640px)] w-[min(92vw,360px)] origin-bottom-left overflow-y-auto rounded-3xl border border-white/10 bg-[#0a0b10]/95 p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            className="absolute bottom-[calc(100%+12px)] left-0 max-h-[min(78svh,640px)] w-[min(92vw,360px)] origin-bottom-left overflow-y-auto glass rounded-3xl p-5 [--glass-tint:rgb(10_11_16/0.82)] shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-2xl"
             data-lenis-prevent
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -142,6 +147,8 @@ export function ConceptLab() {
               <legend className="label-mono mb-2">Elements</legend>
               <Toggle label="Custom cursor (desktop)" checked={settings.cursor} onChange={(v) => set({ cursor: v })} />
               <Toggle label="Floating WhatsApp button" checked={settings.whatsapp} onChange={(v) => set({ whatsapp: v })} />
+              <Toggle label="Portal dive on scroll (C)" checked={settings.portal} onChange={(v) => set({ portal: v })} />
+              <Toggle label="NINE LABS wordmark behind the 9 (C)" checked={settings.wordmark} onChange={(v) => set({ wordmark: v })} />
             </fieldset>
 
             <button

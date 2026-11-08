@@ -16,6 +16,10 @@ export type DemoSettings = {
   motion: MotionPref;
   cursor: boolean;
   whatsapp: boolean;
+  /** Concept C: burning NINE LABS wordmark behind the glass 9 (off: blueprint grid + aurora only). */
+  wordmark: boolean;
+  /** Concept C: scrolling flies through the 9's bowl into the services ("cross the bridge"). */
+  portal: boolean;
 };
 
 export const DEFAULT_SETTINGS: DemoSettings = {
@@ -28,6 +32,8 @@ export const DEFAULT_SETTINGS: DemoSettings = {
   motion: "system",
   cursor: true,
   whatsapp: true,
+  wordmark: false,
+  portal: true,
 };
 
 type Ctx = {
@@ -41,7 +47,7 @@ type Ctx = {
 };
 
 const DemoContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "nl-demo-settings-v4";
+const STORAGE_KEY = "nl-demo-settings-v5";
 
 const CONCEPT_ALIASES: Record<string, Concept> = {
   a: "neon",
@@ -90,6 +96,9 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate client-only settings after SSR
     setSettings(next);
     setReady(true);
+
+    // Only Chromium renders SVG filters inside backdrop-filter (and exposes userAgentData).
+    document.documentElement.dataset.lens = "userAgentData" in navigator ? "on" : "off";
 
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
     setSystemReduced(mql.matches);

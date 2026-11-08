@@ -125,3 +125,32 @@ I studied getlayers.ai: its homepage, a template page (AI Studio), the About and
 - **Hero default = Cinematic 3D.** An extruded 9 with chrome bevels, a dark glass face and a neon tube running around its outline (with flowing light), standing on a receding blueprint floor with orbit tracks and light comets. The neon SVG version paints instantly as a poster, then cross-fades into 3D once the GPU proves smooth (≈14 fps or better). Weak devices or no WebGL keep the neon 9. Phones get a lighter quality tier.
 - **No spoke lines** from the activities to the 9. The connection is shown by the orbit itself (3D rings in the cinematic concept, a fine elliptical track in the 2D concepts).
 - Items passing behind the 9 dim further, so the orbit reads as going round the 9.
+
+
+---
+
+## Hero presentation: "Liquid Glass Nine" (decided Nov 2026)
+
+**Typeface:** Sora ExtraBold (800) for the 9 and all headings.
+
+**Three concepts for the client** (brief §7):
+
+| Concept | What it is | Load |
+|---|---|---|
+| **C, Liquid Glass Nine** (default) | A glass 9 with a neon tube inside it. The tube has nine segments, one per activity. Particles stream in and the segments ignite. The rim runs blue → purple, and a light sweep plus a cursor highlight move over the glass. The blueprint grid and aurora bend through the glass. Scrolling dives through the 9's bowl. | WebGL, lazy-loaded, perf-guarded |
+| **A, Neon Segments** | The same story in SVG/CSS: a neon 9 split into nine segments that ignite in turn; the front activity's segment glows purple. | Few KB; also the fallback |
+| **B, Particle Nine** | Glowing particles assemble the 9 from the grid. | 2D canvas |
+
+**Shared across all three concepts:**
+- **Bridge:** one neon-purple arc from the front activity to *its* segment of the 9, with light pulses running both ways (the brief's "traffic in both directions"). No spokes.
+- **Morphism:** liquid glass and neon only.
+  - Liquid glass covers the frosted panels and the blue→purple gradient hairline. Chromium also gets an SVG lens refraction.
+  - Glass is used on the nav pill, orbit chips, focus card, quiz and e-book panels, and the services ring cards. The ring cards use faux glass, because backdrop-filter is unreliable inside 3D transforms.
+  - `prefers-reduced-transparency` switches every glass panel to solid.
+  - Neumorphism and claymorphism are rejected: they read poorly on pure black and don't fit a tech brand.
+
+**Other sections:**
+- **Services:** the Mirror Hall ring.
+- **About:** Roadmap Ascent.
+- **E-books:** Spectra halo.
+- **Headings:** spring headings.

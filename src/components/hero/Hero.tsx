@@ -38,6 +38,8 @@ export function Hero() {
   const section = useRef<HTMLElement>(null);
   const nineWrap = useRef<HTMLDivElement>(null);
   const copy = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const iris = useRef<HTMLDivElement>(null);
   const wide = useMediaQuery("(min-width: 768px)");
   const coarse = useMediaQuery("(pointer: coarse)");
   const [gl, setGl] = useState<"unknown" | "ok" | "no">("unknown");
@@ -72,6 +74,8 @@ export function Hero() {
   }, []);
   const tier = tierOverride ?? (wide && !coarse ? "high" : "low");
   const show3d = canvasReady && minTime;
+  // "Cross the bridge": concept C pins the cover briefly and flies through the 9's bowl.
+  const portal = concept === "cinematic" && gl === "ok" && settings.portal && !reduced;
 
   useGSAP(
     () => {
@@ -80,6 +84,48 @@ export function Hero() {
         fx.current.fade = 1;
         progress.current = 0;
         return;
+      }
+      if (portal) {
+        const place = () => {
+          const sec = section.current;
+          const stg = stage.current;
+          if (!sec || !stg || !iris.current) return;
+          iris.current.style.setProperty("--ix", `${stg.offsetLeft + stg.offsetWidth / 2}px`);
+          iris.current.style.setProperty("--iy", `${stg.offsetTop + stg.offsetHeight * 0.48}px`);
+        };
+        place();
+        ScrollTrigger.create({
+          trigger: section.current,
+          start: "top top",
+          end: () => `+=${Math.round(window.innerHeight * 1.15)}`,
+          pin: true,
+          scrub: true,
+          refreshPriority: 0,
+          invalidateOnRefresh: true,
+          onRefresh: place,
+          onUpdate: (self) => {
+            const p = self.progress;
+            progress.current = p;
+            fx.current.spread = 1 + p * 1.6;
+            fx.current.fade = Math.max(0, 1 - p * 2.6);
+            if (copy.current) {
+              const k = Math.min(1, p * 2.8);
+              copy.current.style.opacity = (1 - k).toFixed(3);
+              copy.current.style.transform = `translateY(${(-70 * k).toFixed(1)}px)`;
+            }
+            if (iris.current) {
+              const r = Math.max(0, (p - 0.52) / 0.48);
+              const max = Math.hypot(window.innerWidth, window.innerHeight) * 1.15;
+              iris.current.style.setProperty("--ir", `${(Math.pow(r, 1.5) * max).toFixed(1)}px`);
+            }
+          },
+        });
+        return () => {
+          if (copy.current) {
+            copy.current.style.opacity = "";
+            copy.current.style.transform = "";
+          }
+        };
       }
       ScrollTrigger.create({
         trigger: section.current,
@@ -93,12 +139,13 @@ export function Hero() {
           fx.current.fade = Math.max(0, 1 - p * 1.7);
         },
       });
-      if (nineWrap.current) gsap.to(nineWrap.current, {
-        scale: concept === "cinematic" ? 1 : 1.28,
-        opacity: concept === "cinematic" ? 0.15 : 0,
-        ease: "none",
-        scrollTrigger: { trigger: section.current, start: "top top", end: "bottom top", scrub: true },
-      });
+      if (nineWrap.current)
+        gsap.to(nineWrap.current, {
+          scale: concept === "cinematic" ? 1 : 1.28,
+          opacity: concept === "cinematic" ? 0.15 : 0,
+          ease: "none",
+          scrollTrigger: { trigger: section.current, start: "top top", end: "bottom top", scrub: true },
+        });
       gsap.to(copy.current, {
         y: -70,
         opacity: 0,
@@ -106,13 +153,13 @@ export function Hero() {
         scrollTrigger: { trigger: section.current, start: "15% top", end: "65% top", scrub: true },
       });
     },
-    { scope: section, dependencies: [reduced, concept, gl], revertOnUpdate: true },
+    { scope: section, dependencies: [reduced, concept, gl, portal], revertOnUpdate: true },
   );
 
   const s = services[active];
 
   const focusPanel = (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#07080c]/70 px-4 py-3.5 backdrop-blur-md xl:px-5 xl:py-4">
+    <div className="glass glass-lens relative overflow-hidden rounded-2xl px-4 py-3.5 xl:px-5 xl:py-4">
       <span className="absolute left-0 top-0 h-2.5 w-2.5 border-l border-t border-nl-purple/70" />
       <span className="absolute right-0 top-0 h-2.5 w-2.5 border-r border-t border-nl-purple/70" />
       <span className="absolute bottom-0 left-0 h-2.5 w-2.5 border-b border-l border-nl-purple/70" />
@@ -166,7 +213,7 @@ export function Hero() {
   return (
     <section id="home" ref={section} aria-labelledby="hero-title" className="relative overflow-hidden pt-[var(--nav-h)]">
       {/* Stage: the 9 + orbit */}
-      <div className="relative mx-auto h-[clamp(260px,calc(100svh-var(--nav-h)-440px),460px)] w-full max-w-[1680px] sm:h-[clamp(320px,calc(100svh-var(--nav-h)-400px),560px)] lg:h-[clamp(380px,calc(100svh-var(--nav-h)-348px),700px)]">
+      <div ref={stage} className="relative mx-auto h-[clamp(260px,calc(100svh-var(--nav-h)-440px),460px)] w-full max-w-[1680px] sm:h-[clamp(320px,calc(100svh-var(--nav-h)-400px),560px)] lg:h-[clamp(380px,calc(100svh-var(--nav-h)-348px),700px)]">
         {concept === "cinematic" && gl === "ok" && (
           <div ref={nineWrap} className="absolute inset-0">
             <NineCinematic
@@ -182,6 +229,8 @@ export function Hero() {
                 else setGl("no");
               }}
               perfGuard={perfGuard}
+              active={active}
+              dive={portal}
               className={`transition-opacity duration-[1400ms] ease-out ${show3d ? "opacity-100" : "opacity-0"}`}
             />
           </div>
@@ -196,7 +245,7 @@ export function Hero() {
               style={{ aspectRatio: "2 / 3" }}
             >
               <BlueprintConstruction className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
-              <NineNeon className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
+              <NineNeon className="absolute inset-0 h-full w-full" glyph={settings.glyph} active={active} />
             </div>
           ) : (
             <div ref={nineWrap} className="relative h-[84%]" style={{ aspectRatio: "2 / 3" }}>
@@ -204,7 +253,7 @@ export function Hero() {
               {concept === "particles" ? (
                 <NineParticles className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
               ) : (
-                <NineNeon className="absolute inset-0 h-full w-full" glyph={settings.glyph} />
+                <NineNeon className="absolute inset-0 h-full w-full" glyph={settings.glyph} active={active} />
               )}
             </div>
           )}
@@ -271,6 +320,8 @@ export function Hero() {
         </div>
       </div>
 
+      {/* Portal iris: a ring of light opens from the 9's bowl as the camera passes through it */}
+      {portal && <div ref={iris} className="portal-iris pointer-events-none absolute inset-0 z-40" aria-hidden="true" />}
     </section>
   );
 }

@@ -181,7 +181,7 @@ export default function QuizOverlay({ open, prefill, onClose }: { open: boolean;
                       <label htmlFor="quiz-need" className="sr-only">
                         Describe what you need
                       </label>
-                      <div className="rounded-3xl border border-white/12 bg-white/[0.03] p-2 focus-within:border-nl-purple/70 focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--nl-purple)_15%,transparent)]">
+                      <div className="glass relative rounded-3xl p-2 focus-within:[--glass-edge:linear-gradient(var(--nl-purple),var(--nl-purple))] focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--nl-purple)_15%,transparent)]">
                         <textarea
                           id="quiz-need"
                           ref={textarea}
@@ -286,7 +286,7 @@ export default function QuizOverlay({ open, prefill, onClose }: { open: boolean;
                           initial={{ opacity: 0, y: 14 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.25 + i * 0.12, duration: 0.5, ease }}
-                          className="group flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition-colors hover:border-nl-purple/50 sm:p-5"
+                          className="glass group relative flex items-start gap-4 rounded-2xl p-4 transition-shadow hover:shadow-[0_0_0_1px_var(--nl-purple),0_20px_50px_-24px_var(--nl-purple)] sm:p-5"
                         >
                           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-nl-purple/35 bg-nl-purple/10 text-white">
                             <ActivityIcon icon={m.service.icon} size={26} play />
@@ -312,7 +312,7 @@ export default function QuizOverlay({ open, prefill, onClose }: { open: boolean;
 
                     <ol className="mt-8 grid gap-3 sm:grid-cols-3">
                       {answer.steps.map((s, i) => (
-                        <li key={s.title} className="rounded-2xl border border-white/10 p-4">
+                        <li key={s.title} className="glass relative rounded-2xl p-4">
                           <span className="font-mono text-xs text-nl-purple">0{i + 1}</span>
                           <p className="mt-1 font-display font-semibold text-white">{s.title}</p>
                           <p className="mt-1 text-[13.5px] leading-relaxed text-nl-ink">{s.text}</p>
@@ -320,7 +320,7 @@ export default function QuizOverlay({ open, prefill, onClose }: { open: boolean;
                       ))}
                     </ol>
 
-                    <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+                    <div className="glass relative mt-8 rounded-3xl p-4 sm:p-5">
                       {sent ? (
                         <p className="text-[15px] text-white" role="status">
                           ✓ Plan on its way to <span className="text-nl-purple">{email}</span>. <span className="text-white/50">(Demo — nothing was sent.)</span>

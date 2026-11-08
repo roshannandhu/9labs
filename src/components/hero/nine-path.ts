@@ -52,3 +52,14 @@ export const WORDMARK = {
   w: 755.8,
   h: 100,
 } as const;
+
+/**
+ * Single-stroke centreline of the Sora 9 (y down, same 400×600 box), written the way a hand
+ * draws a 9: up the right side, around the bowl, then down the stem into the tail. Split
+ * into nine equal segments (pathLength = 9), one per activity — the neon tube of the 9.
+ */
+export const NINE_SPINE =
+  "M338 330C338 182 284 118 198 118C112 118 62 170 62 240C62 316 122 356 190 356C250 356 300 352 322 372C344 392 330 450 268 476C210 500 120 500 62 496";
+
+/** The counter (hole) of the Sora 9's bowl — the portal the camera flies through. */
+export const NINE_BOWL = { cx: 200, cy: 237, rx: 81, ry: 70 };

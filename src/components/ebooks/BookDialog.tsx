@@ -149,7 +149,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
           ref={closeBtn}
           type="button"
           onClick={close}
-          className="fixed right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/40 text-white/80 backdrop-blur transition-colors hover:border-nl-purple hover:text-white sm:right-6 sm:top-6"
+          className="glass fixed right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full text-white/80 transition-colors hover:text-white sm:right-6 sm:top-6"
           aria-label="Close"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -205,7 +205,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
               />
             </motion.div>
             <motion.div
-              className="paper mt-8 w-full rounded-3xl p-5"
+              className="glass relative mt-8 w-full rounded-3xl p-5"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: reduced ? 0 : 0.8, duration: 0.5 }}

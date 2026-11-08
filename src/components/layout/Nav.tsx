@@ -55,9 +55,10 @@ export function Nav() {
         hidden && !menuOpen ? "-translate-y-full" : "translate-y-0"
       }`}
     >
+      {/* Once scrolled, the bar condenses into a floating liquid-glass pill. */}
       <div
-        className={`absolute inset-0 border-b border-white/[0.06] bg-[#050507]/70 backdrop-blur-xl transition-opacity duration-500 ${
-          scrolled || menuOpen ? "opacity-100" : "opacity-0"
+        className={`glass glass-lens pointer-events-none absolute left-1/2 top-2 h-[calc(var(--nav-h)-16px)] w-[calc(100%-12px)] -translate-x-1/2 rounded-[22px] transition-[opacity,scale] duration-500 ease-[cubic-bezier(.16,1,.3,1)] [--glass-tint:rgb(8_9_14/0.6)] sm:w-[min(calc(100%-24px),1300px)] sm:rounded-full ${
+          scrolled || menuOpen ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
         }`}
         aria-hidden="true"
       />

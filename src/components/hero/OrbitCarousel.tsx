@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 
 import { site } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { useDemo } from "@/components/providers/DemoSettings";
+import { NINE_SPINE, NINE_VB } from "./nine-path";
 
 export type OrbitHandle = { focusIndex: (i: number) => void; next: () => void; prev: () => void };
 export type OrbitFx = { spread: number; fade: number };
@@ -15,6 +16,8 @@ type Props = {
   fx: React.RefObject<OrbitFx>;
   /** Draw the elliptical track the activities travel on (2D concepts; the 3D concept has its own rings). */
   track?: boolean;
+  /** Draw the bridge arc from the front activity to its segment of the 9. */
+  bridge?: boolean;
   className?: string;
 };
 
@@ -42,7 +45,7 @@ function geometry(w: number, h: number): Geo {
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
 export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarousel(
-  { children, active, onActive, fx, track = false, className = "" },
+  { children, active, onActive, fx, track = false, bridge = true, className = "" },
   ref,
 ) {
   const { reduced, settings } = useDemo();
@@ -51,6 +54,8 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
   const anchorRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const trackRef = useRef<SVGEllipseElement>(null);
   const trackFront = useRef<SVGEllipseElement>(null);
+  const arcRefs = useRef<(SVGPathElement | null)[]>([]);
+  const arcGroup = useRef<SVGGElement>(null);
 
   const st = useRef({
     rot: FRONT, // item 0 starts at the front
@@ -69,6 +74,8 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     z: new Array<number>(N).fill(0),
     drag: null as null | { id: number; x0: number; y0: number; lastX: number; lastT: number; moved: boolean },
     suppressClick: false,
+    seg: [] as { x: number; y: number }[], // midpoints of the 9's nine spine segments (glyph units)
+    arc: null as null | { x: number; y: number }, // eased end point of the bridge arc (px)
   });
 
   const speedRef = useRef(settings.orbitSpeed);
@@ -99,10 +106,17 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
     [focusIndex],
   );
 
-  // Measure the stage.
+  // Measure the stage (+ the midpoints of the 9's segments, for the bridge arc).
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
+    const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    probe.setAttribute("d", NINE_SPINE);
+    const L = probe.getTotalLength();
+    st.current.seg = Array.from({ length: N }, (_, k) => {
+      const p = probe.getPointAtLength(((k + 0.5) / N) * L);
+      return { x: p.x, y: p.y };
+    });
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       st.current.geo = geometry(width, height);
@@ -223,6 +237,24 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
         el.style.opacity = (intro * fxv.fade).toFixed(3);
       }
 
+      // Bridge arc: from the front activity to its own segment of the 9, bowed around the 9's side.
+      if (arcGroup.current && s.seg.length === N) {
+        const H9 = g.h * 0.84;
+        const W9 = (H9 * NINE_VB.w) / NINE_VB.h;
+        const sp = s.seg[best];
+        const tx = cx + (sp.x / NINE_VB.w - 0.5) * W9;
+        const ty = cy + (sp.y / NINE_VB.h - 0.5) * H9;
+        const k = !s.arc || isReduced ? 1 : 1 - Math.exp(-dt * 5);
+        s.arc = s.arc ? { x: s.arc.x + (tx - s.arc.x) * k, y: s.arc.y + (ty - s.arc.y) * k } : { x: tx, y: ty };
+        const c = pts[best];
+        const side = s.arc.x < cx ? -1 : 1;
+        const qx = cx + side * W9 * 0.78;
+        const qy = (c.y + s.arc.y) / 2 + H9 * 0.08;
+        const d = `M${c.x.toFixed(1)} ${c.y.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${s.arc.x.toFixed(1)} ${s.arc.y.toFixed(1)}`;
+        for (const el of arcRefs.current) el?.setAttribute("d", d);
+        arcGroup.current.style.opacity = (Math.max(0, (intro - 0.6) / 0.4) * fxv.fade).toFixed(3);
+      }
+
       if (best !== s.active) {
         s.active = best;
         onActiveRef.current(best);
@@ -312,6 +344,39 @@ export const OrbitCarousel = forwardRef<OrbitHandle, Props>(function OrbitCarous
       )}
 
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">{children}</div>
+
+      {bridge && (
+        <svg className="pointer-events-none absolute inset-0 z-[15] h-full w-full overflow-visible" aria-hidden="true">
+          <defs>
+            <filter id="bridge-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+          </defs>
+          <g ref={arcGroup} className="bridge-arc" style={{ opacity: 0 }}>
+            {[
+              { cls: "", stroke: "var(--nl-purple)", w: 5, op: 0.35, filter: "url(#bridge-glow)" },
+              { cls: "", stroke: "var(--nl-purple)", w: 1.1, op: 0.85 },
+              { cls: "bridge-pulse", stroke: "var(--nl-blue-soft)", w: 2.4, op: 1 },
+              { cls: "bridge-pulse bridge-pulse--back", stroke: "#e9dcff", w: 2.4, op: 1 },
+            ].map((l, i) => (
+              <path
+                key={i}
+                ref={(el) => {
+                  arcRefs.current[i] = el;
+                }}
+                className={l.cls}
+                pathLength={1}
+                fill="none"
+                stroke={l.stroke}
+                strokeOpacity={l.op}
+                strokeWidth={l.w}
+                strokeLinecap="round"
+                filter={l.filter}
+              />
+            ))}
+          </g>
+        </svg>
+      )}
 
       <ul className="absolute inset-0 m-0 list-none p-0" aria-label="Our nine activities" onKeyDown={onKeyDown}>
         {services.map((s, i) => (

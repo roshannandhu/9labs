@@ -6,21 +6,22 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Grid, Lightformer, MeshReflectorMaterial, Sparkles, Stars } from "@react-three/drei";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
-import { GLYPHS, WORDMARK, type GlyphKey } from "./nine-path";
+import { GLYPHS, NINE_BOWL, NINE_SPINE, WORDMARK, type GlyphKey } from "./nine-path";
 import { useDemo } from "@/components/providers/DemoSettings";
 
 /**
- * Concept C — "Glass 9" (the recommended hero). Ideas inspired by cinematic WebGL layers
- * (glyph cast in glass bending a burning wordmark, object over a mirror sea, a logo that
- * assembles from particles, an object that spins up with the cursor) — built from scratch.
+ * Concept C — "Liquid Glass Nine" (the recommended hero).
  *
- *  - The Sora ExtraBold 9 is cast in clear glass (real transmission + chromatic aberration
- *    on the high tier) with fine neon edges where light flows around the outline.
- *  - Behind it, the NINE LABS wordmark burns; the glass bends it.
- *  - It hovers over a dark mirror sea under a starfield, inside the orbit tracks.
- *  - Intro: thousands of particles fly in, form the 9, then it crystallises into glass.
- *  - Moving the cursor spins the 9 up; it settles back to face the visitor.
- *  - Scrolling flies the camera around it.
+ *  - The Sora ExtraBold 9 is cast in clear glass (physical transmission) with a Fresnel rim
+ *    that runs electric blue at the core to neon purple at the silhouette.
+ *  - Inside the glass runs a neon tube along the 9's centreline, split into nine segments —
+ *    one per activity. The segment of the activity at the front of the carousel glows purple.
+ *  - Behind it sits the blueprint grid with a soft blue→purple aurora; the glass bends it.
+ *  - Alive: the tube breathes, a light sweep crosses the glass, a highlight follows the cursor.
+ *  - Intro: light particles stream into the tube, the nine segments ignite one by one, then
+ *    the glass crystallises around them.
+ *  - Scroll ("cross the bridge"): the camera flies through the 9's bowl; or, with the portal
+ *    off, the classic fly-around over the mirror sea.
  */
 
 export type Tier = "high" | "low";
@@ -28,7 +29,10 @@ export type Tier = "high" | "low";
 const FLOOR_Y = -2.95;
 const FOV = 35;
 const REST = { y: 1.9, z: 10.8, ty: 0.1 };
-const INTRO = { form: 2.4, reveal: 2.35 }; // seconds after the canvas becomes visible
+const INTRO = { reveal: 2.45 }; // seconds after the canvas becomes visible
+const FLIGHT = 1.2; // particle flight time
+const IGNITE = { start: 1.26, dur: 1.0 }; // segments light as their particles arrive
+const SEGMENTS = 9;
 
 // Extrusion in glyph units (the glyph is 478 units tall); scaled ×0.01 into the scene.
 const DEPTH = 64;
@@ -75,6 +79,25 @@ function useGlyph(glyph: GlyphKey) {
   }, [glyph]);
 }
 
+/** The 9's centreline as a 3D curve (same placement as the glass body). */
+function useSpine(glyph: GlyphKey) {
+  return useMemo(() => {
+    const g = GLYPHS[glyph];
+    const mid = (g.bounds.y0 + g.bounds.y1) / 2;
+    const n = (NINE_SPINE.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+    const v = (x: number, y: number) => new THREE.Vector3((x - 200) / 100, (mid - y) / 100, 0);
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    let px = n[0];
+    let py = n[1];
+    for (let i = 2; i + 5 < n.length; i += 6) {
+      path.add(new THREE.CubicBezierCurve3(v(px, py), v(n[i], n[i + 1]), v(n[i + 2], n[i + 3]), v(n[i + 4], n[i + 5])));
+      px = n[i + 4];
+      py = n[i + 5];
+    }
+    return { path, bowlY: (mid - NINE_BOWL.cy) / 100 };
+  }, [glyph]);
+}
+
 /** Neon edge shader: base colour + light bands that travel along the tube, plus an intro flash. */
 const FLOW_VERT = /* glsl */ `
   varying vec2 vUv;
@@ -93,6 +116,55 @@ const FLOW_FRAG = /* glsl */ `
   }
 `;
 
+/** Neon tube inside the glass: nine segments with gaps, ignition, active segment, breathing. */
+const FIL_FRAG = /* glsl */ `
+  uniform float uTime; uniform float uIgnite; uniform float uActive; uniform float uFlash;
+  uniform vec3 uA; uniform vec3 uB; varying vec2 vUv;
+  float hash(float n) { return fract(sin(n) * 43758.5453); }
+  void main() {
+    float x = vUv.x * ${SEGMENTS}.0;
+    float seg = floor(min(x, ${SEGMENTS - 1}.999));
+    float f = fract(x);
+    if (f < 0.03 || f > 0.97) discard; // the gaps between the nine tubes
+    float lit = clamp(uIgnite * ${SEGMENTS}.0 - seg, 0.0, 1.0);
+    float on = lit >= 1.0 ? 1.0 : lit * step(0.4, hash(seg * 13.1 + floor(uTime * 22.0)));
+    float act = 1.0 - smoothstep(0.0, 0.5, abs(seg - uActive));
+    float breath = 0.88 + 0.12 * sin(uTime * 1.55 + seg * 0.4);
+    float d = fract(vUv.x - uTime * 0.07 + 0.5) - 0.5;
+    float band = exp(-d * d * 1400.0);
+    vec3 lit3 = mix(uA, uB, act) * (1.45 + act * 1.1) * breath + vec3(0.35 + band * 1.6);
+    vec3 off = uA * 0.04;
+    gl_FragColor = vec4(mix(off, lit3, on) + vec3(uFlash), 1.0);
+  }
+`;
+
+/** Glass rim: Fresnel (blue core → purple silhouette) + cursor highlight + a sweeping light band. */
+const RIM_VERT = /* glsl */ `
+  varying vec3 vN; varying vec3 vV; varying vec3 vW;
+  void main() {
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vW = wp.xyz;
+    vN = normalize(mat3(modelMatrix) * normal);
+    vV = normalize(cameraPosition - wp.xyz);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+const RIM_FRAG = /* glsl */ `
+  uniform vec3 uA; uniform vec3 uB; uniform vec3 uL; uniform float uSweep; uniform float uK;
+  varying vec3 vN; varying vec3 vV; varying vec3 vW;
+  void main() {
+    vec3 n = normalize(vN);
+    vec3 v = normalize(vV);
+    float fr = pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 2.4);
+    vec3 col = mix(uA, uB, smoothstep(0.2, 0.85, fr)) * fr * 1.3;
+    vec3 h = normalize(normalize(uL) + v);
+    float spec = pow(max(dot(n, h), 0.0), 110.0) * 1.5;
+    float s = (vW.x + vW.y * 0.55) - uSweep;
+    float band = exp(-s * s * 7.0) * (0.18 + fr * 0.8) * 0.8;
+    gl_FragColor = vec4((col + vec3(1.0) * (spec + band)) * uK, 1.0);
+  }
+`;
+
 function Nine({
   blue,
   purple,
@@ -101,6 +173,8 @@ function Nine({
   progress,
   intro,
   reduced,
+  active,
+  dive,
 }: {
   blue: string;
   purple: string;
@@ -109,9 +183,49 @@ function Nine({
   progress: React.RefObject<number>;
   intro: React.RefObject<IntroClock>;
   reduced: boolean;
+  active: number;
+  dive: boolean;
 }) {
   const { body, contours } = useGlyph(glyph);
-  const tubes = useMemo(() => contours.map((c, i) => new THREE.TubeGeometry(c, i === 0 ? 900 : 500, 0.02, 8, true)), [contours]);
+  const { path: spine } = useSpine(glyph);
+  const hasSpine = glyph === "sora";
+  const tubes = useMemo(() => contours.map((c, i) => new THREE.TubeGeometry(c, i === 0 ? 900 : 500, hasSpine ? 0.012 : 0.02, 8, true)), [contours, hasSpine]);
+  const filament = useMemo(() => new THREE.TubeGeometry(spine, 720, 0.058, 12, false), [spine]);
+  const filShader = useMemo(
+    () => ({
+      uniforms: {
+        uTime: { value: 0 },
+        uIgnite: { value: 0 },
+        uActive: { value: -1 },
+        uFlash: { value: 0 },
+        uA: { value: new THREE.Color() },
+        uB: { value: new THREE.Color() },
+      },
+      vertexShader: FLOW_VERT,
+      fragmentShader: FIL_FRAG,
+    }),
+    [],
+  );
+  const rimShader = useMemo(
+    () => ({
+      uniforms: {
+        uA: { value: new THREE.Color() },
+        uB: { value: new THREE.Color() },
+        uL: { value: new THREE.Vector3(1, 1, 4) },
+        uSweep: { value: 99 },
+        uK: { value: 0 },
+      },
+      vertexShader: RIM_VERT,
+      fragmentShader: RIM_FRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+    [],
+  );
+  const fil = useRef<THREE.ShaderMaterial>(null);
+  const rim = useRef<THREE.ShaderMaterial>(null);
+  const activeEased = useRef(-1);
   const shaders = useMemo(
     () =>
       tubes.map(() => ({
@@ -123,14 +237,16 @@ function Nine({
   );
   const flows = useRef<(THREE.ShaderMaterial | null)[]>([]);
   const group = useRef<THREE.Group>(null);
+  const glassRef = useRef<THREE.Group>(null);
   const motion = useRef({ spin: 0, yaw: 0, px: 0, py: 0, init: false });
 
   useEffect(
     () => () => {
       body.dispose();
       tubes.forEach((t) => t.dispose());
+      filament.dispose();
     },
-    [body, tubes],
+    [body, tubes, filament],
   );
 
   useFrame((state, dt) => {
@@ -147,11 +263,41 @@ function Nine({
       m.uniforms.uB.value.set(purple);
     });
 
+    const p = progress.current ?? 0;
+    const dv = dive ? Math.min(1, p * 4) : 0; // 0 → 1 as the portal dive starts
+
+    // Filament: ignition (segments light as their particles arrive), active segment, flash.
+    const ignite = reduced ? 1 : Math.min(1, Math.max(0, (since - IGNITE.start) / IGNITE.dur));
+    const f = fil.current;
+    if (f) {
+      f.uniforms.uTime.value = reduced ? 2 : t;
+      f.uniforms.uIgnite.value = ignite;
+      // ease the highlight between segments so it slides rather than jumps
+      const target = ignite >= 1 && active >= 0 ? active : -1;
+      activeEased.current = activeEased.current < 0 || target < 0 ? target : THREE.MathUtils.damp(activeEased.current, target, 6, dt);
+      f.uniforms.uActive.value = activeEased.current;
+      f.uniforms.uFlash.value = flash * 0.4;
+      f.uniforms.uA.value.set(blue);
+      f.uniforms.uB.value.set(purple);
+    }
+    const r = rim.current;
+    if (r) {
+      r.uniforms.uA.value.set(blue);
+      r.uniforms.uB.value.set(purple);
+      r.uniforms.uK.value = reveal;
+      r.uniforms.uL.value.set(state.pointer.x * 3, state.pointer.y * 2 + 1.2, 4);
+      const cyc = reduced ? 9 : (t % 7.5) / 1.9; // a sweep every 7.5 s, 1.9 s long
+      r.uniforms.uSweep.value = cyc < 1 ? -4.5 + cyc * 9 : 99;
+    }
+
     const g = group.current;
     if (!g) return;
-    g.visible = reveal > 0;
-    const sc = 0.94 + 0.06 * (1 - Math.pow(1 - reveal, 3));
-    g.scale.setScalar(sc);
+    const glass = glassRef.current;
+    if (glass) {
+      glass.visible = reveal > 0;
+      const sc = 0.94 + 0.06 * (1 - Math.pow(1 - reveal, 3));
+      glass.scale.setScalar(sc);
+    }
 
     // Cursor spin-up: pointer speed feeds angular velocity; settles back to face front.
     const mo = motion.current;
@@ -163,7 +309,7 @@ function Nine({
     const speed = Math.hypot(state.pointer.x - mo.px, state.pointer.y - mo.py) / Math.max(dt, 1 / 120);
     mo.px = state.pointer.x;
     mo.py = state.pointer.y;
-    if (!reduced) mo.spin = Math.min(mo.spin + speed * 0.9 * dt, 7);
+    if (!reduced && dv === 0) mo.spin = Math.min(mo.spin + speed * 0.9 * dt, 7);
     mo.spin = THREE.MathUtils.damp(mo.spin, 0, 1.3, dt);
     mo.yaw += mo.spin * dt;
     if (mo.spin < 0.25) {
@@ -171,44 +317,119 @@ function Nine({
       mo.yaw = THREE.MathUtils.damp(mo.yaw, home, 1.6, dt);
     }
 
-    const p = progress.current ?? 0;
     const sway = reduced ? 0 : Math.sin(t * 0.32) * 0.22;
-    g.rotation.y = THREE.MathUtils.damp(g.rotation.y, -0.18 + sway + mo.yaw + p * 0.9 + (reduced ? 0 : state.pointer.x * 0.2), 4, dt);
-    g.rotation.x = THREE.MathUtils.damp(g.rotation.x, reduced ? 0 : state.pointer.y * -0.07, 3, dt);
-    g.position.y = reduced ? 0 : Math.sin(t * 0.6) * 0.06;
+    const free = 1 - dv; // the dive straightens the 9 so the camera flies cleanly through the bowl
+    const yawTarget = (-0.18 + sway + (reduced ? 0 : state.pointer.x * 0.2)) * free + mo.yaw + (dive ? 0 : p * 0.9);
+    g.rotation.y = THREE.MathUtils.damp(g.rotation.y, yawTarget, 4, dt);
+    g.rotation.x = THREE.MathUtils.damp(g.rotation.x, reduced ? 0 : state.pointer.y * -0.07 * free, 3, dt);
+    g.position.y = reduced ? 0 : Math.sin(t * 0.6) * 0.06 * free;
   });
 
   return (
-    <group ref={group} visible={reduced}>
-      <mesh geometry={body}>
-        {/* Clear glass: physical transmission refracts the burning wordmark behind it.
-            (Dispersion is left off: it blew out to white on some GPUs/drivers in testing.) */}
-        <meshPhysicalMaterial
-          transmission={1}
-          thickness={tier === "high" ? 0.75 : 0.55}
-          roughness={0.04}
-          ior={1.5}
-          color="#e8eeff"
-          attenuationColor={blue}
-          attenuationDistance={3}
-          specularIntensity={1}
-          clearcoat={1}
-          clearcoatRoughness={0.04}
-          envMapIntensity={1.35}
-        />
-      </mesh>
-      {tubes.map((tube, i) => (
-        <mesh key={i} geometry={tube}>
-          <shaderMaterial
-            ref={(m) => {
-              flows.current[i] = m;
-            }}
-            args={[shaders[i]]}
-            toneMapped={false}
+    <group ref={group}>
+      {/* the neon tube along the centreline (inside the glass; the glass refracts it) */}
+      {hasSpine && (
+        <mesh geometry={filament}>
+          <shaderMaterial ref={fil} args={[filShader]} toneMapped={false} />
+        </mesh>
+      )}
+      <group ref={glassRef} visible={reduced}>
+        <mesh geometry={body}>
+          {/* Clear glass: physical transmission refracts the grid, aurora and neon tube.
+              (Dispersion is left off: it blew out to white on some GPUs/drivers in testing.) */}
+          <meshPhysicalMaterial
+            transmission={1}
+            thickness={tier === "high" ? 0.75 : 0.55}
+            roughness={0.05}
+            ior={1.5}
+            color="#e8eeff"
+            attenuationColor={blue}
+            attenuationDistance={3}
+            specularIntensity={1}
+            clearcoat={1}
+            clearcoatRoughness={0.04}
+            envMapIntensity={1.25}
           />
         </mesh>
-      ))}
+        <mesh geometry={body}>
+          <shaderMaterial ref={rim} args={[rimShader]} toneMapped={false} />
+        </mesh>
+        {tubes.map((tube, i) => (
+          <mesh key={i} geometry={tube}>
+            <shaderMaterial
+              ref={(m) => {
+                flows.current[i] = m;
+              }}
+              args={[shaders[i]]}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+      </group>
     </group>
+  );
+}
+
+/** Blueprint grid + aurora on a plate behind the 9 — the glass bends it (additive, so stars show through). */
+const PLATE_VERT = /* glsl */ `
+  varying vec2 vP;
+  void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+`;
+const PLATE_FRAG = /* glsl */ `
+  uniform vec3 uA; uniform vec3 uB; uniform float uTime; uniform vec2 uHalf; varying vec2 vP;
+  float gridLine(float x, float w) { float d = abs(fract(x - 0.5) - 0.5); return 1.0 - smoothstep(0.0, w, d); }
+  void main() {
+    vec2 c = vP / 0.5;
+    vec2 fw = fwidth(c);
+    float minor = max(gridLine(c.x, fw.x * 1.6), gridLine(c.y, fw.y * 1.6));
+    vec2 c5 = c / 5.0;
+    vec2 fw5 = fwidth(c5);
+    float major = max(gridLine(c5.x, fw5.x * 1.6), gridLine(c5.y, fw5.y * 1.6));
+    vec2 m = abs(fract(c5 - 0.5) - 0.5) * 5.0; // distance to the nearest major crossing, in cells
+    float plus = step(m.x, 0.55) * gridLine(c5.y, fw5.y * 3.0) + step(m.y, 0.55) * gridLine(c5.x, fw5.x * 3.0);
+    vec2 q = vP / uHalf;
+    float fade = 1.0 - smoothstep(0.15, 0.75, length(q * vec2(1.0, 1.25)));
+    vec3 grid = vec3(0.8, 0.86, 1.0) * (minor * 0.03 + major * 0.055 + plus * 0.12) * fade;
+    vec2 p1 = vP - vec2(-1.0, 0.45);
+    vec2 p2 = vP - vec2(1.2, -0.2);
+    float a1 = exp(-dot(p1, p1) / 2.6);
+    float a2 = exp(-dot(p2, p2) / 3.2);
+    vec3 aur = (uA * a1 * 0.17 + uB * a2 * 0.14) * (0.88 + 0.12 * sin(uTime * 0.45));
+    gl_FragColor = vec4(grid + aur, 1.0);
+  }
+`;
+
+function BackPlate({ blue, purple, reduced, y }: { blue: string; purple: string; reduced: boolean; y: number }) {
+  const W = 14;
+  const H = 8;
+  const shader = useMemo(
+    () => ({
+      uniforms: {
+        uA: { value: new THREE.Color() },
+        uB: { value: new THREE.Color() },
+        uTime: { value: 0 },
+        uHalf: { value: new THREE.Vector2(W / 2, H / 2) },
+      },
+      vertexShader: PLATE_VERT,
+      fragmentShader: PLATE_FRAG,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+    [],
+  );
+  const mat = useRef<THREE.ShaderMaterial>(null);
+  useFrame((state) => {
+    const m = mat.current;
+    if (!m) return;
+    m.uniforms.uTime.value = reduced ? 1 : state.clock.elapsedTime;
+    m.uniforms.uA.value.set(blue);
+    m.uniforms.uB.value.set(purple);
+  });
+  return (
+    <mesh position={[0, y, -2.6]}>
+      <planeGeometry args={[W, H]} />
+      <shaderMaterial ref={mat} args={[shader]} toneMapped={false} />
+    </mesh>
   );
 }
 
@@ -290,13 +511,10 @@ const PART_VERT = /* glsl */ `
   uniform float uT; uniform float uPx; varying float vMix; varying float vAlpha;
   float ease(float x) { return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0; }
   void main() {
-    float k = clamp((uT - aDelay) / 1.5, 0.0, 1.0);
-    float e = ease(k);
-    vec3 p = mix(aStart, aTarget, e);
-    // after the reveal, drift outward and fade into sparkles
-    float after = max(0.0, uT - ${INTRO.reveal.toFixed(2)});
-    p += normalize(aTarget + vec3(0.001)) * after * after * 0.9 + vec3(0.0, after * 0.25, 0.0);
-    vAlpha = smoothstep(0.0, 0.25, k) * (1.0 - smoothstep(0.1, 1.1, after));
+    float k = clamp((uT - aDelay) / ${FLIGHT.toFixed(2)}, 0.0, 1.0);
+    vec3 p = mix(aStart, aTarget, ease(k));
+    // light streams in and is absorbed by the tube as it arrives
+    vAlpha = smoothstep(0.0, 0.2, k) * (1.0 - smoothstep(0.86, 1.0, k));
     vMix = clamp(aTarget.y * 0.25 + 0.5, 0.0, 1.0);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_PointSize = aSize * uPx * (26.0 / -mv.z);
@@ -315,32 +533,43 @@ const PART_FRAG = /* glsl */ `
 `;
 
 function ParticleIntro({ glyph, count, blue, purple, intro }: { glyph: GlyphKey; count: number; blue: string; purple: string; intro: React.RefObject<IntroClock> }) {
+  const { path: spine } = useSpine(glyph);
   const geo = useMemo(() => {
     const g = GLYPHS[glyph];
     const rand = rng(909 + count);
-    const shape = new Path2D(g.d);
-    const probe = document.createElement("canvas").getContext("2d")!;
     const cy = (g.bounds.y0 + g.bounds.y1) / 2;
     const target = new Float32Array(count * 3);
     const start = new Float32Array(count * 3);
     const delay = new Float32Array(count);
     const size = new Float32Array(count);
+    const shape = new Path2D(g.d);
+    const probe = document.createElement("canvas").getContext("2d")!;
+    const onSpine = glyph === "sora";
+    const tmp = new THREE.Vector3();
     let n = 0;
     let guard = 0;
     while (n < count && guard++ < count * 40) {
-      const x = g.bounds.x0 + rand() * (g.bounds.x1 - g.bounds.x0);
-      const y = g.bounds.y0 + rand() * (g.bounds.y1 - g.bounds.y0);
-      if (!probe.isPointInPath(shape, x, y)) continue;
-      const tx = (x - 200) / 100;
-      const ty = -(y - cy) / 100;
-      const tz = (rand() - 0.5) * ((DEPTH + 2 * BEVEL_T) / 100);
-      target.set([tx, ty, tz], n * 3);
+      let u: number;
+      if (onSpine) {
+        // stream into the neon tube: arrival order follows the tube, so segments ignite in turn
+        u = rand();
+        spine.getPointAt(u, tmp);
+        const a = rand() * Math.PI * 2;
+        const rr = Math.sqrt(rand()) * 0.07;
+        target.set([tmp.x + Math.cos(a) * rr, tmp.y + Math.sin(a) * rr, (rand() - 0.5) * 0.12], n * 3);
+      } else {
+        const x = g.bounds.x0 + rand() * (g.bounds.x1 - g.bounds.x0);
+        const y = g.bounds.y0 + rand() * (g.bounds.y1 - g.bounds.y0);
+        if (!probe.isPointInPath(shape, x, y)) continue;
+        u = 1 - (y - g.bounds.y0) / (g.bounds.y1 - g.bounds.y0);
+        target.set([(x - 200) / 100, -(y - cy) / 100, (rand() - 0.5) * ((DEPTH + 2 * BEVEL_T) / 100)], n * 3);
+      }
       // start on a wide shell, a little below (rising from the sea)
       const th = rand() * Math.PI * 2;
       const ph = Math.acos(2 * rand() - 1);
       const r = 6 + rand() * 6;
       start.set([r * Math.sin(ph) * Math.cos(th), r * Math.cos(ph) * 0.6 - 1.2, r * Math.sin(ph) * Math.sin(th)], n * 3);
-      delay[n] = (1 - (y - g.bounds.y0) / (g.bounds.y1 - g.bounds.y0)) * 0.55 + rand() * 0.35;
+      delay[n] = IGNITE.start - FLIGHT + u * IGNITE.dur + (rand() - 0.5) * 0.12;
       size[n] = 0.6 + rand() * 1.4;
       n++;
     }
@@ -352,7 +581,7 @@ function ParticleIntro({ glyph, count, blue, purple, intro }: { glyph: GlyphKey;
     geom.setAttribute("aSize", new THREE.BufferAttribute(size.slice(0, n), 1));
     geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 30);
     return geom;
-  }, [glyph, count]);
+  }, [glyph, count, spine]);
   useEffect(() => () => geo.dispose(), [geo]);
 
   const shader = useMemo(
@@ -375,7 +604,7 @@ function ParticleIntro({ glyph, count, blue, purple, intro }: { glyph: GlyphKey;
     const p = pts.current;
     if (!m || !p) return;
     const since = introTime(intro.current, state.clock.elapsedTime);
-    p.visible = since >= 0 && since < INTRO.reveal + 1.4;
+    p.visible = since >= 0 && since < IGNITE.start + IGNITE.dur + 0.6;
     m.uniforms.uT.value = since;
     m.uniforms.uPx.value = dpr;
     m.uniforms.uA.value.set(blue);
@@ -551,6 +780,8 @@ function IntroStarter({ play, onStart }: { play: boolean; onStart: (t: number) =
 function CameraRig({
   progress,
   reduced,
+  dive,
+  bowlY,
   intro,
   onReady,
   onSlow,
@@ -559,6 +790,8 @@ function CameraRig({
 }: {
   progress: React.RefObject<number>;
   reduced: boolean;
+  dive: boolean;
+  bowlY: number;
   intro: React.RefObject<IntroClock>;
   onReady?: () => void;
   onSlow?: () => void;
@@ -597,13 +830,28 @@ function CameraRig({
     }
     const p = reduced ? 0 : (progress.current ?? 0);
 
-    // rest pose, flown by scroll: orbit around and swoop down towards the sea
-    const angle = p * 1.35;
-    const dist = REST.z - 5.4 * Math.pow(p, 1.2);
-    let x = Math.sin(angle) * dist;
-    let y = REST.y - 1.6 * p;
-    let z = Math.cos(angle) * dist;
-    const ty = REST.ty - 0.5 * p;
+    let x: number;
+    let y: number;
+    let z: number;
+    let ty: number;
+    let tz = 0;
+    if (dive) {
+      // "cross the bridge": fly straight through the bowl of the 9 towards the blueprint grid
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      x = 0;
+      y = THREE.MathUtils.lerp(REST.y, bowlY, Math.min(1, e * 1.25));
+      z = THREE.MathUtils.lerp(REST.z, -2.1, e);
+      ty = THREE.MathUtils.lerp(REST.ty, bowlY, Math.min(1, e * 1.8));
+      tz = THREE.MathUtils.lerp(0, -8, e);
+    } else {
+      // rest pose, flown by scroll: orbit around and swoop down towards the sea
+      const angle = p * 1.35;
+      const dist = REST.z - 5.4 * Math.pow(p, 1.2);
+      x = Math.sin(angle) * dist;
+      y = REST.y - 1.6 * p;
+      z = Math.cos(angle) * dist;
+      ty = REST.ty - 0.5 * p;
+    }
 
     // intro dolly-in (synchronised with the particle assembly)
     const k = reduced ? 1 : Math.min(1, since / 3.2);
@@ -612,13 +860,14 @@ function CameraRig({
     y = THREE.MathUtils.lerp(4.6, y, e);
     z = THREE.MathUtils.lerp(17.5, z, e);
 
-    const px = reduced ? 0 : state.pointer.x * 0.5;
-    const py = reduced ? 0 : state.pointer.y * 0.28;
+    const calm = dive ? 1 - Math.min(1, p * 3) : 1;
+    const px = reduced ? 0 : state.pointer.x * 0.5 * calm;
+    const py = reduced ? 0 : state.pointer.y * 0.28 * calm;
     const cam = state.camera;
     cam.position.x = THREE.MathUtils.damp(cam.position.x, x + px, 4, dt);
     cam.position.y = THREE.MathUtils.damp(cam.position.y, y + py, 4, dt);
     cam.position.z = THREE.MathUtils.damp(cam.position.z, z, 4, dt);
-    target.set(0, ty, 0);
+    target.set(0, ty, tz);
     cam.lookAt(target);
   });
   return null;
@@ -631,9 +880,15 @@ export default function NineCinematic({
   onReady,
   onSlow,
   perfGuard = true,
+  active = -1,
+  dive = false,
   className = "",
 }: {
   progress: React.RefObject<number>;
+  /** Index of the activity at the front of the carousel (its tube segment glows purple). */
+  active?: number;
+  /** Scroll flies through the 9's bowl (portal) instead of the fly-around. */
+  dive?: boolean;
   tier?: Tier;
   /** Start the intro (particles + dolly) — true once the canvas is actually visible. */
   play?: boolean;
@@ -661,14 +916,16 @@ export default function NineCinematic({
   }, []);
 
   const high = tier === "high";
+  const glyphMid = (GLYPHS[settings.glyph].bounds.y0 + GLYPHS[settings.glyph].bounds.y1) / 2;
+  const bowlY = (glyphMid - NINE_BOWL.cy) / 100;
 
   return (
     <div
       ref={wrap}
       className={`absolute inset-0 ${className}`}
       style={{
-        WebkitMaskImage: "radial-gradient(56% 68% at 50% 42%, #000 60%, transparent 100%)",
-        maskImage: "radial-gradient(56% 68% at 50% 42%, #000 60%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(58% 64% at 50% 46%, #000 52%, transparent 100%)",
+        maskImage: "radial-gradient(58% 64% at 50% 46%, #000 52%, transparent 100%)",
       }}
       aria-hidden="true"
     >
@@ -692,9 +949,20 @@ export default function NineCinematic({
 
         <Stars radius={70} depth={40} count={high ? 2600 : 1200} factor={3.2} saturation={0} fade speed={reduced ? 0 : 0.4} />
         <Aura blue={settings.blue} purple={settings.purple} />
-        <Wordmark blue={settings.blue} purple={settings.purple} reduced={reduced} />
-        <Nine blue={settings.blue} purple={settings.purple} glyph={settings.glyph} tier={tier} progress={progress} intro={intro} reduced={reduced} />
-        {!reduced && <ParticleIntro glyph={settings.glyph} count={high ? 5200 : 2600} blue={settings.blue} purple={settings.purple} intro={intro} />}
+        <BackPlate blue={settings.blue} purple={settings.purple} reduced={reduced} y={0.55} />
+        {settings.wordmark && <Wordmark blue={settings.blue} purple={settings.purple} reduced={reduced} />}
+        <Nine
+          blue={settings.blue}
+          purple={settings.purple}
+          glyph={settings.glyph}
+          tier={tier}
+          progress={progress}
+          intro={intro}
+          reduced={reduced}
+          active={active}
+          dive={dive}
+        />
+        {!reduced && <ParticleIntro glyph={settings.glyph} count={high ? 3200 : 1600} blue={settings.blue} purple={settings.purple} intro={intro} />}
         <Orbit blue={settings.blue} purple={settings.purple} reduced={reduced} />
         <Sea tier={tier} blue={settings.blue} />
         <Sparkles count={high ? 140 : 60} scale={[12, 6, 8]} position={[0, 0.2, 0]} size={2.4} speed={reduced ? 0 : 0.26} opacity={0.7} color={settings.purple} />
@@ -708,6 +976,8 @@ export default function NineCinematic({
         <CameraRig
           progress={progress}
           reduced={reduced}
+          dive={dive}
+          bowlY={bowlY}
           intro={intro}
           onReady={onReady}
           onSlow={onSlow}
