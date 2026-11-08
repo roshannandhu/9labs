@@ -124,7 +124,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             </label>
             <select
               id={`${uid}-code`}
-              className={`${fieldBase} ${h} w-[108px] shrink-0 border-white/12 px-2.5`}
+              className={`${fieldBase} ${h} w-[122px] shrink-0 border-white/12 px-2.5`}
               value={v.code}
               onChange={(e) => set("code", e.target.value)}
             >
