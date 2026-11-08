@@ -235,7 +235,7 @@ export function Hero() {
       {/* Stage: the 9 + its ring. Full-bleed: no frame, no mask, the glow bleeds past the edges. */}
       <div
         ref={stage}
-        className="relative min-h-[clamp(220px,37svh,420px)] w-full flex-1 sm:min-h-[clamp(300px,44svh,520px)] lg:h-[clamp(420px,58svh,800px)] lg:flex-none lsp:sticky lsp:top-[var(--nav-h)] lsp:h-[calc(100svh-var(--nav-h))] lsp:min-h-0 lsp:overflow-x-clip"
+        className="relative min-h-[clamp(220px,37svh,420px)] w-full flex-1 sm:min-h-[clamp(300px,44svh,520px)] lg:h-[clamp(360px,48svh,700px)] lg:flex-none lsp:sticky lsp:top-[var(--nav-h)] lsp:h-[calc(100svh-var(--nav-h))] lsp:min-h-0 lsp:overflow-x-clip"
         style={{ ["--lean" as string]: `${LEAN}deg` }}
       >
         <OrbitCarousel ref={orbit} active={active} onActive={setActive} fx={fx} onBeat={beat} className="!absolute inset-0">
