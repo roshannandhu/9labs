@@ -10,21 +10,15 @@ import { MobileMenu } from "./MobileMenu";
 export function Nav() {
   const quiz = useQuiz();
   const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const [activeId, setActiveId] = useState("home");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    let lastY = window.scrollY;
     let raf = 0;
     const update = () => {
       raf = 0;
       const y = window.scrollY;
       setScrolled(y > 24);
-      // stay visible over the cover, so the hero 9 can dock into the logo
-      if (y > lastY + 8 && y > Math.max(240, window.innerHeight * 1.05)) setHidden(true);
-      else if (y < lastY - 8 || y < 120) setHidden(false);
-      lastY = y;
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
@@ -51,11 +45,8 @@ export function Nav() {
   }, []);
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-[80] transition-transform duration-500 ease-[cubic-bezier(.16,1,.3,1)] ${
-        hidden && !menuOpen ? "-translate-y-full" : "translate-y-0"
-      }`}
-    >
+    // Always visible: the logo lives here permanently (the landing animation lands on it).
+    <header className="fixed inset-x-0 top-0 z-[80]">
       {/* Once scrolled, the bar condenses into a floating liquid-glass pill. */}
       <div
         className={`glass pointer-events-none absolute left-1/2 top-2 h-[calc(var(--nav-h)-16px)] w-[calc(100%-12px)] -translate-x-1/2 rounded-[22px] transition-[opacity,scale] duration-500 ease-[cubic-bezier(.16,1,.3,1)] [--glass-tint:rgb(8_9_14/0.6)] sm:w-[min(calc(100%-24px),1300px)] sm:rounded-full ${

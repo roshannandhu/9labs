@@ -2,41 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
-import { ScrollTrigger, gsap, useGSAP } from "@/lib/gsap";
+import { ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { registerAnchorPrefix } from "@/lib/scroll";
 import { useDemo } from "@/components/providers/DemoSettings";
-import { useMediaQuery } from "@/lib/useMediaQuery";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
-import { ServicesRing } from "./ServicesRing";
+import { ActivityIcon } from "@/components/icons/ActivityIcon";
+import { particleBus } from "@/components/particles/bus";
+import { StaticDigit } from "@/components/particles/StaticDigit";
 import { ServiceCard } from "./ServiceCard";
 
 const services = site.services;
-const N = services.length;
-/** Where stacked cards stick, below the nav and the progress line (px). */
-const STICK_GAP = 64;
-const pad = (n: number) => String(n).padStart(2, "0");
+const LAST = services.length - 1; // 8 steps between 1 and 9
 
 /**
- * "The Nine" — desktop: the Mirror Hall ring (see ServicesRing).
- * Mobile/tablet: a deck of sticky cards. Each new card slides over the last; the covered cards
- * shrink and dim (at most two edges peek above) and are hidden once three cards lie on top,
- * so the phone never has more than a few layers to draw. A "07 / 09" bridge line tracks progress.
- * Reduced motion (desktop): a 3×3 grid.
+ * "Our 9 labs" — the pinned split stage. The section holds still while you scroll; on one side
+ * the particle swarm (ParticleStage) forms the number, on the other the matching card swaps in,
+ * one per step from 1 to 9, with a 1–9 rail underneath. It ends on "All nine. One team." — the
+ * swarm becomes a small 9 above a 3×3 grid of every activity.
+ * Reduced motion: no pin — a plain list of the nine cards with a still number each.
  */
 export function Services() {
   const { reduced } = useDemo();
-  const desktop = useMediaQuery("(min-width: 1024px)");
-  const mode: "pin" | "stack" | "grid" = desktop ? (reduced ? "grid" : "pin") : "stack";
-
-  // Refresh trigger positions once fonts/layout settle.
-  useEffect(() => {
-    const t = window.setTimeout(() => ScrollTrigger.refresh(), 400);
-    return () => window.clearTimeout(t);
-  }, [mode]);
 
   const heading = (
     <div className="max-w-[920px]">
-      <SectionLabel index="01">Services</SectionLabel>
+      <SectionLabel index="01">Our 9 labs</SectionLabel>
       <SpringHeading
         id="services-title"
         text="Nine activities."
@@ -49,110 +40,202 @@ export function Services() {
     </div>
   );
 
-  if (mode === "pin") return <ServicesRing heading={heading} />;
+  return reduced ? <ServicesList heading={heading} /> : <ServicesStage heading={heading} />;
+}
+
+function ServicesStage({ heading }: { heading: React.ReactNode }) {
+  const section = useRef<HTMLElement>(null);
+  const pin = useRef<HTMLDivElement>(null);
+  const finale = useRef<HTMLDivElement>(null);
+  const stRef = useRef<ScrollTrigger | null>(null);
+  const [active, setActive] = useState(0);
+
+  useGSAP(
+    () => {
+      const p = { a: 0, b: 0, c: 0 };
+      const write = () => {
+        // 0 → 1: hero 9 to the first digit · 1 → 9: the stage · 9 → 10: the finale's small 9
+        particleBus.t = p.a + LAST * p.b + p.c;
+        const i = Math.min(LAST, Math.max(0, Math.round(p.b * LAST)));
+        setActive((prev) => (prev === i ? prev : i));
+      };
+      ScrollTrigger.create({
+        trigger: document.getElementById("home"),
+        start: "top top",
+        endTrigger: pin.current,
+        end: "top top",
+        onUpdate: (s) => {
+          p.a = s.progress;
+          write();
+        },
+        onRefresh: (s) => {
+          p.a = s.progress;
+          write();
+        },
+      });
+      stRef.current = ScrollTrigger.create({
+        trigger: pin.current,
+        start: "top top",
+        end: () => `+=${Math.round(window.innerHeight * 0.75 * LAST)}`,
+        pin: true,
+        // any refreshPriority makes ScrollTrigger sort triggers by page position on refresh
+        refreshPriority: 0,
+        invalidateOnRefresh: true,
+        // always come to rest on a whole number, so every digit and card is readable
+        snap: { snapTo: 1 / LAST, duration: { min: 0.2, max: 0.6 }, delay: 0.08, ease: "power2.inOut" },
+        onUpdate: (s) => {
+          p.b = s.progress;
+          write();
+        },
+        onRefresh: (s) => {
+          p.b = s.progress;
+          write();
+        },
+      });
+      ScrollTrigger.create({
+        trigger: finale.current,
+        start: "top 85%",
+        end: "top 30%",
+        onUpdate: (s) => {
+          p.c = s.progress;
+          write();
+        },
+        onRefresh: (s) => {
+          p.c = s.progress;
+          write();
+        },
+      });
+      write();
+      return () => {
+        stRef.current = null;
+        particleBus.t = 0;
+      };
+    },
+    { scope: section },
+  );
+
+  // "#service-<slug>" lands on that step of the stage.
+  useEffect(
+    () =>
+      registerAnchorPrefix("service-", (id) => {
+        const st = stRef.current;
+        const i = services.findIndex((s) => `service-${s.slug}` === id);
+        if (!st || i < 0) return null;
+        return st.start + (st.end - st.start) * (i / LAST);
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    const t = window.setTimeout(() => ScrollTrigger.refresh(), 400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
-    <section id="services" aria-labelledby="services-title" className="relative py-24 sm:py-28">
-      <div className="container-x">
-        {heading}
-        {mode === "grid" ? (
-          <div className="mt-12 grid grid-cols-3 gap-6">
-            {services.map((s) => (
-              <ServiceCard key={s.slug} service={s} mode="grid" active={false} className="min-h-[520px]" />
-            ))}
+    <section ref={section} id="services" aria-labelledby="services-title" className="relative">
+      <div className="container-x pb-4 pt-24 sm:pt-28">{heading}</div>
+
+      <div ref={pin} className="relative h-[100svh]">
+        {/* sm+: the rail sits above the floating WhatsApp / Concept Lab buttons (phones hide WhatsApp here) */}
+        <div className="container-x flex h-full flex-col pb-5 pt-[calc(var(--nav-h)+8px)] sm:pb-[92px] lsp:pb-4">
+          <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-5 lg:grid-cols-2 lg:grid-rows-1 lg:gap-12 lsp:grid-cols-2 lsp:grid-rows-1">
+            <div
+              data-particle-slot="stage"
+              className="relative mx-auto h-[26svh] w-full max-w-[520px] sm:h-[32svh] lg:h-[min(62svh,560px)] lsp:h-[56svh]"
+              aria-hidden="true"
+            />
+            <div className="grid w-full max-w-[520px] self-center justify-self-center lg:justify-self-start">
+              {services.map((s, i) => (
+                <div key={s.slug} className="stage-card [grid-area:1/1]" data-on={i === active ? "true" : "false"} inert={i !== active}>
+                  <ServiceCard service={s} mode="stage" active={i === active} />
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <ServicesStack reduced={reduced} />
-        )}
+
+          {/* 1–9 rail */}
+          <nav aria-label="Jump to an activity" className="relative mx-auto mt-4 w-full max-w-[640px] sm:mt-6">
+            <span className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-white/10" aria-hidden="true" />
+            <span
+              className="absolute left-3 top-1/2 h-px origin-left -translate-y-1/2 bg-gradient-to-r from-nl-blue to-nl-purple transition-[width] duration-500"
+              style={{ width: `calc((100% - 1.5rem) * ${active / LAST})` }}
+              aria-hidden="true"
+            />
+            <ol className="relative flex items-center justify-between">
+              {services.map((s, i) => (
+                <li key={s.slug}>
+                  <a
+                    href={`#service-${s.slug}`}
+                    aria-label={`${i + 1}. ${s.title}`}
+                    aria-current={i === active ? "step" : undefined}
+                    className={`rail-step grid h-7 w-7 place-items-center rounded-full border font-brand text-[11px] font-black transition-all duration-500 sm:h-8 sm:w-8 sm:text-xs ${
+                      i === active
+                        ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-white shadow-[0_0_18px_-2px_var(--nl-blue)]"
+                        : i < active
+                          ? "border-nl-purple/50 bg-[#0b0c14] text-white/80"
+                          : "border-white/15 bg-[#0b0c14] text-white/45 hover:text-white"
+                    }`}
+                  >
+                    {i + 1}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        </div>
+      </div>
+
+      <div ref={finale}>
+        <Finale />
       </div>
     </section>
   );
 }
 
-function ServicesStack({ reduced }: { reduced: boolean }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const items = useRef<(HTMLDivElement | null)[]>([]);
-  const inners = useRef<(HTMLDivElement | null)[]>([]);
-  const shades = useRef<(HTMLDivElement | null)[]>([]);
-  const [active, setActive] = useState(0);
-
-  useGSAP(
-    () => {
-      const navH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 72;
-      const stick = () => navH() + STICK_GAP;
-      services.forEach((_, i) => {
-        const el = items.current[i];
-        if (!el) return;
-        // progress: the current card is the last one that has reached the stick line
-        ScrollTrigger.create({
-          trigger: el,
-          start: () => `top ${stick() + 2}px`,
-          onEnter: () => setActive(i),
-          onLeaveBack: () => setActive(Math.max(0, i - 1)),
-        });
-        if (reduced || i === N - 1) return;
-        const inner = inners.current[i];
-        const shade = shades.current[i];
-        const k = Math.min(3, N - 1 - i); // cards that will land on top of this one
-        const until = items.current[i + k];
-        if (!inner || !shade || !until) return;
-        // depth 1 → 2: shrink, lift a few px (its edge peeks) and dim; depth 3: hidden entirely
-        const tl = gsap.timeline({
-          defaults: { ease: "none" },
-          scrollTrigger: { trigger: items.current[i + 1], start: "top bottom", endTrigger: until, end: () => `top ${stick()}px`, scrub: true },
-        });
-        tl.fromTo(inner, { y: 0, scale: 1 }, { y: -10, scale: 0.95, duration: 1 }).fromTo(shade, { opacity: 0 }, { opacity: 0.3, duration: 1 }, "<");
-        if (k >= 2) tl.to(inner, { y: -20, scale: 0.9, duration: 1 }).to(shade, { opacity: 0.55, duration: 1 }, "<");
-        if (k >= 3) tl.to(inner, { autoAlpha: 0, duration: 1 });
-      });
-    },
-    { scope: wrap, dependencies: [reduced] },
-  );
-
+function Finale({ still = false }: { still?: boolean }) {
   return (
-    <div ref={wrap} className="mt-8 pb-[10vh]">
-      {/* progress along the bridge: 07 / 09 */}
-      <div className="sticky z-40 mb-5" style={{ top: "calc(var(--nav-h) + 8px)" }}>
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-[#07080c]/95 px-4 py-2 shadow-[0_10px_30px_-12px_rgba(0,0,0,.9)]">
-          <span className="text-[11px] font-semibold tracking-[0.1em] text-white/50" aria-live="polite">
-            <span className="text-nl-purple">{pad(active + 1)}</span> / 09
-          </span>
-          <span className="relative h-px flex-1 bg-white/10" aria-hidden="true">
-            <span
-              className="absolute inset-y-0 left-0 w-full origin-left bg-gradient-to-r from-nl-blue to-nl-purple shadow-[0_0_8px_var(--nl-purple)] transition-transform duration-500 ease-[cubic-bezier(.16,1,.3,1)]"
-              style={{ transform: `scaleX(${(active + 1) / N})` }}
-            />
-          </span>
-          <span className="max-w-[42%] truncate text-[11px] font-medium uppercase tracking-[0.08em] text-white/60">{services[active].short}</span>
-        </div>
+    <div className="container-x flex flex-col items-center pb-20 pt-14 text-center sm:pb-28 sm:pt-20">
+      <div data-particle-slot="finale" className="relative h-24 w-20 sm:h-32 sm:w-24" aria-hidden="true">
+        {still && <StaticDigit ch="9" />}
       </div>
-
-      {services.map((s, i) => (
-        <div
-          key={s.slug}
-          ref={(el) => {
-            items.current[i] = el;
-          }}
-          className="sticky mb-6 last:mb-0"
-          style={{ top: `calc(var(--nav-h) + ${STICK_GAP}px)`, zIndex: i + 1 }}
-        >
-          <div
-            ref={(el) => {
-              inners.current[i] = el;
-            }}
-            className="relative origin-top"
-          >
-            <ServiceCard service={s} mode="stack" active={false} className="min-h-[min(60svh,500px)] shadow-[0_-16px_40px_-18px_rgba(0,0,0,.9)]" />
-            <div
-              ref={(el) => {
-                shades.current[i] = el;
-              }}
-              className="pointer-events-none absolute inset-0 rounded-[28px] bg-black opacity-0"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
-      ))}
+      <h3 className="mt-4 font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]">
+        All nine. <span className="font-accent text-gradient">One team.</span>
+      </h3>
+      <ul className="mt-8 grid w-full max-w-[760px] grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
+        {services.map((s) => (
+          <li key={s.slug}>
+            <a
+              href={`#service-${s.slug}`}
+              className="finale-tile flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50 hover:bg-nl-purple/[0.06] sm:gap-3 sm:rounded-3xl sm:py-6"
+            >
+              <ActivityIcon icon={s.icon} size={30} play={false} />
+              <span className="text-[11.5px] font-medium leading-tight text-white/80 sm:text-sm">{s.short}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+/** Reduced motion: nothing pinned or moving — the nine cards in a list, each with a still number. */
+function ServicesList({ heading }: { heading: React.ReactNode }) {
+  return (
+    <section id="services" aria-labelledby="services-title" className="relative pt-24 sm:pt-28">
+      <div className="container-x">
+        {heading}
+        <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {services.map((s) => (
+            <li key={s.slug} className="flex flex-col">
+              <div className="h-20 w-14" aria-hidden="true">
+                <StaticDigit ch={String(s.n)} />
+              </div>
+              <ServiceCard service={s} mode="list" className="mt-3 flex-1" />
+            </li>
+          ))}
+        </ol>
+      </div>
+      <Finale still />
+    </section>
   );
 }

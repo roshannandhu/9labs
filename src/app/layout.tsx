@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
+import { fontVariables } from "@/lib/fonts";
 import { site } from "@/content/site";
 import { DemoSettingsProvider } from "@/components/providers/DemoSettings";
 import { QuizProvider } from "@/components/providers/QuizProvider";
@@ -9,13 +9,8 @@ import { BlueprintGrid } from "@/components/background/BlueprintGrid";
 import { CustomCursor } from "@/components/layout/CustomCursor";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { ConceptLab } from "@/components/lab/ConceptLab";
-
-const display = Sora({ subsets: ["latin"], variable: "--font-display-src", display: "swap" });
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans-src", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-src", display: "swap", weight: ["400", "500"] });
-// Warm italic serif for accent phrases — the counterweight to the bold sans headlines,
-// the single biggest lever for "creative studio" over "software product" (user: "this is a startup").
-const accent = Fraunces({ subsets: ["latin"], variable: "--font-accent-src", display: "swap", weight: ["500"], style: ["italic"] });
+import { LogoIntro } from "@/components/intro/LogoIntro";
+import { INTRO_BOOT_SCRIPT } from "@/components/intro/introBus";
 
 const title = "Nine Labs Solutions — Marketing, Events & Technology in Dubai";
 const description = site.hero.sub;
@@ -60,7 +55,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} ${accent.variable}`}>
+    // suppressHydrationWarning: the pre-paint intro script sets data-intro on <html> before React loads
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <head>
+        {/* Pre-paint: decide whether the logo landing animation plays (first visit this session). */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
+      </head>
       <body>
         <a
           href="#main"
@@ -72,6 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <QuizProvider>
             <BlueprintGrid />
             <SmoothScroll />
+            <LogoIntro />
             {children}
             <WhatsAppFab />
             <ConceptLab />

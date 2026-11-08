@@ -27,7 +27,7 @@ export function Footer() {
 
       <div className="container-x grid gap-12 py-16 md:grid-cols-12">
         <div className="md:col-span-4">
-          <Logo />
+          <Logo withTagline />
           <p className="mt-5 max-w-[34ch] text-[14.5px] leading-relaxed text-nl-ink">
             Marketing, events and technology — the bridge between your business and your results.
           </p>

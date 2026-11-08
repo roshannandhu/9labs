@@ -4,7 +4,7 @@ Interactive frontend demo of the Nine Labs Solutions homepage, built from the cl
 (`docs/CLIENT_BRIEF.md`). It is a fully static site meant for **client review and approval**.
 The admin panel, database, e-mail delivery and real AI come next (see `docs/PROJECT_PLAN.md`).
 
-> **Hero: Concept A, "Light-built 9"** (spec and decisions: [`docs/HERO_CONCEPT_A.md`](docs/HERO_CONCEPT_A.md)). The earlier glass and particle concepts were removed at the owner's request.
+> **v2 (Nov 2026): the client's real logo + a particle 9.** A logo landing animation ("The Hidden 9"), then a hero that says *we provide 9* with a particle 9, which splits and re-forms 1 → 9 beside each service card. The previous hero (light-filled 9 + Saturn ring + logo dock, "Concept A") is saved as the Git tag/branch **`backup/hero-light-9`** — not on the site. Approved plan: [`docs/LANDING_V2_PLAN.md`](docs/LANDING_V2_PLAN.md).
 
 > **Studio, not software (Nov 2026):** the owner felt the UI read as an engineering tool rather than a
 > creative agency's. Removed: the dimension/REV/lat-long readouts on the hero's drafting lines, the
@@ -19,9 +19,10 @@ The admin panel, database, e-mail delivery and real AI come next (see `docs/PROJ
 
 | Section | Highlights |
 |---|---|
-| **Hero** | A **Sora ExtraBold 9 filled with electric-blue light**, leaning **7° forward**, about half the screen tall, in the exact centre of a full-bleed blueprint screen. **Intro (~3 s):** drafting lines, labels that type themselves on and the 7° guide draw; a spark traces the outline; light floods the 9 from the bottom up and the glow blooms to purple; the nine activities fly in. **At rest:** it breathes, a current of light drifts through it, a glint travels round its edge, a light band crosses every ~8 s, and on desktop it **tilts toward the mouse in 3D** (the grid, 9 and ring sit at different depths) with a highlight following the cursor. **Saturn ring:** the activities orbit a ring tilted to match the lean; back items really pass behind the opaque 9, front ones in front, all with names; step-and-hold (~3.6 s per item, ~44 s per loop); hover pauses, drag/swipe spins, arrow keys rotate, click opens the service (touch: first tap brings it to the front). **The bridge builds itself:** a pylon rises on the 9's edge, a cable draws to the front item, a light dot crosses both ways and **the 9 gives a heartbeat** when it arrives. Hovering *Start The 9 Quiz* sends the same pulse into the 9. A fixed caption under the 9 names the front activity. **Scroll:** the 9 shrinks, straightens and docks into the nav logo (Concept Lab toggle) while the ring's items ride down, gather and dissolve as the Services cards assemble. |
+| **Landing animation** | **"The Hidden 9"** (~3 s, once per session, skippable by tap/click/scroll/key): the client's L9BS wordmark builds itself — L, B and S rise in leaving a gap, the **9 drops into the A's slot** and the triangle leg locks it, a light sweep crosses the logo, the S's node dots glow, "NINE LABS / SOLUTIONS" spreads in — then the logo **flies onto the nav logo (top-left) and stays there**. The hero only starts after it (they never overlap). A 7 s safety net ends it on throttled devices. Reduced motion: no intro, the logo is simply in the nav. |
+| **Hero** | **"We provide 9"**: content on the left (headline with the serif accent, sub-headline, Start The 9 Quiz / e-books); on the right a **9 built from ~2,200 particles** (1,400 on phones) in the logo's typeface (Montserrat Black), electric blue with neon-purple edges, streaming in once the intro ends. Phones: content first, the 9 underneath. Particles react **only to scroll** (no mouse/touch effects). |
 | **Section dividers** | Thin bridge cables (two pylons, a cable that draws as you scroll, one light dot that crosses) between sections. |
-| **Services** | Desktop: the **Mirror Hall**, nine faux-glass cards in a pinned CSS-3D ring on a reflective pool (scroll or drag spins it, snapping card by card). Mobile: sticky stacked cards. Animated line icons for every activity. |
+| **Services — "Our 9 labs"** | **Pinned split stage**: as you scroll, the hero 9 **splits and re-forms 1, 2 … 9**, each number beside its service card (cards swap in step by step; a 1–9 rail jumps to any step; scroll snaps to whole numbers, and scrolling back re-forms the earlier number). Ends with **"All nine. One team."** — the swarm becomes a small 9 above a 3×3 grid of all nine activities. Phones: number on top, card below. Reduced motion: an unpinned list with a still number per card. |
 | **About** | Scroll-lit statement, count-up stats, a suspension **bridge drawn on scroll** with two-way traffic, the **Roadmap Ascent** "how we work" (a glowing node glides down a spine, plus a split-flap counter), and 5 value cards with a spotlight hover. |
 | **The 9 Quiz** | Shader-gradient block with a typing input, plus a full-screen quiz (describe your need → "thinking" → matched activities + a bridge plan + WhatsApp / e-mail CTAs). Answers are simulated (`src/lib/quiz/mockEngine.ts`) behind a provider-neutral interface (`src/lib/quiz/provider.ts`). |
 | **Free e-books** | Three CSS-3D books on a mirror shelf; the focused book lifts and casts a **halo in its cover colour** (auto-cycles on desktop). Click: the book flies to the centre, the cover swings open ("Inside this book" + form), and on submit the page turns to a success page. Validation and mock submit only. |
@@ -30,17 +31,17 @@ The admin panel, database, e-mail delivery and real AI come next (see `docs/PROJ
 
 ### Concept Lab (demo only)
 
-The chip at the bottom-left lets the client switch the **9 typeface**, try **brand colours**, change grid intensity and orbit speed, preview reduced motion, and toggle the custom cursor, the WhatsApp button and the **logo dock on scroll**. Hide it in production with `NEXT_PUBLIC_DEMO_LAB=false`.
+The chip at the bottom-left (desktop/tablet only) lets the client try **brand colours** (logo indigo vs. the brief's electric blue), change grid intensity, preview reduced motion, and toggle the custom cursor and the WhatsApp button. Hide it in production with `NEXT_PUBLIC_DEMO_LAB=false`.
 
 URL helper: `?motion=reduce` (note: Concept Lab settings, including this one, are remembered in the browser; use *Reset to defaults* to clear them).
 
 ### How the cover is built, and what it costs (brief §5.8)
 
-- **Tech:** SVG + CSS + GSAP only. No WebGL, no canvas. The 9 is one inline SVG glyph; its intro, breathing and light band are CSS keyframes, so it paints with the HTML before any JS runs.
-- **First paint:** the LCP element is the headline text; the hero adds only a few KB.
-- **JS cost:** the orbit is one `requestAnimationFrame` loop moving nine elements with `transform`/`opacity` only; it pauses when the cover is off-screen or the tab is hidden.
-- **Bundle:** removing three.js / React Three Fiber cut the shipped JS chunks from 2,236 KB to 1,085 KB (669 → 355 KB gzipped). Initial-page JS is about 346 KB gzipped.
-- **Reduced motion:** a still cover (lit 9, items placed on the ring, front item highlighted, arc drawn; no intro, no auto-rotation).
+- **Logo intro:** one inline SVG (the wordmark rebuilt in parts) + a GSAP timeline; shown by CSS only while `<html data-intro="playing">`, which a tiny pre-paint script sets on the first visit of a session.
+- **Particles:** one fixed 2D canvas (no WebGL). Digit targets are sampled once from the logo typeface on an offscreen canvas; particles fly between DOM slots measured each frame, as a pure function of scroll (reversible). Pre-rendered glow sprites, DPR ≤ 2, paused when the hero/services are off-screen. 2,200 particles desktop / 1,400 phone.
+- **First paint:** the headline is the LCP element; the canvas starts only after the intro.
+- **Bundle:** ~352 KB gzipped JS in total (no three.js).
+- **Reduced motion:** no intro, no canvas, no pinning — a still 9 and a plain list of the nine cards.
 
 ## Run it
 

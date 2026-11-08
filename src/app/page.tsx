@@ -7,6 +7,7 @@ import { QuizBlock } from "@/components/quiz/QuizBlock";
 import { Ebooks } from "@/components/ebooks/Ebooks";
 import { ClosingCta } from "@/components/cta/ClosingCta";
 import { BridgeDivider } from "@/components/layout/BridgeDivider";
+import { ParticleStage } from "@/components/particles/ParticleStage";
 import { buildJsonLd } from "@/lib/seo/jsonld";
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
         // Static, trusted JSON-LD built from our own content.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()).replace(/</g, "\\u003c") }}
       />
+      <ParticleStage />
       <Nav />
       <main id="main" className="relative z-10 overflow-x-clip">
         <Hero />

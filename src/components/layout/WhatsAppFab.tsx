@@ -8,13 +8,21 @@ import { SocialIcon } from "@/components/icons/SocialIcon";
 
 /**
  * Floating WhatsApp button — the admin will be able to switch it on/off (Concept Lab does now).
- * On phones it waits until the cover is half scrolled, so it never sits on the hero's full-width buttons.
+ * On phones it waits until the cover is half scrolled (so it never sits on the hero's full-width
+ * buttons) and steps aside while the services stage is on screen (it would cover the 1–9 rail).
  */
 export function WhatsAppFab() {
   const { settings } = useDemo();
   const [clear, setClear] = useState(false);
   useEffect(() => {
-    const update = () => setClear(window.innerWidth >= 640 || window.scrollY > window.innerHeight * 0.5);
+    const stage = document.getElementById("services");
+    const update = () => {
+      // phones (and phones held sideways): keep clear of the hero buttons and the stage rail
+      if (window.innerWidth >= 640 && window.innerHeight > 520) return setClear(true);
+      const r = stage?.getBoundingClientRect();
+      const onStage = !!r && r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.5;
+      setClear(window.scrollY > window.innerHeight * 0.5 && !onStage);
+    };
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);

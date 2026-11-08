@@ -4,12 +4,13 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { DEFAULT_SETTINGS, useDemo, type MotionPref } from "@/components/providers/DemoSettings";
 
-const BLUES = ["#3b82ff", "#2f6bff", "#4f9bff", "#1e7bff"];
-const PURPLES = ["#b98cff", "#c084fc", "#a78bfa", "#d6a6ff"];
+// Logo indigo family first (the client's colour), then the brief's electric blue for comparison.
+const BLUES = ["#5a48f5", "#3530d0", "#6d5dfc", "#3b82ff"];
+const PURPLES = ["#9d8cff", "#b98cff", "#c4b5fd", "#a78bfa"];
 
 /**
- * Demo-only control panel so the client can try the 9's typeface and brand colours live
- * (exact colour codes and the final logo are still to be supplied).
+ * Demo-only control panel so the client can try brand colours and motion live
+ * (exact colour codes are still to be supplied).
  * The same kinds of settings move into the Payload admin later.
  */
 export function ConceptLab() {
@@ -20,7 +21,7 @@ export function ConceptLab() {
   return (
     // Demo-only control, hidden on phones so a visitor judging the real site never sees it
     // (and it cannot cover the full-width buttons/content down there).
-    <div className="fixed bottom-5 left-5 z-[75] hidden sm:block sm:bottom-6 sm:left-6">
+    <div className="fixed bottom-5 left-5 z-[75] hidden sm:block sm:bottom-6 sm:left-6 lsp:hidden">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -50,41 +51,14 @@ export function ConceptLab() {
             </div>
 
             <fieldset className="mb-5">
-              <legend className="label-mono mb-2">The 9 typeface</legend>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    ["sora", "Sora", "ExtraBold · default"],
-                    ["grotesk", "Grotesk", "Space Grotesk"],
-                    ["outfit", "Outfit", "Black, geometric"],
-                  ] as const
-                ).map(([id, name, note]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => set({ glyph: id })}
-                    aria-pressed={settings.glyph === id}
-                    className={`rounded-2xl border p-2.5 text-left transition-colors ${
-                      settings.glyph === id ? "border-nl-purple/70 bg-nl-purple/10" : "border-white/10 hover:border-white/25"
-                    }`}
-                  >
-                    <span className="block font-display text-sm font-semibold text-white">{name}</span>
-                    <span className="block text-xs text-nl-dim">{note}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="mb-5">
               <legend className="label-mono mb-2">Brand colours</legend>
-              <Swatches label="Electric blue" value={settings.blue} options={BLUES} onChange={(v) => set({ blue: v })} />
-              <Swatches label="Neon purple" value={settings.purple} options={PURPLES} onChange={(v) => set({ purple: v })} />
+              <Swatches label="Brand indigo" value={settings.blue} options={BLUES} onChange={(v) => set({ blue: v })} />
+              <Swatches label="Highlight violet" value={settings.purple} options={PURPLES} onChange={(v) => set({ purple: v })} />
             </fieldset>
 
             <fieldset className="mb-5 space-y-3">
               <legend className="label-mono mb-2">Tuning</legend>
               <Range label="Grid intensity" min={0.02} max={0.12} step={0.005} value={settings.grid} onChange={(v) => set({ grid: v })} format={(v) => `${Math.round(v * 100)}%`} />
-              <Range label="Orbit speed" min={0.4} max={2} step={0.1} value={settings.orbitSpeed} onChange={(v) => set({ orbitSpeed: v })} format={(v) => `${v.toFixed(1)}×`} />
             </fieldset>
 
             <fieldset className="mb-5">
@@ -110,7 +84,6 @@ export function ConceptLab() {
               <legend className="label-mono mb-2">Elements</legend>
               <Toggle label="Custom cursor (desktop)" checked={settings.cursor} onChange={(v) => set({ cursor: v })} />
               <Toggle label="Floating WhatsApp button" checked={settings.whatsapp} onChange={(v) => set({ whatsapp: v })} />
-              <Toggle label="The 9 docks into the logo on scroll" checked={settings.logoDock} onChange={(v) => set({ logoDock: v })} />
             </fieldset>
 
             <button

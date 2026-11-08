@@ -5,21 +5,17 @@ import { useEffect, useRef } from "react";
 /**
  * Fixed blueprint grid behind the whole page (pure CSS layers, see globals.css):
  * minor + major lines, a slow drift, a vignette, and a
- * brighter "hot" grid revealed in a soft circle around the cursor, lines near the hero 9
- * lit as if by its glow, and a ±4 px mouse parallax. Fades to a fainter level after the
+ * brighter "hot" grid revealed in a soft circle around the cursor, and a ±4 px mouse parallax. Fades to a fainter level after the
  * hero so it never competes with the sections below.
  */
 export function BlueprintGrid() {
   const root = useRef<HTMLDivElement>(null);
   const hot = useRef<HTMLDivElement>(null);
-  const lit = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const r = root.current;
     const h = hot.current;
-    const g = lit.current;
-    if (!r || !h || !g) return;
-    const nine = document.querySelector<HTMLElement>("[data-hero-nine]");
+    if (!r || !h) return;
     let raf = 0;
     let mx = -999;
     let my = -999;
@@ -28,7 +24,7 @@ export function BlueprintGrid() {
     // full-screen layer forces a repaint, which is what made phones flicker on scroll.
     const last = new Map<string, string>();
     const put = (el: HTMLElement, k: string, v: string) => {
-      const key = k + (el === g ? "g" : el === h ? "h" : "r");
+      const key = k + (el === h ? "h" : "r");
       if (last.get(key) === v) return;
       last.set(key, v);
       el.style.setProperty(k, v);
@@ -41,15 +37,6 @@ export function BlueprintGrid() {
       if (mx > -999) {
         r.style.setProperty("--px", `${((mx / window.innerWidth) * 2 - 1) * -4}px`);
         r.style.setProperty("--py", `${((my / window.innerHeight) * 2 - 1) * -4}px`);
-      }
-      // grid lit by the 9: desktop only (hidden on touch in CSS), and only while the hero is on screen
-      if (nine && fine) {
-        const b = nine.getBoundingClientRect();
-        if (b.bottom > -40 && b.top < window.innerHeight) {
-          put(g, "--nx", `${Math.round(b.left + b.width / 2)}px`);
-          put(g, "--ny", `${Math.round(b.top + b.height * 0.5)}px`);
-          put(g, "--nr", `${Math.round(Math.max(160, b.height * 0.75))}px`);
-        } else put(g, "--ny", "-9999px");
       }
       // fades well past the hero so it never competes with the content below (brief: "more faintly")
       const fade = Math.min(1, window.scrollY / (window.innerHeight * 0.75));
@@ -78,9 +65,6 @@ export function BlueprintGrid() {
     <div ref={root} className="bp-root" aria-hidden="true">
       <div className="bp-grid" />
       <div ref={hot} className="bp-hot">
-        <div className="bp-grid bp-grid--hot" />
-      </div>
-      <div ref={lit} className="bp-lit">
         <div className="bp-grid bp-grid--hot" />
       </div>
       <div className="bp-vignette" />

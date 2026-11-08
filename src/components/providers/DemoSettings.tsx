@@ -1,33 +1,27 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { GlyphKey } from "@/components/hero/nine-path";
 
 export type MotionPref = "system" | "full" | "reduce";
 
 export type DemoSettings = {
-  glyph: GlyphKey;
+  /** UI accent (buttons, rail, logo gradient end) — the logo's indigo, brightened for black. */
   blue: string;
+  /** Highlight violet (links, labels, glows). */
   purple: string;
   grid: number;
-  orbitSpeed: number;
   motion: MotionPref;
   cursor: boolean;
   whatsapp: boolean;
-  /** On scroll the hero 9 shrinks, straightens and docks into the nav logo. */
-  logoDock: boolean;
 };
 
 export const DEFAULT_SETTINGS: DemoSettings = {
-  glyph: "sora",
-  blue: "#3b82ff",
-  purple: "#b98cff",
+  blue: "#5a48f5",
+  purple: "#9d8cff",
   grid: 0.06,
-  orbitSpeed: 1,
   motion: "system",
   cursor: true,
   whatsapp: true,
-  logoDock: true,
 };
 
 type Ctx = {
@@ -41,7 +35,7 @@ type Ctx = {
 };
 
 const DemoContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "nl-demo-settings-v6";
+const STORAGE_KEY = "nl-demo-settings-v7"; // v7: logo-indigo palette (old saved colours would override it)
 
 
 function mixWithWhite(hex: string, amount: number) {
