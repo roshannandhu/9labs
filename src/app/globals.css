@@ -954,69 +954,11 @@ html.has-cursor textarea {
 /* ---------- Liquid glass extras ---------- */
 @media (prefers-reduced-transparency: reduce) {
   .glass,
-  .glass-faux,
-  .stage-card .svc-card {
+  .glass-faux {
     background: var(--nl-panel) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
-}
-
-/* Stage cards: faux glass (a blue→violet hairline, a slow sheen on the card in view). */
-.stage-card .svc-card {
-  border-color: transparent;
-  background:
-    linear-gradient(150deg, rgb(var(--fg-rgb) / 0.1), rgb(var(--fg-rgb) / 0.022) 42%, rgb(var(--fg-rgb) / 0.01)),
-    linear-gradient(160deg, var(--faux-a), var(--faux-b));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.8),
-    inset 0 -1px 0 rgb(0 0 0 / 0.05);
-}
-.stage-card .svc-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--nl-blue-soft) 48%, transparent),
-    color-mix(in oklab, var(--nl-purple) 28%, transparent) 38%,
-    rgb(var(--fg-rgb) / 0.05) 68%,
-    color-mix(in oklab, var(--nl-purple) 24%, transparent)
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-.stage-card .svc-card[data-on="true"] {
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    inset 0 -1px 0 rgb(0 0 0 / 0.05),
-    0 0 0 1px color-mix(in srgb, var(--nl-purple) 45%, transparent),
-    0 40px 90px -40px color-mix(in srgb, var(--nl-purple) 75%, transparent),
-    0 0 60px -10px color-mix(in srgb, var(--nl-blue) 30%, transparent);
-}
-/* slow diagonal sheen across the front card */
-.stage-card .svc-card::after {
-  content: "";
-  position: absolute;
-  inset: -40% -60%;
-  z-index: 1;
-  background: linear-gradient(105deg, transparent 42%, rgb(var(--fg-rgb) / 0.09) 49%, rgb(var(--fg-rgb) / 0.02) 53%, transparent 58%);
-  transform: translateX(-60%);
-  opacity: 0;
-  pointer-events: none;
-}
-.stage-card .svc-card[data-on="true"]::after {
-  opacity: 1;
-  animation: glass-sheen 6.5s cubic-bezier(0.45, 0, 0.2, 1) 0.6s infinite;
-}
-@keyframes glass-sheen {
-  0% { transform: translateX(-60%); }
-  45%, 100% { transform: translateX(60%); }
 }
 /* ------------------------------------------------------------------ */
 /*  Landing animation — "The Hidden 9" (see LogoIntro.tsx)             */
@@ -1104,21 +1046,74 @@ html[data-intro="playing"] [data-logo-9] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Services — the travelling swarm (one number per card, free scroll)  */
+/*  Services — the Showcase (one screen; the swarm forms a picture)    */
 /* ------------------------------------------------------------------ */
-/* each card eases in as it enters (scroll-driven where supported; elsewhere it is simply there) */
-@supports (animation-timeline: view()) {
-  html:not([data-motion-resolved="reduce"]) .swarm-row .stage-card {
-    animation: swarm-in linear both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 80%;
-  }
+.showcase-panel {
+  box-shadow: 0 50px 110px -60px color-mix(in srgb, var(--nl-purple) 45%, transparent);
 }
-@keyframes swarm-in {
-  from {
-    opacity: 0;
-    transform: translateY(48px) scale(0.97);
-  }
+.showcase-caption {
+  color: rgb(var(--fg-rgb) / 0.55);
+}
+.showcase-nav {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
+  background: var(--chip-bg);
+  color: rgb(var(--fg-rgb) / 0.75);
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+.showcase-nav:hover {
+  border-color: var(--nl-purple);
+  color: rgb(var(--fg-rgb));
+}
+/* mobile story segments */
+.showcase-seg {
+  transform-origin: left;
+  animation-name: showcase-fill;
+  animation-timing-function: linear;
+}
+@keyframes showcase-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+html[data-motion-resolved="reduce"] .showcase-seg {
+  animation: none;
+  transform: scaleX(1);
+}
+/* the dock */
+.showcase-dock {
+  scrollbar-width: none;
+}
+.showcase-dock::-webkit-scrollbar {
+  display: none;
+}
+.dock-btn:hover {
+  color: rgb(var(--fg-rgb) / 0.85);
+}
+.dock-ring {
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+.dock-ring-fill {
+  stroke-dasharray: 116.2;
+  stroke-dashoffset: 116.2;
+  animation-name: dock-ring-fill;
+  animation-timing-function: linear;
+}
+@keyframes dock-ring-fill {
+  to { stroke-dashoffset: 0; }
+}
+html[data-motion-resolved="reduce"] .dock-ring-fill {
+  display: none;
+}
+/* controls are live only once the swarm has actually reached the stage */
+.showcase-panel:not([data-ready="true"]) .showcase-nav,
+.showcase-panel:not([data-ready="true"]) .dock-btn {
+  pointer-events: none;
+  opacity: 0.55;
 }
 .finale-tile svg {
   color: var(--nl-blue-soft);

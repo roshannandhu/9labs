@@ -1,62 +1,45 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gsap } from "@/lib/gsap";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { digits as digitFont } from "@/lib/fonts";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { onIntroDone } from "@/components/intro/introBus";
-import { particleBus } from "./bus";
-import { digitShape, GLYPH_SIZE, rng, type Shape } from "./targets";
+import { palette, swatchTable, nearestSwatch, type SwatchTable } from "./palette";
+import { digitShape, pictureShape, rng, type Shape } from "./targets";
+import { PICTURES } from "./pictures";
+import { particleBus, heroTarget, digitTarget, sameTarget, fireStageReached, type ParticleTarget } from "./bus";
+import type { IconKey } from "@/content/site";
 
-// The logo's gradient across every number, as in the two logo files (globals.css --logo-from/to):
-// light = black → indigo, dark = purple → cyan.
-const GRAD = {
-  light: [[0x03, 0x03, 0x03], [0x35, 0x33, 0xcb]],
-  dark: [[0x8c, 0x53, 0xfe], [0x5c, 0xe0, 0xe6]],
-} as const;
-const STEPS = 16;
-const hex = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
-const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
-/** colours[edge 0|1][step]: the outline a touch brighter (dark) / deeper (light) for a crisp edge */
-const colours = (dark: boolean) => {
-  const [from, to] = GRAD[dark ? "dark" : "light"];
-  return [0, 1].map((edge) =>
-    Array.from({ length: STEPS }, (_, k) => {
-      const c = mix([...from], [...to], k / (STEPS - 1));
-      return hex(edge ? (dark ? mix(c, [255, 255, 255], 0.3) : mix(c, [8, 6, 60], 0.2)) : c);
-    }),
-  );
-};
+const SLOTS = ["hero", "stage"] as const;
+type SlotName = (typeof SLOTS)[number];
+const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : "stage");
 const isDark = () => document.documentElement.dataset.theme === "dark";
-
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
-/** Hold each number for the first and last ~22% of a step, morph in the middle — so every digit is readable. */
-const plateau = (f: number) => {
-  const u = clamp01((f - 0.22) / 0.56);
-  return u * u * (3 - 2 * u);
-};
-// hero 9 · one slot per service card (s1…s9) · the finale's small 9
-const SLOTS = ["hero", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "finale"];
-const slotOf = (k: number) => SLOTS[Math.min(10, k)];
-const digitOf = (k: number) => (k === 0 || k >= 10 ? "9" : String(k));
-/** a card's number when the swarm is elsewhere: a faint watermark the particles fill in */
-const GHOST = 0.07;
+// how far into a flight the "landing" content still shows (fades out) / the "arriving" content
+// starts to show (fades in) — zero particles the rest of the time, as requested: the swarm is
+// only ever visible while actually transforming between two shapes.
+const EDGE = 0.09;
+const earlyOp = (u: number) => (u < EDGE ? 1 - u / EDGE : 0);
+const lateOp = (u: number) => (u > 1 - EDGE ? (u - (1 - EDGE)) / EDGE : 0);
 
 /**
- * The particle numbers. One swarm assembles the hero 9 (after the landing animation), then —
- * driven only by scroll — travels down the services list: between two cards it lifts off one
- * card's number and pours into the next (1, 2 … 9), and finally forms a small 9 above the
- * "all nine" grid. Cards the swarm is not on show their number as a faint watermark.
+ * The one particle swarm. It assembles the hero 9 (after the landing animation), flies down into
+ * the Services Showcase as you scroll to it, and from then on is driven entirely by the Showcase
+ * (`Services.tsx`, via `bus.ts`'s `goto()`/`snapTo()`): it flies between a digit (1-9), a service
+ * picture, and the finale "all nine" 9, on tap or on an auto-play timer — never by scroll.
  *
- * Two layers, so a number never jitters:
- * - **Formed** (at rest): a solid, crisp glyph drawn on a small canvas that lives *inside* its
- *   slot in the page — it scrolls natively with the content, on every device.
- * - **Moving** (splitting / re-forming): ~12,000 particles (~6,000 on phones) on one fixed
- *   full-screen canvas above the content (so the swarm visibly crosses the cards), drawn on GSAP's ticker right after Lenis has scrolled, so the positions
- *   it reads are always this frame's. The two cross-fade while the particles sit exactly on the
- *   glyph, so the hand-over is seamless. Nothing is drawn while a number simply sits there.
- * Particles are batched by colour (a few fillStyle changes per frame, not thousands); a device
- * that can't keep up in the first second quietly draws 60% of them.
+ * Two layers, so nothing ever looks like dust once it has landed:
+ * - **Formed** (at rest): a crisp picture or digit, drawn at full detail *inside* its slot in the
+ *   page (so it scrolls natively, no jitter). A service picture keeps being redrawn every frame
+ *   with real time, so its own small details live (hearts float, a flash fires, lights sweep);
+ *   a digit is drawn once and left still. The swarm itself draws **nothing** while a shape is at
+ *   rest — only while flying between two shapes.
+ * - **Moving** (flying): ~13,000 particles (~7,000 on phones) on one fixed full-screen canvas,
+ *   each carrying its source and target colour (from the shared palette, `palette.ts`) and flying
+ *   a bowed path — bowed to one consistent side (a vortex, not a scramble), the direction set by
+ *   which way the Showcase is navigating. A device that can't keep up in the first second quietly
+ *   draws 60% of them.
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
@@ -69,10 +52,10 @@ export function ParticleStage() {
     if (!cv || !ctx) return;
 
     const phone = window.matchMedia("(max-width: 639px)").matches;
-    const N = phone ? 6000 : 12000;
+    const N = phone ? 7000 : 13000;
     const r = rng(9001);
 
-    // assembly: each particle streams in from a point just beyond a screen edge
+    // assembly: each particle streams in from a point just beyond a screen edge (hero forming, once)
     const sx = new Float32Array(N);
     const sy = new Float32Array(N);
     const delay = new Float32Array(N);
@@ -83,43 +66,36 @@ export function ParticleStage() {
       sy[i] = side === 2 ? -0.08 : side === 3 ? 1.08 : along;
       delay[i] = r() * 0.45;
     }
-    // one scatter direction per particle per transition (the "split")
-    const scatter = Array.from({ length: 10 }, () => {
-      const dx = new Float32Array(N);
-      const dy = new Float32Array(N);
-      for (let i = 0; i < N; i++) {
-        const a = r() * Math.PI * 2;
-        const m = 0.35 + r() * 0.65;
-        dx[i] = Math.cos(a) * m;
-        dy[i] = Math.sin(a) * m;
-      }
-      return { dx, dy };
-    });
-    const pal = { dark: colours(true), light: colours(false) };
+    // one swirl "bow" magnitude + organic jitter per particle, shared by every flight
+    const bow = new Float32Array(N);
+    const jitX = new Float32Array(N);
+    const jitY = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      bow[i] = 0.55 + r() * 0.75;
+      const a = r() * Math.PI * 2;
+      jitX[i] = Math.cos(a);
+      jitY[i] = Math.sin(a);
+    }
     const px = new Float32Array(N);
     const py = new Float32Array(N);
-    const bucket = new Uint8Array(N);
-    const order = new Uint16Array(N);
-    const counts = new Int32Array(STEPS * 2 + 1);
+    const bucket = new Uint16Array(N);
+    const order = new Uint32Array(N);
 
     let thin = false;
     let probe = 0;
     let probeSum = 0;
     let lastT = 0;
-    let shapes: (Shape | undefined)[] = [];
     let started = false;
-    let t0 = 0;
+    let heroT0 = 0;
     let visible = true;
-    let dirty = false; // the fixed canvas has particles on it
+    let dirty = false;
     let dpr = 1;
-    let W = 0;
-    let H = 0;
     let family = "";
 
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
-      W = window.innerWidth;
-      H = window.innerHeight;
+      const W = window.innerWidth;
+      const H = window.innerHeight;
       cv.width = Math.round(W * dpr);
       cv.height = Math.round(H * dpr);
       cv.style.width = `${W}px`;
@@ -128,8 +104,11 @@ export function ParticleStage() {
     resize();
     window.addEventListener("resize", resize);
 
-    // the solid glyph layer: one small canvas inside each slot
-    const rest = new Map<string, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number }>();
+    // the two crisp "formed" layers: one small canvas inside each slot
+    const rest = new Map<
+      SlotName,
+      { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number }
+    >();
     for (const name of SLOTS) {
       const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
       const c = document.createElement("canvas");
@@ -138,14 +117,32 @@ export function ParticleStage() {
       c.setAttribute("aria-hidden", "true");
       c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%)";
       el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: 0 });
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now() });
     }
-    const drawGlyph = (name: string, ch: string, side: number) => {
+    const slotRect = (name: SlotName) => rest.get(name)?.el.getBoundingClientRect();
+
+    const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>) => {
       const s = rest.get(name);
-      if (!s) return;
+      const b = slotRect(name);
+      if (!s || !b || b.height <= 0) return;
+      const side = Math.min(b.height * 0.9, b.width * 0.94);
       const px2 = Math.max(2, Math.round(side * dpr));
-      const dark = isDark();
-      const key = `${ch}|${px2}|${dark}`; // redrawn when the theme flips
+      if (target.kind === "pic") {
+        // always redrawn, so its small details can move
+        s.c.width = px2;
+        s.c.height = px2;
+        s.c.style.width = `${side}px`;
+        s.c.style.height = `${side}px`;
+        if (s.key !== `pic|${target.icon}`) {
+          s.key = `pic|${target.icon}`;
+          s.liveT0 = performance.now();
+        }
+        s.g.clearRect(0, 0, px2, px2);
+        PICTURES[target.icon](s.g, px2, pal, (performance.now() - s.liveT0) / 1000);
+        return;
+      }
+      const ch = target.kind === "digit" ? target.ch : "9";
+      const key = `d|${ch}|${px2}|${pal.textFrom}`;
       if (s.key === key) return;
       s.key = key;
       s.c.width = px2;
@@ -154,18 +151,17 @@ export function ParticleStage() {
       s.c.style.height = `${side}px`;
       const g = s.g;
       g.clearRect(0, 0, px2, px2);
-      g.font = `900 ${Math.round(px2 * GLYPH_SIZE)}px ${family}`;
+      g.font = `900 ${Math.round(px2 * 0.78)}px ${family}`;
       g.textAlign = "center";
       g.textBaseline = "alphabetic";
       const m = g.measureText(ch);
       const grad = g.createLinearGradient(px2 / 2 - m.actualBoundingBoxLeft, 0, px2 / 2 + m.actualBoundingBoxRight, 0);
-      const [from, to] = GRAD[dark ? "dark" : "light"];
-      grad.addColorStop(0, hex([...from]));
-      grad.addColorStop(1, hex([...to]));
+      grad.addColorStop(0, pal.textFrom);
+      grad.addColorStop(1, pal.textTo);
       g.fillStyle = grad;
       g.fillText(ch, px2 / 2, px2 / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
     };
-    const setOpacity = (name: string, op: number) => {
+    const setOpacity = (name: SlotName, op: number) => {
       const s = rest.get(name);
       if (!s) return;
       const v = Math.round(op * 100) / 100;
@@ -174,68 +170,96 @@ export function ParticleStage() {
       s.c.style.opacity = String(v);
     };
 
-    // the digit's height in a slot: as tall as the slot allows, but never wider than the slot
+    // a shape's height in its slot: as tall as the slot allows, but never wider than the slot
     const box = (b: DOMRect, s: Shape) => ({ cx: b.left + b.width / 2, cy: b.top + b.height / 2, h: Math.min(b.height * 0.9, (b.width * 0.94) / s.wr) });
+
+    const shapeFor = (t: ParticleTarget, dark: boolean): Shape => {
+      if (t.kind === "digit") return digitShape(t.ch, N, family, dark);
+      if (t.kind === "pic") return pictureShape(t.icon, N, PICTURES[t.icon as IconKey], dark);
+      return digitShape("9", N, family, dark); // hero + all9 are both just "9"
+    };
+
+    let curFromKey = "";
+    let curToKey = "";
+    let SA: Shape | null = null;
+    let SB: Shape | null = null;
+    let curDark = isDark();
+    let table: SwatchTable = swatchTable(palette(curDark));
 
     const frame = () => {
       if (!started || !visible || document.hidden) return;
       const now = performance.now();
-      const t = Math.max(0, Math.min(10, particleBus.t));
-      const k = Math.min(9, Math.floor(t));
-      const f = t - k;
-      const u = plateau(f);
-      const ea = rest.get(slotOf(k))?.el;
-      const eb = rest.get(slotOf(k + 1))?.el;
-      const SA = shapes[k];
-      if (!ea || !eb || !SA) return; // that digit is still being sampled (a few ms after load)
-      const SB = shapes[k + 1] ?? SA;
-      const ra = ea.getBoundingClientRect();
-      const rb = eb.getBoundingClientRect();
-      const A = box(ra, SA);
-      const B = box(rb, SB);
-
-      // how "formed" the number is: 1 while the particles sit exactly on a digit, 0 once they move
-      const nearB = f >= 0.5;
-      const m = nearB ? 1 - f : f;
-      const formed = (1 - clamp01((m - 0.06) / 0.14)) * clamp01((now - t0 - 1700) / 450);
-      const restSlot = slotOf(nearB ? k + 1 : k);
-      const RB = nearB ? B : A;
-      const RS = nearB ? SB : SA;
-      // the other cards' watermarks (read every size first, then draw: no layout thrash)
-      const ghosts: [string, string, number][] = [];
-      for (let d = 1; d <= 9; d++) {
-        const name = SLOTS[d];
-        const sh = shapes[d];
-        const s = rest.get(name);
-        if (!sh || !s || name === restSlot) continue;
-        const b = s.el.getBoundingClientRect();
-        if (b.bottom > -H && b.top < 2 * H) ghosts.push([name, String(d), box(b, sh).h / sh.hr]);
+      const dark = isDark();
+      if (dark !== curDark) {
+        curDark = dark;
+        table = swatchTable(palette(dark));
+        curFromKey = "";
+        curToKey = ""; // force shape re-sample at the new theme's colours
       }
-      drawGlyph(restSlot, digitOf(nearB ? k + 1 : k), RB.h / RS.hr);
-      for (const [name, ch, side] of ghosts) drawGlyph(name, ch, side);
-      const ghost = GHOST * clamp01((now - t0 - 1700) / 450);
-      for (const name of SLOTS) {
-        const card = name !== "hero" && name !== "finale";
-        setOpacity(name, name === restSlot ? (card ? Math.max(ghost, formed) : formed) : card ? ghost : 0);
+      const pal = palette(dark);
+      const { from, to, u, dir } = particleBus;
+      const resting = sameTarget(from, to);
+
+      // the formed layers (always on: hero is static, the stage keeps living while resting)
+      if (resting) {
+        drawFormed("hero", heroTarget, pal);
+        setOpacity("hero", 1);
+        drawFormed("stage", to, pal);
+        setOpacity("stage", 1);
+      } else {
+        const showFrom = u < 0.5;
+        const heroInvolved = from.kind === "hero" || to.kind === "hero";
+        drawFormed("hero", heroTarget, pal);
+        setOpacity("hero", heroInvolved ? (showFrom ? earlyOp(u) : lateOp(u)) : 1);
+        const stageContent = showFrom ? from : to;
+        if (stageContent.kind === "hero") {
+          setOpacity("stage", 0);
+        } else {
+          drawFormed("stage", stageContent, pal);
+          setOpacity("stage", showFrom ? earlyOp(u) : lateOp(u));
+        }
       }
 
-      // particles: only while the number is moving
+      // the particles: only while flying
       if (dirty) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, cv.width, cv.height);
         dirty = false;
       }
-      const alpha = 1 - formed;
-      const away = (b: DOMRect) => b.bottom < -H * 0.6 || b.top > H * 1.6 || b.width === 0;
-      if (alpha < 0.01 || (away(ra) && away(rb))) return;
+      if (resting) return;
+      const dustAlpha = 1 - earlyOp(u) - lateOp(u);
+      if (dustAlpha < 0.015) return;
 
-      const sc = scatter[k];
+      const fromKey = `${from.kind}${"ch" in from ? from.ch : ""}${"icon" in from ? from.icon : ""}`;
+      const toKey = `${to.kind}${"ch" in to ? to.ch : ""}${"icon" in to ? to.icon : ""}`;
+      if (fromKey !== curFromKey) {
+        curFromKey = fromKey;
+        SA = shapeFor(from, dark);
+      }
+      if (toKey !== curToKey) {
+        curToKey = toKey;
+        SB = shapeFor(to, dark);
+      }
+      if (!SA || !SB) return;
+      const ra = slotRect(slotFor(from));
+      const rb = slotRect(slotFor(to));
+      if (!ra || !rb) return;
+      const A = box(ra, SA);
+      const B = box(rb, SB);
+      const H = window.innerHeight;
+      const away = (b: DOMRect) => b.bottom < -H * 0.6 || b.top > H * 1.6 || b.width === 0;
+      if (away(ra) && away(rb)) return;
+
+      const lx = B.cx - A.cx;
+      const ly = B.cy - A.cy;
+      const len = Math.hypot(lx, ly) || 1;
+      const perpX = -ly / len;
+      const perpY = lx / len;
       const spread = Math.max(A.h, B.h) * 0.42;
-      const h = A.h + (B.h - A.h) * u;
-      const size = Math.max(1.2, Math.min(phone ? 2.4 : 2.8, h * (phone ? 0.0085 : 0.005)));
-      const asm = clamp01((now - t0) / 1700);
       const v = 1 - u;
-      if (asm >= 1 && formed < 0.5 && probe < 40) {
+      const asm = clamp01((now - heroT0) / 1700);
+
+      if (asm >= 1 && probe < 40) {
         if (lastT) {
           probeSum += now - lastT;
           if (++probe === 40 && probeSum / 40 > 24) thin = true;
@@ -243,18 +267,23 @@ export function ParticleStage() {
         lastT = now;
       }
 
-      counts.fill(0);
+      const PN = table.hex.length;
+      const counts = new Int32Array(PN + 1);
+      const W = window.innerWidth;
       for (let i = 0; i < N; i++) {
         if (thin && i % 5 > 2) {
-          bucket[i] = STEPS * 2;
+          bucket[i] = PN;
+          counts[PN]++;
           continue;
         }
         const ax = A.cx + SA.x[i] * A.h;
         const ay = A.cy + SA.y[i] * A.h;
         const bx = B.cx + SB.x[i] * B.h;
         const by = B.cy + SB.y[i] * B.h;
-        const mx = (ax + bx) / 2 + sc.dx[i] * spread;
-        const my = (ay + by) / 2 + sc.dy[i] * spread;
+        const depth = 0.5 + SA.z[i] * 0.25 + SB.z[i] * 0.25;
+        const bowAmt = dir * spread * bow[i] * depth;
+        const mx = (ax + bx) / 2 + perpX * bowAmt + jitX[i] * spread * 0.16;
+        const my = (ay + by) / 2 + perpY * bowAmt + jitY[i] * spread * 0.16;
         let x = v * v * ax + 2 * v * u * mx + u * u * bx;
         let y = v * v * ay + 2 * v * u * my + u * u * by;
         if (asm < 1) {
@@ -265,30 +294,33 @@ export function ParticleStage() {
         }
         px[i] = x;
         py[i] = y;
-        const edge = SA.e[i] * v + SB.e[i] * u > 0.75 ? 1 : 0;
-        const b = edge * STEPS + Math.min(STEPS - 1, Math.round((SA.g[i] * v + SB.g[i] * u) * (STEPS - 1)));
-        bucket[i] = b;
-        counts[b]++;
+        const ca = table.rgb[SA.swatch[i]];
+        const cbb = table.rgb[SB.swatch[i]];
+        const cr = ca[0] + (cbb[0] - ca[0]) * u;
+        const cg = ca[1] + (cbb[1] - ca[1]) * u;
+        const cbl = ca[2] + (cbb[2] - ca[2]) * u;
+        const bIdx = nearestSwatch(table, cr, cg, cbl);
+        bucket[i] = bIdx;
+        counts[bIdx]++;
       }
-      // counting sort by colour, then one fillStyle per colour
       let acc = 0;
-      const start = new Int32Array(STEPS * 2 + 1);
-      for (let b = 0; b <= STEPS * 2; b++) {
+      const start = new Int32Array(PN + 1);
+      for (let b = 0; b <= PN; b++) {
         start[b] = acc;
         acc += counts[b];
       }
       const fill = start.slice();
-      for (let i = 0; i < N; i++) if (bucket[i] < STEPS * 2) order[fill[bucket[i]]++] = i;
+      for (let i = 0; i < N; i++) if (bucket[i] < PN) order[fill[bucket[i]]++] = i;
 
-      const cols = isDark() ? pal.dark : pal.light;
+      const size = Math.max(1.1, Math.min(phone ? 2.4 : 2.8, (A.h + (B.h - A.h) * u) * (phone ? 0.0085 : 0.005)));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = dustAlpha;
       const half = size / 2;
-      for (let b = 0; b < STEPS * 2; b++) {
+      for (let b = 0; b < PN; b++) {
         const n0 = start[b];
         const n1 = n0 + counts[b];
         if (n1 === n0) continue;
-        ctx.fillStyle = cols[b >= STEPS ? 1 : 0][b % STEPS];
+        ctx.fillStyle = table.hex[b];
         for (let j = n0; j < n1; j++) {
           const i = order[j];
           ctx.fillRect(px[i] - half, py[i] - half, size, size);
@@ -298,7 +330,7 @@ export function ParticleStage() {
       dirty = true;
     };
 
-    // Only run while the hero or the services stage is near the screen.
+    // only run while the hero or the Showcase is near the screen
     const watched = ["home", "services"].map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const seen = new Map<Element, boolean>();
     const io = new IntersectionObserver(
@@ -324,20 +356,19 @@ export function ParticleStage() {
         /* fall back to whatever face is available */
       }
       if (cancelled) return;
-      // the hero 9 first (it's on screen now); the other digits one per tick, so the page never stalls
-      const nine = digitShape("9", N, family);
-      shapes = [nine];
-      shapes[9] = nine;
-      shapes[10] = nine;
+      const dark = isDark();
       started = true;
-      t0 = performance.now();
-      for (let dgt = 1; dgt <= 8; dgt++) {
+      heroT0 = performance.now();
+      digitShape("9", N, family, dark); // the hero, needed immediately
+      const steps: ParticleTarget[] = [];
+      for (let i = 1; i <= 9; i++) steps.push(digitTarget(i));
+      for (const icon of Object.keys(PICTURES) as IconKey[]) steps.push({ kind: "pic", icon });
+      for (const step of steps) {
         await new Promise((res) => setTimeout(res, 0));
         if (cancelled) return;
-        shapes[dgt] = digitShape(String(dgt), N, family);
+        shapeFor(step, dark);
       }
     });
-    // after Lenis (also on GSAP's ticker), so slot positions are this frame's
     gsap.ticker.add(frame);
 
     return () => {
@@ -350,7 +381,39 @@ export function ParticleStage() {
     };
   }, [reduced]);
 
+  // the scroll hand-off: the hero 9 flies down into the Showcase stage as you scroll to it, then
+  // control passes to the Showcase itself (Services.tsx, via bus.ts's goto()/snapTo())
+  const handedOff = useRef(false);
+  useGSAP(() => {
+    if (reduced) return;
+    const stage = document.querySelector('[data-particle-slot="stage"]');
+    if (!stage) return;
+    ScrollTrigger.create({
+      trigger: "#home",
+      start: "top top",
+      endTrigger: stage,
+      end: "top top",
+      onUpdate: (s) => {
+        if (handedOff.current) return;
+        particleBus.from = heroTarget;
+        particleBus.to = digitTarget(1);
+        particleBus.dir = 1;
+        particleBus.u = s.progress;
+        if (s.progress >= 0.999) {
+          handedOff.current = true;
+          particleBus.from = digitTarget(1);
+          fireStageReached();
+        }
+      },
+      onRefresh: (s) => {
+        if (handedOff.current) return;
+        particleBus.from = heroTarget;
+        particleBus.to = digitTarget(1);
+        particleBus.u = s.progress;
+      },
+    });
+  }, [reduced]);
+
   if (reduced) return null;
-  // above the page content (z-10) and below the nav (z-80): only drawn while numbers move
   return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-[15]" aria-hidden="true" />;
 }

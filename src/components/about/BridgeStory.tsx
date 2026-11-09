@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -179,38 +179,51 @@ const STOPS = [
  * with the 9 and two-way traffic, our side), each with its caption. The skyline moves slower than
  * the bridge for depth.
  */
-function PhoneBridge({ reduced }: { reduced: boolean }) {
-  const sc = useRef<HTMLDivElement>(null);
-  const [stop, setStop] = useState(0);
-  const [moved, setMoved] = useState(false);
-  const onScroll = () => {
-    const el = sc.current;
-    if (!el) return;
-    const max = Math.max(1, el.scrollWidth - el.clientWidth);
-    el.style.setProperty("--sx", String(el.scrollLeft));
-    const i = Math.round((el.scrollLeft / max) * 2);
-    setStop((p) => (p === i ? p : i));
-    if (el.scrollLeft > 12) setMoved(true);
-  };
-  const go = (i: number) => {
-    const el = sc.current;
-    if (el) el.scrollTo({ left: ((el.scrollWidth - el.clientWidth) * i) / 2, behavior: reduced ? "auto" : "smooth" });
-  };
+function PhoneBridge({
+  progress,
+  onGo,
+  reduced,
+}: {
+  progress: number;
+  onGo: (index: number) => void;
+  reduced: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const skylineRef = useRef<HTMLDivElement>(null);
+
+  const stop = Math.min(2, Math.max(0, Math.round(progress * 2)));
   const cur = STOPS[stop];
 
+  useEffect(() => {
+    if (reduced) return;
+    const containerWidth = containerRef.current?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 390);
+    const maxScroll = Math.max(0, 1250 - containerWidth);
+    const x = -progress * maxScroll;
+
+    if (stageRef.current) {
+      stageRef.current.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`;
+    }
+    if (skylineRef.current) {
+      skylineRef.current.style.transform = `translate3d(${(-x * 0.45).toFixed(1)}px, 0, 0)`;
+    }
+  }, [progress, reduced]);
+
   return (
-    <div className="mt-6">
+    <div className="mt-3 pb-2 sm:mt-6">
       <div
-        ref={sc}
-        onScroll={onScroll}
+        ref={containerRef}
         role="region"
-        aria-label="The bridge between your business and Nine Labs. Swipe sideways to cross it."
-        tabIndex={0}
-        className="bs-pano -mx-4 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain sm:-mx-8"
+        aria-label="The bridge between your business and Nine Labs. Scroll down to cross it."
+        className="relative -mx-4 overflow-hidden touch-pan-y sm:-mx-8"
       >
-        <div className="bs-stage relative w-[1250px] px-4 pt-2">
+        <div
+          ref={stageRef}
+          className="bs-stage relative w-[1250px] px-4 pt-2 will-change-transform"
+          style={{ transition: "none" }}
+        >
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-            <div className="absolute inset-0" style={{ transform: "translateX(calc(var(--sx, 0) * 0.45px))" }}>
+            <div ref={skylineRef} className="absolute inset-0 will-change-transform">
               <Skyline />
             </div>
           </div>
@@ -222,20 +235,16 @@ function PhoneBridge({ reduced }: { reduced: boolean }) {
               ✓ Results
             </p>
           </div>
-          {/* the three snap stops */}
-          <span className="absolute left-0 top-0 h-px w-px snap-start" aria-hidden="true" />
-          <span className="absolute left-1/2 top-0 h-px w-px snap-center" aria-hidden="true" />
-          <span className="absolute right-0 top-0 h-px w-px snap-end" aria-hidden="true" />
         </div>
       </div>
 
       {/* stops: tap to travel there */}
-      <div className="mt-5 flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[var(--chip-bg)] p-1 shadow-[0_14px_34px_-24px_rgba(53,51,203,.5)]">
+      <div className="mt-4 flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[var(--chip-bg)] p-1 shadow-[0_14px_34px_-24px_rgba(53,51,203,.5)]">
         {STOPS.map((st, i) => (
           <button
             key={st.label}
             type="button"
-            onClick={() => go(i)}
+            onClick={() => onGo(i)}
             aria-pressed={i === stop}
             className={`flex-1 rounded-full px-2 py-2 text-[12.5px] font-semibold transition-colors duration-300 ${
               i === stop ? "bg-[linear-gradient(120deg,var(--nl-purple),var(--nl-blue))] text-paper" : "text-white/60"
@@ -246,15 +255,15 @@ function PhoneBridge({ reduced }: { reduced: boolean }) {
         ))}
       </div>
 
-      <div className="mt-4 min-h-[118px] text-center" aria-live="polite">
-        <p key={`a${stop}`} className="bs-step-in font-display text-[19px] font-semibold leading-tight text-white">
+      <div className="mt-3 min-h-[90px] text-center" aria-live="polite">
+        <p key={`a${stop}`} className="bs-step-in font-display text-[18px] font-semibold leading-tight text-white">
           {cur.s.title}
         </p>
-        <p key={`b${stop}`} className="bs-step-in mx-auto mt-1.5 max-w-[36ch] text-[14.5px] leading-snug text-nl-ink">
+        <p key={`b${stop}`} className="bs-step-in mx-auto mt-1 max-w-[36ch] text-[14px] leading-snug text-nl-ink">
           {cur.s.text}
         </p>
-        <p className={`label-mono mt-3 transition-opacity duration-500 ${moved ? "opacity-0" : "opacity-100"}`} aria-hidden="true">
-          Swipe along the bridge <span className="bs-nudge inline-block">→</span>
+        <p className="label-mono mt-2 text-white/40" aria-hidden="true">
+          Scroll down to cross the bridge ↓
         </p>
       </div>
     </div>
@@ -266,9 +275,8 @@ function PhoneBridge({ reduced }: { reduced: boolean }) {
  *   1. your side: your business with its goals, ideas and feedback (left tower + cable)
  *   2. our side: Nine Labs and its nine activities (right tower, the main span, hangers)
  *   3. the deck joins: two-way traffic, the 9 lights up in the middle, "Results".
- * Nothing pins. Laptop/tablet: a side view that builds as it scrolls up through the screen.
- * Phone: the same bridge at full size in a sideways panorama (PhoneBridge); it builds once as it
- * comes into view. Reduced motion: the finished bridge and all three steps.
+ * Laptop/tablet: a side view that builds as it scrolls up through the screen.
+ * Phone: pinned scroll stage that translates sideways across the three stops as you scroll down.
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
@@ -276,6 +284,8 @@ export function BridgeStory() {
   // phones held sideways: too short for cards over the bridge, so cards sit beside it
   const short = useMediaQuery("(orientation: landscape) and (max-height: 520px)");
   const root = useRef<HTMLDivElement>(null);
+  const stRef = useRef<ScrollTrigger | null>(null);
+  const [phoneProgress, setPhoneProgress] = useState(0);
   const [flap, setFlap] = useState({ cur: 0, prev: 0, k: 0 });
   const step = reduced ? LAST : flap.cur;
 
@@ -298,14 +308,29 @@ export function BridgeStory() {
         .to({}, { duration: 0.15 });
 
       if (!wide) {
-        // phone: the whole build plays once as the panorama comes into view, then the traffic runs
-        tl.eventCallback("onComplete", () => {
-          el.dataset.live = "true";
+        // Phone: pin the whole section so heading + bridge + stops stay in view while scrolling down
+        tl.timeScale(1.4).play();
+        el.dataset.live = "true";
+        const st = ScrollTrigger.create({
+          trigger: el,
+          start: "top 72px",
+          end: () => `+=${Math.round(window.innerHeight * 1.6)}`,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          snap: { snapTo: 0.5, duration: { min: 0.25, max: 0.5 }, delay: 0.08, ease: "power2.inOut" },
+          onUpdate: (self) => {
+            setPhoneProgress(self.progress);
+            el.dataset.live = "true";
+          },
         });
-        ScrollTrigger.create({ trigger: stage, start: "top 85%", once: true, onEnter: () => void tl.timeScale(1.15).play() });
-        return;
+        stRef.current = st;
+        return () => {
+          stRef.current = null;
+        };
       }
-      // laptop / tablet: scroll builds it while the bridge rises through the screen (no pin)
+
+      // Laptop / tablet: scroll builds it while the bridge rises through the screen (no pin)
       const setStep = (p: number) => {
         const i = Math.min(LAST, Math.floor(p * 3 + 0.02));
         setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
@@ -320,10 +345,22 @@ export function BridgeStory() {
         invalidateOnRefresh: true,
         onUpdate: (s) => setStep(s.progress),
       });
+      stRef.current = st;
       setStep(st.progress);
+      return () => {
+        stRef.current = null;
+      };
     },
     { scope: root, dependencies: [reduced, wide, short], revertOnUpdate: true },
   );
+
+  const handleGoToStop = (i: number) => {
+    const st = stRef.current;
+    if (st && !wide) {
+      const target = st.start + (st.end - st.start) * (i / 2);
+      window.scrollTo({ top: target, behavior: "smooth" });
+    }
+  };
 
   const s = steps[step];
   const counter = (
@@ -389,7 +426,7 @@ export function BridgeStory() {
             </p>
           </div>
         ) : (
-          <PhoneBridge reduced={reduced} />
+          <PhoneBridge progress={phoneProgress} onGo={handleGoToStop} reduced={reduced} />
         )}
 
         {/* reduced motion: every step, plainly */}
