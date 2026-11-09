@@ -29,28 +29,10 @@ const HEAD = { cx: 231.8, cy: 51.4, r: 33.3 } as const;
 
 /**
  * Intro only: a full "A" in the logo's weight, drawn on the tail's and the leg's own edge lines.
- * The landing animation starts on "LABS", drops the 9 in, and morphs this A into the leg
- * (point i of A_OUTER → point i of A_TO_LEG; the counter shrinks to nothing).
+ * The landing animation starts on "LABS"; the instant the falling 9 touches it, the A is
+ * swapped for the leg (no in-between frames, so no piece of the A shows through the 9).
  */
-export const A_OUTER = [
-  [134.6, 179.6], [186.6, 5.1], [235, 5.1], [283.4, 5.1], [334.9, 179.6], [264.5, 179.6], [234.8, 118], [205, 179.6],
-] as const;
-export const A_TO_LEG = [
-  [247.8, 179.6], [282, 137.5], [297.8, 115], [309.5, 93.6], [334.9, 179.6], [300, 179.6], [280, 179.6], [260, 179.6],
-] as const;
-export const A_COUNTER = [[234.9, 50], [241.8, 74], [228, 74]] as const;
-
-/** Path for the A at morph progress `t` (0 = "A", 1 = the leg). */
-export function aPath(t: number) {
-  const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
-  const outer = A_OUTER.map(([x, y], i) => `${lerp(x, A_TO_LEG[i][0], t).toFixed(1)} ${lerp(y, A_TO_LEG[i][1], t).toFixed(1)}`);
-  // the counter closes in the first 40% of the morph
-  const k = Math.min(1, t / 0.4);
-  const cx = 234.9;
-  const cy = 66;
-  const counter = A_COUNTER.map(([x, y]) => `${lerp(x, cx, k).toFixed(1)} ${lerp(y, cy, k).toFixed(1)}`);
-  return `M${outer.join("L")}ZM${counter.join("L")}Z`;
-}
+const A_PATH = "M134.6 179.6L186.6 5.1H283.4L334.9 179.6H264.5L234.8 118L205 179.6ZM234.9 50L241.8 74H228Z";
 
 /**
  * The Nine Labs wordmark, "L9BS": "LABS" with the A built from a 9 — the 9's round head sits on
@@ -75,7 +57,7 @@ export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { cl
 
       <g fill={`url(#${grad})`}>
         <path data-part="L" d={P.L} />
-        <path data-part="A" d={aPath(0)} fillRule="evenodd" opacity="0" />
+        <path data-part="A" d={A_PATH} fillRule="evenodd" opacity="0" />
         <path data-part="leg" d={P.leg} />
         <path data-part="B" d={P.B} fillRule="evenodd" />
         <path data-part="S" d={P.S} />

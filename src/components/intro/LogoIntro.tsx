@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/scroll";
 import { useDemo } from "@/components/providers/DemoSettings";
-import { LogoMark, LogoTagline, aPath } from "@/components/brand/LogoMark";
+import { LogoMark, LogoTagline } from "@/components/brand/LogoMark";
 import { introPlaying, markIntroDone } from "./introBus";
 
 /**
  * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the site's black.
  *
  *  1. The word "LABS" is on screen, still. The 9 is invisible.
- *  2. Only the 9 moves: it appears above and falls onto the A. On impact the A takes the 9 in
- *     (it becomes the triangle leg) and the 9 settles with one small bounce: the logo, "L9BS".
+ *  2. Only the 9 moves: it appears above and falls onto the A. The instant it touches, the A
+ *     becomes the triangle leg and the 9 settles with one small bounce: the logo, "L9BS".
  *  3. "NINE LABS / SOLUTIONS" fades in underneath.
  *  4. The logo flies to the nav (top-left) and lands exactly on the nav logo; the overlay fades.
  *     Only then does the hero start (it waits on `markIntroDone`).
@@ -61,7 +61,6 @@ export function LogoIntro() {
       setGone(true);
     };
 
-    const morph = { t: 0 };
     const HIT = 1.15; // the moment the 9 lands on the A
     const tl = gsap.timeline();
     // Safety net: never leave a visitor stuck behind the overlay (throttled/low-power devices,
@@ -75,10 +74,9 @@ export function LogoIntro() {
     tl.set(nine, { y: -330, opacity: 0 }, 0)
       .to(nine, { opacity: 1, duration: 0.2, ease: "none" }, HIT - 0.5)
       .to(nine, { y: 0, duration: 0.5, ease: "power3.in" }, HIT - 0.5)
-      // the A takes the 9 in: it becomes the triangle leg
-      .to(morph, { t: 1, duration: 0.24, ease: "power3.out", onUpdate: () => A?.setAttribute("d", aPath(morph.t)) }, HIT)
-      .set(A, { opacity: 0 }, HIT + 0.24)
-      .set(part("leg"), { opacity: 1 }, HIT + 0.24)
+      // the instant the 9 touches the A (its head reaches the A's top), the A becomes the leg
+      .set(A, { opacity: 0 }, HIT - 0.045)
+      .set(part("leg"), { opacity: 1 }, HIT - 0.045)
       // one small bounce
       .to(nine, { y: -14, duration: 0.13, ease: "power2.out" }, HIT)
       .to(nine, { y: 0, duration: 0.2, ease: "power2.in" }, HIT + 0.13)
