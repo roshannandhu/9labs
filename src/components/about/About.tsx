@@ -125,7 +125,7 @@ export function About() {
                 spotlightColor={settings.purple}
                 intensity={0.22}
                 spotlightSize={260}
-                style={{ ["--spotlight-card-surface" as string]: "linear-gradient(160deg,#ffffff,#f4eef5)" }}
+                style={{ ["--spotlight-card-surface" as string]: "linear-gradient(160deg,var(--surface-1),var(--surface-2))" }}
               >
                 <div className="relative flex h-full flex-col">
                   <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.03] text-nl-blue-soft">

@@ -38,17 +38,6 @@ const DemoContext = createContext<Ctx | null>(null);
 const STORAGE_KEY = "nl-demo-settings-v8"; // v8: light lavender theme (old saved colours would override it)
 
 
-function mixWithWhite(hex: string, amount: number) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  const mix = (c: number) => Math.round(c + (255 - c) * amount);
-  return `#${[mix(r), mix(g), mix(b)].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-}
-
 function readStored(): Partial<DemoSettings> {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -86,7 +75,6 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--nl-blue", settings.blue);
-    root.style.setProperty("--nl-blue-soft", mixWithWhite(settings.blue, 0.42));
     root.style.setProperty("--nl-purple", settings.purple);
     root.style.setProperty("--grid-alpha", String(settings.grid));
     if (settings.motion === "system") delete root.dataset.motion;

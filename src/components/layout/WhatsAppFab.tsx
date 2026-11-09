@@ -41,7 +41,7 @@ export function WhatsAppFab() {
           rel="noopener noreferrer"
           aria-label="Chat with Nine Labs on WhatsApp"
           data-cursor="Chat"
-          className="group fixed bottom-5 right-5 z-[70] flex items-center gap-0 rounded-full border border-white/12 bg-paper/85 p-1.5 text-white shadow-[0_18px_50px_-18px_rgba(53,51,203,.35)] backdrop-blur-xl sm:bottom-6 sm:right-6"
+          className="group fixed bottom-5 right-5 z-[70] flex items-center gap-0 rounded-full border border-white/12 bg-[var(--chip-bg)] p-1.5 text-white shadow-[0_18px_50px_-18px_rgba(53,51,203,.35)] backdrop-blur-xl sm:bottom-6 sm:right-6"
           initial={{ opacity: 0, scale: 0.6, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.6, y: 20 }}

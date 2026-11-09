@@ -9,33 +9,79 @@
 /*  Brand tokens (runtime-overridable: Concept Lab now, Payload later) */
 /* ------------------------------------------------------------------ */
 :root {
-  /* Light theme: the page is the logo's own lavender "paper", text is the logo's near-black ink.
-     --fg-rgb is the foreground (Tailwind's `white` maps to it); `.on-dark` flips it back to white
-     inside the few dark islands (book covers, the quiz shader block, the demo panel). */
+  /* Two themes, set on <html data-theme> pre-paint (follows the device, toggle in the nav).
+     Light (default): the page is the logo's own lavender "paper", text the logo's near-black ink.
+     --fg-rgb is the foreground (Tailwind's `white` maps to it); `.on-dark` flips it to white inside
+     the dark islands (book covers, the quiz shader block). The logo keeps its exact colours in both
+     themes — in dark it sits on its own lavender badge (.logo-paper). */
   color-scheme: light;
   --fg-rgb: 14 12 32;
   --nl-bg: #e9ddeb;
   --nl-panel: #f4eef5;
   /* UI accents follow the client's logo (Concept Lab overrides --nl-blue / --nl-purple at runtime) */
   --nl-blue: #5a48f5;
-  --nl-blue-soft: #4c3fd9;
+  --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 82%, #000);
   --nl-purple: #6f55e8;
   --nl-indigo: #3530d0;
   --nl-lavender: #e9ddeb; /* the logo's paper colour (= --nl-bg) */
   --nl-purple-deep: #7c4dff;
   --nl-ink: #474156;
   --nl-dim: #776f86;
+  --surface-1: #ffffff;
+  --surface-2: #f4eef5;
+  --chip-bg: rgb(255 255 255 / 0.85);
+  --glass-tint-base: rgb(255 255 255 / 0.5);
+  --glass-tint-strong: rgb(255 255 255 / 0.88);
+  --faux-a: rgb(255 255 255 / 0.75);
+  --faux-b: rgb(250 246 252 / 0.62);
+  --flap-a: #ffffff;
+  --flap-b: #f5f0f7;
+  --flap-c: #f8f4f9;
+  --flap-d: #ede6ef;
+  --grad-start: var(--nl-indigo);
+  --logo-pad-x: 0px;
+  --logo-pad-y: 0px;
   --grid-alpha: 0.06;
   --nav-h: 72px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --fg-rgb: 255 255 255;
+  --nl-bg: #050507;
+  --nl-panel: #0a0b10;
+  --nl-ink: #b8bcc8;
+  --nl-dim: #7a8090;
+  --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 58%, #fff);
+  --surface-1: #0d0f17;
+  --surface-2: #07080c;
+  --chip-bg: rgb(11 13 18 / 0.85);
+  --glass-tint-base: rgb(10 11 18 / 0.66);
+  --glass-tint-strong: rgb(10 11 16 / 0.85);
+  --faux-a: rgb(17 19 32 / 0.8);
+  --faux-b: rgb(8 9 14 / 0.76);
+  --flap-a: #141724;
+  --flap-b: #0b0c13;
+  --flap-c: #10121c;
+  --flap-d: #090a10;
+  --grad-start: #fff;
+  /* the logo's black end needs its lavender paper on a dark page */
+  --logo-pad-x: 12px;
+  --logo-pad-y: 9px;
 }
 .on-dark {
   color-scheme: dark;
   --fg-rgb: 255 255 255;
   --nl-ink: #b8bcc8;
   --nl-dim: #7a8090;
-  --nl-blue-soft: #a99ff9;
+  --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 58%, #fff);
+}
+/* light islands that stay light in both themes (book pages) */
+.paper {
+  --fg-rgb: 14 12 32;
+  --nl-ink: #474156;
+  --nl-dim: #776f86;
 }
 
 @theme inline {
@@ -159,7 +205,7 @@ html.lenis body {
  * `glass-faux` is the same look without backdrop-filter, for elements inside 3D scenes.
  */
 @utility glass {
-  --glass-tint: rgb(255 255 255 / 0.5);
+  --glass-tint: var(--glass-tint-base);
   background:
     linear-gradient(150deg, rgb(var(--fg-rgb) / 0.075), rgb(var(--fg-rgb) / 0.018) 40%, transparent 70%),
     var(--glass-tint);
@@ -194,7 +240,7 @@ html.lenis body {
 @utility glass-faux {
   background:
     linear-gradient(150deg, rgb(var(--fg-rgb) / 0.09), rgb(var(--fg-rgb) / 0.02) 45%, rgb(var(--fg-rgb) / 0.01)),
-    linear-gradient(160deg, rgb(255 255 255 / 0.72), rgb(250 246 252 / 0.6));
+    linear-gradient(160deg, var(--faux-a), var(--faux-b));
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.8),
     inset 0 -1px 0 rgb(0 0 0 / 0.05);
@@ -219,7 +265,7 @@ html.lenis body {
 }
 
 @utility text-gradient {
-  background: linear-gradient(100deg, var(--nl-indigo) 0%, var(--nl-blue) 45%, var(--nl-purple) 100%);
+  background: linear-gradient(100deg, var(--grad-start) 0%, var(--nl-blue) 45%, var(--nl-purple) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -939,7 +985,7 @@ html.has-cursor textarea {
   right: 0;
   height: 50%;
   overflow: hidden;
-  background: linear-gradient(#ffffff, #f5f0f7);
+  background: linear-gradient(var(--flap-a), var(--flap-b));
   border: 1px solid rgb(var(--fg-rgb) / 0.07);
 }
 .flap-half > span {
@@ -962,7 +1008,7 @@ html.has-cursor textarea {
   bottom: 0;
   border-radius: 0 0 0.09em 0.09em;
   transform-origin: 50% 0;
-  background: linear-gradient(#f8f4f9, #ede6ef);
+  background: linear-gradient(var(--flap-c), var(--flap-d));
 }
 .flap-bottom > span { bottom: 0; }
 .flap-fold-top {
@@ -1043,7 +1089,7 @@ html.has-cursor textarea {
   border-color: transparent;
   background:
     linear-gradient(150deg, rgb(var(--fg-rgb) / 0.1), rgb(var(--fg-rgb) / 0.022) 42%, rgb(var(--fg-rgb) / 0.01)),
-    linear-gradient(160deg, rgb(255 255 255 / 0.78), rgb(250 246 252 / 0.66));
+    linear-gradient(160deg, var(--faux-a), var(--faux-b));
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.8),
     inset 0 -1px 0 rgb(0 0 0 / 0.05);
@@ -1160,7 +1206,7 @@ html[data-intro="playing"] .rise-in {
   animation-play-state: paused;
 }
 .logo-intro__bg {
-  background: var(--nl-bg);
+  background: var(--nl-lavender); /* the logo's paper, in both themes */
 }
 /* frame 1 is the logo without its 9 (visible from first paint); only the 9 waits */
 .logo-intro [data-part="nine"],
@@ -1175,10 +1221,20 @@ html[data-intro="playing"] .rise-in {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgb(var(--fg-rgb) / 0.32);
+  color: rgb(3 3 3 / 0.38); /* on the logo's lavender in both themes */
   opacity: 0;
 }
 
+/* The logo's own lavender paper: invisible in light (same as the page), a badge in dark. */
+.logo-paper {
+  background: var(--nl-lavender);
+  padding: var(--logo-pad-y) var(--logo-pad-x);
+  border-radius: 12px;
+}
+html[data-theme="dark"] .logo-paper--lg {
+  padding: 18px 22px 20px;
+  border-radius: 18px;
+}
 /* wordmark + tagline lockup: the tagline is sized in % of the wordmark's width (cqw), as in the logo file */
 .logo-lockup {
   container-type: inline-size;

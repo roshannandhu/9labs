@@ -11,6 +11,7 @@ import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { ConceptLab } from "@/components/lab/ConceptLab";
 import { LogoIntro } from "@/components/intro/LogoIntro";
 import { INTRO_BOOT_SCRIPT } from "@/components/intro/introBus";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 const title = "Nine Labs Solutions — Marketing, Events & Technology in Dubai";
 const description = site.hero.sub;
@@ -47,7 +48,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#e9ddeb",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e9ddeb" },
+    { media: "(prefers-color-scheme: dark)", color: "#050507" },
+  ],
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -59,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         {/* Pre-paint: decide whether the logo landing animation plays (first visit this session). */}
-        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT + INTRO_BOOT_SCRIPT }} />
       </head>
       <body>
         <a

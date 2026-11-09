@@ -8,12 +8,12 @@ import { LogoMark, LogoTagline } from "@/components/brand/LogoMark";
 import { introPlaying, markIntroDone } from "./introBus";
 
 /**
- * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the logo's lavender.
+ * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the logo's lavender (both themes).
  *
  *  1. The logo is on screen without its 9 (L, the A's triangle, B, S), still. The 9 is invisible.
  *  2. Only the 9 moves: it appears above and falls into the A and the 9 settles with one small bounce: the logo, "L9BS".
  *  3. "NINE LABS / SOLUTIONS" fades in underneath.
- *  4. The logo flies to the nav (top-left) and lands exactly on the nav logo; the overlay fades.
+ *  4. The lavender shrinks into the nav logo's paper while the logo flies onto the nav logo.
  *     Only then does the hero start (it waits on `markIntroDone`).
  *
  * The overlay is server-rendered and shown by CSS only while `<html data-intro="playing">`
@@ -80,12 +80,15 @@ export function LogoIntro() {
       .to({}, { duration: 0.45 })
       // fly onto the nav logo, overlay fades
       .add(() => {
-        const target = document.querySelector<HTMLElement>("[data-logo-9] svg")?.getBoundingClientRect();
+        // the lavender screen shrinks into the nav logo's lavender paper while the logo flies onto it
+        const paper = document.querySelector<HTMLElement>("[data-logo-9]");
+        const target = paper?.querySelector("svg")?.getBoundingClientRect();
+        const box = paper?.getBoundingClientRect();
         const from = wrap.getBoundingClientRect();
         const dur = skipped ? 0.45 : 0.85;
         fly = gsap.timeline({ onComplete: finish });
         fly.to([tagEl, hintEl], { opacity: 0, duration: 0.25, ease: "power2.in" }, 0);
-        if (target && target.width > 0) {
+        if (paper && target && box && target.width > 0) {
           fly.to(
             wrap,
             {
@@ -97,10 +100,18 @@ export function LogoIntro() {
             },
             0.05,
           );
+          const W = window.innerWidth;
+          const H = window.innerHeight;
+          const r = getComputedStyle(paper).borderTopLeftRadius || "12px";
+          fly.fromTo(
+            bgEl,
+            { clipPath: "inset(0px 0px 0px 0px round 0px)" },
+            { clipPath: `inset(${box.top}px ${W - box.right}px ${H - box.bottom}px ${box.left}px round ${r})`, duration: dur, ease: "expo.inOut" },
+            0.05,
+          );
         } else {
-          fly.to(wrap, { opacity: 0, duration: 0.4 }, 0.05);
+          fly.to([wrap, bgEl], { opacity: 0, duration: 0.4 }, 0.05);
         }
-        fly.to(bgEl, { opacity: 0, duration: dur * 0.6, ease: "power1.out" }, 0.05 + dur * 0.4);
       });
 
     // Any input skips ahead (fast-forwards to the fly-in; nothing is cut off mid-way).

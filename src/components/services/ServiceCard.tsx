@@ -36,7 +36,7 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
       id={`service-${s.slug}`}
       data-on={isOn ? "true" : "false"}
       data-mode={mode}
-      className={`svc-card group relative flex flex-col overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(160deg,#ffffff_0%,#f4eef5_60%)] p-5 sm:p-8 lsp:p-5 ${className}`}
+      className={`svc-card group relative flex flex-col overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(160deg,var(--surface-1)_0%,var(--surface-2)_60%)] p-5 sm:p-8 lsp:p-5 ${className}`}
     >
       <span className="svc-glow pointer-events-none absolute inset-0 rounded-[inherit]" aria-hidden="true" />
 

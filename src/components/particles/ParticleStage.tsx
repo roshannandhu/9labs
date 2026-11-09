@@ -7,22 +7,22 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { particleBus } from "./bus";
 import { digitShape, rng, type Shape } from "./targets";
 
-// The brief's colours for the 9: electric-blue body, neon purple towards the edges
-// (deepened a little so they hold on the lavender page).
-const BLUE = "#3b82ff";
-const MID = "#5a63f0";
-const PURPLE = "#7c4dff";
+// The brief's colours for the 9: electric-blue body, neon purple towards the edges.
+// Dark theme: glowing dots added together (white core). Light theme: solid dots, purple deepened
+// so they hold on the lavender page.
+const DARK = { glow: true, colors: ["#3b82ff", "#7f86ff", "#b98cff"] };
+const LIGHT = { glow: false, colors: ["#3b82ff", "#5a63f0", "#7c4dff"] };
 
-function sprite(color: string, size = 32) {
+function sprite(color: string, glow: boolean, size = 32) {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
   if (!g) return c;
   const r = size / 2;
   const grd = g.createRadialGradient(r, r, 0, r, r, r);
-  grd.addColorStop(0, color);
-  grd.addColorStop(0.3, color);
-  grd.addColorStop(0.5, `${color}88`);
+  grd.addColorStop(0, glow ? "#ffffff" : color);
+  grd.addColorStop(glow ? 0.16 : 0.3, color);
+  grd.addColorStop(glow ? 0.42 : 0.5, glow ? `${color}66` : `${color}88`);
   grd.addColorStop(1, `${color}00`);
   g.fillStyle = grd;
   g.fillRect(0, 0, size, size);
@@ -85,7 +85,10 @@ export function ParticleStage() {
       }
       return { dx, dy };
     });
-    const sprites = [sprite(BLUE), sprite(MID), sprite(PURPLE)];
+    const sets = {
+      dark: DARK.colors.map((c) => sprite(c, true)),
+      light: LIGHT.colors.map((c) => sprite(c, false)),
+    };
 
     let shapes: Shape[] = [];
     let raf = 0;
@@ -141,8 +144,11 @@ export function ParticleStage() {
       const asm = clamp01((now - t0) / 1700);
       const v = 1 - u;
       const tw = now * 0.0016;
+      const dark = document.documentElement.dataset.theme === "dark";
+      const sprites = dark ? sets.dark : sets.light;
 
-            for (let i = 0; i < N; i++) {
+      ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
+      for (let i = 0; i < N; i++) {
         const ax = A.cx + SA.x[i] * A.h;
         const ay = A.cy + SA.y[i] * A.h;
         const bx = B.cx + SB.x[i] * B.h;
@@ -162,6 +168,7 @@ export function ParticleStage() {
         ctx.drawImage(sprites[edge > 0.7 ? 2 : edge > 0.25 ? 1 : 0], x - half, y - half, size, size);
       }
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
     };
 
     // Only run while the hero or the services stage is near the screen.

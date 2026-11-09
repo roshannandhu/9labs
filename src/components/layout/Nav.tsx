@@ -6,6 +6,7 @@ import { useQuiz } from "@/components/providers/QuizProvider";
 import Magnet from "@/components/reactbits/Magnet";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Nav() {
   const quiz = useQuiz();
@@ -49,7 +50,7 @@ export function Nav() {
     <header className="fixed inset-x-0 top-0 z-[80]">
       {/* Once scrolled, the bar condenses into a floating liquid-glass pill. */}
       <div
-        className={`glass pointer-events-none absolute left-1/2 top-2 h-[calc(var(--nav-h)-16px)] w-[calc(100%-12px)] -translate-x-1/2 rounded-[22px] transition-[opacity,scale] duration-500 ease-[cubic-bezier(.16,1,.3,1)] [--glass-tint:rgb(255_255_255/0.55)] sm:w-[min(calc(100%-24px),1300px)] sm:rounded-full ${
+        className={`glass pointer-events-none absolute left-1/2 top-2 h-[calc(var(--nav-h)-16px)] w-[calc(100%-12px)] -translate-x-1/2 rounded-[22px] transition-[opacity,scale] duration-500 ease-[cubic-bezier(.16,1,.3,1)]  sm:w-[min(calc(100%-24px),1300px)] sm:rounded-full ${
           scrolled || menuOpen ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
         }`}
         aria-hidden="true"
@@ -82,6 +83,7 @@ export function Nav() {
               </button>
             </Magnet>
           </span>
+          <ThemeToggle />
           <button
             type="button"
             className="relative grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-white/[0.03] text-white lg:hidden"
