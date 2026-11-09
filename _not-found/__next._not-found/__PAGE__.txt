@@ -1,7 +1,7 @@
 1:"$Sreact.fragment"
 2:"/9labs/_next/static/chunks/2iejvcy35d88h.js"
-3:"/9labs/_next/static/chunks/0xyitydhrgsvk.js"
-4:"/9labs/_next/static/chunks/1r19uxnznf7xo.js"
+3:"/9labs/_next/static/chunks/2q8_n9dwk823x.js"
+4:"/9labs/_next/static/chunks/29pooanrb60ot.js"
 5:"/9labs/_next/static/chunks/3g-zpg3sl5wkq.js"
 6:"DemoSettingsProvider"
 7:I[68841,["$2","$3","$4","$5"],"$6"]
@@ -21,41 +21,45 @@ f:I[14167,["$2","$3","$4","$5"],"WhatsAppFab"]
 1d:I[54681,["$c"],"$1c"]
 1e:"MetadataBoundary"
 1f:I[54681,["$c"],"$1e"]
-:HL["/9labs/_next/static/chunks/11ok3nidhnyt6.css","style"]
+:HL["/9labs/_next/static/chunks/1r3mv3qihh1zy.css","style"]
 :HL["/9labs/_next/static/chunks/270ftmcfdp_oy.css","style"]
 13:X
 16:X
 16:C
 17:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":"$0:t:t:d:r:props:children:1:props:children:1:props:children:1:props:children:props:children:3:props:notFound:0:1:props:style","children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":"$0:t:t:d:r:props:children:1:props:children:1:props:children:1:props:children:props:children:3:props:notFound:0:1:props:children:props:children:1:props:style","children":404}],["$","div",null,{"style":"$0:t:t:d:r:props:children:1:props:children:1:props:children:1:props:children:props:children:3:props:notFound:0:1:props:children:props:children:2:props:style","children":["$","h2",null,{"style":"$0:t:t:d:r:props:children:1:props:children:1:props:children:1:props:children:props:children:3:props:notFound:0:1:props:children:props:children:2:props:children:props:style","children":"This page could not be found."}]}]]}]}]],null,["$","$L18",null,{"children":["$","$19",null,{"name":"Next.MetadataOutlet","children":"$@1a"}]}]]}],"p":"$@1b","v":null,"s":"$13"}}]]
 14:[["children",{"s":"/_not-found","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$Ld",null,{"parallelRouterKey":"children","template":["$","$Le",null,{}]}]]}],"p":"$@15","v":"$16","s":"$13"},"c":"$Q17"}]]
-0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/11ok3nidhnyt6.css","precedence":"next"}],["$","link","1",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/270ftmcfdp_oy.css","precedence":"next"}],["$","script","script-0",{"src":"/9labs/_next/static/chunks/2iejvcy35d88h.js","async":true}],["$","script","script-1",{"src":"/9labs/_next/static/chunks/0xyitydhrgsvk.js","async":true}],["$","script","script-2",{"src":"/9labs/_next/static/chunks/1r19uxnznf7xo.js","async":true}],["$","script","script-3",{"src":"/9labs/_next/static/chunks/3g-zpg3sl5wkq.js","async":true}]],["$","html",null,{"lang":"en","className":"O8mbuW_variable Gm-xzG_variable -_8H8W_variable ucDktq_variable lBFYKq_variable","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{if((/[?&]intro\\b/.test(location.search)||!sessionStorage.getItem(\"nl-intro-seen\"))&&!matchMedia(\"(prefers-reduced-motion: reduce)\").matches&&!/[?&]motion=reduce/.test(location.search)){document.documentElement.dataset.intro=\"playing\"}}catch(e){}"}}]}],["$","body",null,{"children":[["$","a",null,{"href":"#main","className":"sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4","children":"Skip to content"}],["$","$L7",null,{"children":["$","$L8",null,{"children":[["$","$L9",null,{}],["$","$La",null,{}],["$","$Lb",null,{}],["$","$Ld",null,{"parallelRouterKey":"children","template":["$","$Le",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}],["$","$Lf",null,{}],["$","$L10",null,{}],["$","$L11",null,{}]]}]}]]}]]}]]}],"p":"$@12","v":null,"s":"$13"},"c":"$Q14"},"h":{"r":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L1d",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#e9ddeb"}],["$","meta","3",{"name":"color-scheme","content":"dark"}]]}],["$","$L1f",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$19",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}],["$","meta","1",{"name":"description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}],["$","meta","2",{"name":"application-name","content":"Nine Labs Solutions"}],["$","meta","3",{"name":"keywords","content":"marketing agency Dubai,digital marketing Dubai,social media marketing UAE,events and trade shows Dubai,AI consultancy Dubai,IT consultancy UAE,video production Dubai,PR agency Dubai,Dubai South"}],["$","meta","4",{"name":"robots","content":"noindex, nofollow"}],["$","link","5",{"rel":"canonical","href":"https://www.ninelabs.example/"}],["$","meta","6",{"name":"format-detection","content":"telephone=no"}],["$","meta","7",{"property":"og:title","content":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}],["$","meta","8",{"property":"og:description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}],"$L20","$L21","$L22","$L23","$L24","$L25","$L26","$L27","$L28","$L29","$L2a","$L2b","$L2c","$L2d","$L2e","$L2f","$L30","$L31","$L32"]}]}],null]}],"$L33"]}],"p":"$@34","v":null,"s":"$13"}},"a":"$@35","u":"$@36","b":"zboj9nc86OFLI8s5_edCY"}
-37:I[74407,["$c"],"IconMark"]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/1r3mv3qihh1zy.css","precedence":"next"}],["$","link","1",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/270ftmcfdp_oy.css","precedence":"next"}],["$","script","script-0",{"src":"/9labs/_next/static/chunks/2iejvcy35d88h.js","async":true}],["$","script","script-1",{"src":"/9labs/_next/static/chunks/2q8_n9dwk823x.js","async":true}],["$","script","script-2",{"src":"/9labs/_next/static/chunks/29pooanrb60ot.js","async":true}],["$","script","script-3",{"src":"/9labs/_next/static/chunks/3g-zpg3sl5wkq.js","async":true}]],["$","html",null,{"lang":"en","className":"O8mbuW_variable Gm-xzG_variable -_8H8W_variable ucDktq_variable lBFYKq_variable","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var t=localStorage.getItem(\"nl-theme\");if(t!==\"light\"&&t!==\"dark\"){t=matchMedia(\"(prefers-color-scheme: dark)\").matches?\"dark\":\"light\"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme=\"light\"}try{if((/[?&]intro\\b/.test(location.search)||!sessionStorage.getItem(\"nl-intro-seen\"))&&!matchMedia(\"(prefers-reduced-motion: reduce)\").matches&&!/[?&]motion=reduce/.test(location.search)){document.documentElement.dataset.intro=\"playing\"}}catch(e){}"}}]}],["$","body",null,{"children":[["$","a",null,{"href":"#main","className":"sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4","children":"Skip to content"}],["$","$L7",null,{"children":["$","$L8",null,{"children":[["$","$L9",null,{}],["$","$La",null,{}],["$","$Lb",null,{}],["$","$Ld",null,{"parallelRouterKey":"children","template":["$","$Le",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}],["$","$Lf",null,{}],["$","$L10",null,{}],["$","$L11",null,{}]]}]}]]}]]}]]}],"p":"$@12","v":null,"s":"$13"},"c":"$Q14"},"h":{"r":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L1d",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#e9ddeb","media":"(prefers-color-scheme: light)"}],["$","meta","3",{"name":"theme-color","content":"#050507","media":"(prefers-color-scheme: dark)"}],["$","meta","4",{"name":"color-scheme","content":"dark"}]]}],["$","$L1f",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$19",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}],["$","meta","1",{"name":"description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}],["$","meta","2",{"name":"application-name","content":"Nine Labs Solutions"}],["$","meta","3",{"name":"keywords","content":"marketing agency Dubai,digital marketing Dubai,social media marketing UAE,events and trade shows Dubai,AI consultancy Dubai,IT consultancy UAE,video production Dubai,PR agency Dubai,Dubai South"}],["$","meta","4",{"name":"robots","content":"noindex, nofollow"}],"$L20","$L21","$L22","$L23","$L24","$L25","$L26","$L27","$L28","$L29","$L2a","$L2b","$L2c","$L2d","$L2e","$L2f","$L30","$L31","$L32","$L33","$L34","$L35","$L36"]}]}],null]}],"$L37"]}],"p":"$@38","v":null,"s":"$13"}},"a":"$@39","u":"$@3a","b":"hGMpj5H69z_NSxy0-83Lc"}
+3b:I[74407,["$c"],"IconMark"]
 1a:null
-20:["$","meta","9",{"property":"og:url","content":"https://www.ninelabs.example/"}]
-21:["$","meta","10",{"property":"og:site_name","content":"Nine Labs Solutions"}]
-22:["$","meta","11",{"property":"og:locale","content":"en_AE"}]
-23:["$","meta","12",{"property":"og:image","content":"https://www.ninelabs.example/opengraph-image?95268af13126774f"}]
-24:["$","meta","13",{"property":"og:image:type","content":"image/png"}]
-25:["$","meta","14",{"property":"og:image:width","content":"1200"}]
-26:["$","meta","15",{"property":"og:image:height","content":"630"}]
-27:["$","meta","16",{"property":"og:image:alt","content":"Nine Labs Solutions — Marketing, events and technology, built to deliver results."}]
-28:["$","meta","17",{"property":"og:type","content":"website"}]
-29:["$","meta","18",{"name":"twitter:card","content":"summary_large_image"}]
-2a:["$","meta","19",{"name":"twitter:title","content":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}]
-2b:["$","meta","20",{"name":"twitter:description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}]
-2c:["$","meta","21",{"name":"twitter:image","content":"https://www.ninelabs.example/opengraph-image?95268af13126774f"}]
-2d:["$","meta","22",{"name":"twitter:image:alt","content":"Nine Labs Solutions — Marketing, events and technology, built to deliver results."}]
-2e:["$","meta","23",{"name":"twitter:image:type","content":"image/png"}]
-2f:["$","meta","24",{"name":"twitter:image:width","content":"1200"}]
-30:["$","meta","25",{"name":"twitter:image:height","content":"630"}]
-31:["$","link","26",{"rel":"icon","href":"/9labs/icon.svg?icon.1683i-wv8hzs8.svg","sizes":"any","type":"image/svg+xml"}]
-32:["$","$L37","27",{}]
-33:["$","meta",null,{"name":"next-size-adjust","content":""}]
+20:["$","link","5",{"rel":"canonical","href":"https://www.ninelabs.example/"}]
+21:["$","meta","6",{"name":"format-detection","content":"telephone=no"}]
+22:["$","meta","7",{"property":"og:title","content":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}]
+23:["$","meta","8",{"property":"og:description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}]
+24:["$","meta","9",{"property":"og:url","content":"https://www.ninelabs.example/"}]
+25:["$","meta","10",{"property":"og:site_name","content":"Nine Labs Solutions"}]
+26:["$","meta","11",{"property":"og:locale","content":"en_AE"}]
+27:["$","meta","12",{"property":"og:image","content":"https://www.ninelabs.example/opengraph-image?95268af13126774f"}]
+28:["$","meta","13",{"property":"og:image:type","content":"image/png"}]
+29:["$","meta","14",{"property":"og:image:width","content":"1200"}]
+2a:["$","meta","15",{"property":"og:image:height","content":"630"}]
+2b:["$","meta","16",{"property":"og:image:alt","content":"Nine Labs Solutions — Marketing, events and technology, built to deliver results."}]
+2c:["$","meta","17",{"property":"og:type","content":"website"}]
+2d:["$","meta","18",{"name":"twitter:card","content":"summary_large_image"}]
+2e:["$","meta","19",{"name":"twitter:title","content":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}]
+2f:["$","meta","20",{"name":"twitter:description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}]
+30:["$","meta","21",{"name":"twitter:image","content":"https://www.ninelabs.example/opengraph-image?95268af13126774f"}]
+31:["$","meta","22",{"name":"twitter:image:alt","content":"Nine Labs Solutions — Marketing, events and technology, built to deliver results."}]
+32:["$","meta","23",{"name":"twitter:image:type","content":"image/png"}]
+33:["$","meta","24",{"name":"twitter:image:width","content":"1200"}]
+34:["$","meta","25",{"name":"twitter:image:height","content":"630"}]
+35:["$","link","26",{"rel":"icon","href":"/9labs/icon.svg?icon.1683i-wv8hzs8.svg","sizes":"any","type":"image/svg+xml"}]
+36:["$","$L3b","27",{}]
+37:["$","meta",null,{"name":"next-size-adjust","content":""}]
 13:300
-36:true
+3a:true
 13:C
-35:0
+39:0
 15:"$undefined"
 12:"$undefined"
-34:"$undefined"
+38:"$undefined"
 1b:"$undefined"
