@@ -10,7 +10,19 @@
  * own size. `e` is an edge factor (1 = on the outline, 0 = deep inside); `g` is the horizontal
  * position across the digit (0 = left, 1 = right), used for the logo gradient.
  */
-export type Shape = { x: Float32Array; y: Float32Array; e: Float32Array; g: Float32Array };
+export type Shape = {
+  x: Float32Array;
+  y: Float32Array;
+  e: Float32Array;
+  g: Float32Array;
+  /** the digit's height as a fraction of the sampling canvas (to draw the solid glyph at the same size) */
+  hr: number;
+  /** the digit's width ÷ height (so a slot can make sure a wide digit still fits) */
+  wr: number;
+};
+
+/** Font size used for sampling, as a fraction of the square canvas (the solid glyph uses the same). */
+export const GLYPH_SIZE = 0.78;
 
 const cache = new Map<string, Shape>();
 const DIRS = [
@@ -49,7 +61,7 @@ export function digitShape(ch: string, n: number, family: string): Shape {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.font = `900 ${Math.round(S * 0.78)}px ${family}`;
+  ctx.font = `900 ${Math.round(S * GLYPH_SIZE)}px ${family}`;
   const m = ctx.measureText(ch);
   const asc = m.actualBoundingBoxAscent;
   const desc = m.actualBoundingBoxDescent;
@@ -172,7 +184,7 @@ export function digitShape(ch: string, n: number, family: string): Shape {
 
   // distance to the outline, in fractions of the digit's height
   const radii = [0.018, 0.04, 0.07].map((f) => f * H);
-  const shape: Shape = { x: new Float32Array(n), y: new Float32Array(n), e: new Float32Array(n), g: new Float32Array(n) };
+  const shape: Shape = { x: new Float32Array(n), y: new Float32Array(n), e: new Float32Array(n), g: new Float32Array(n), hr: H / S, wr: (maxX - minX) / H };
   const span = Math.max(1, maxX - minX);
   for (let i = 0; i < n; i++) {
     const px = keep[i * 2];

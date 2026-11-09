@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { Ebook } from "@/content/site";
 import { NINE_PATH } from "@/components/hero/nine-path";
 
@@ -17,11 +18,14 @@ function titleLines(title: string, max = 14) {
  * cover is drawn in code from the book's tone and order (viewBox 200×290).
  */
 export function BookCover({ book }: { book: Ebook }) {
+  const uid = useId();
   if (book.cover) {
     // eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers
     return <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />;
   }
-  const id = book.slug;
+  // unique per drawing: the same book is drawn more than once (phone carousel + desktop shelf), and
+  // duplicate ids make covers paint from a hidden copy's gradients — i.e. not at all
+  const id = uid.replace(/:/g, "");
   const art = (parseInt(book.n, 10) - 1 + 3) % 3; // three art styles, by order
   const accent = book.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)";
   const accent2 = book.tone === "blue" ? "var(--nl-blue-soft)" : "var(--nl-purple)";

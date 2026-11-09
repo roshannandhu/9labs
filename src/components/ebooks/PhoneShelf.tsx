@@ -6,15 +6,15 @@ import { site } from "@/content/site";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { Book3D } from "./Book3D";
 
-const W = "min(56vw, 228px)";
+const W = "min(54vw, 224px)";
 const H = `calc(${W} * 1.45)`;
-const STEP = `calc(${W} * 1.45 * 0.6)`; // centre → peek distance
+const STEP = `calc(${W} * 0.92)`; // centre → peek distance
 const GLOW: Record<string, string> = { blue: "#5a7bf0", purple: "#8c53fe", duo: "#5ce0e6" };
 
 /**
- * E-books on a phone: a vertical carousel, one book at a time with the previous and next ones
- * peeking above and below. Swipe up/down on the books (only that area takes the gesture, the page
- * scrolls normally around it), tap a peeking book, or use the arrows / dots. It loops endlessly:
+ * E-books on a phone: a horizontal carousel, one book at a time with the previous and next ones
+ * peeking in from the sides. Swipe left/right (vertical swipes still scroll the page), tap a
+ * peeking book, or use the arrows / dots. It loops endlessly:
  * slots are keyed by a running index, so the book that wraps round slides in from hidden instead
  * of jumping across. Book order, titles and covers all come from content (admin later).
  */
@@ -33,8 +33,8 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
   return (
     <div className="md:hidden">
       <div
-        className="phone-shelf relative mx-auto touch-none select-none"
-        style={{ height: `calc(${H} * 1.72)` }}
+        className="phone-shelf relative -mx-4 touch-pan-y select-none overflow-hidden sm:-mx-8"
+        style={{ height: `calc(${H} * 1.18)` }}
         onPointerDown={(e) => {
           start.current = { x: e.clientX, y: e.clientY };
           swiped.current = false;
@@ -45,9 +45,9 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
           if (!s) return;
           const dy = e.clientY - s.y;
           const dx = e.clientX - s.x;
-          if (Math.abs(dy) > 36 && Math.abs(dy) > Math.abs(dx)) {
+          if (Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy)) {
             swiped.current = true;
-            setCur((c) => c + (dy < 0 ? 1 : -1));
+            setCur((c) => c + (dx < 0 ? 1 : -1));
           }
         }}
         onPointerCancel={() => (start.current = null)}
@@ -79,28 +79,28 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
               style={{
                 width: W,
                 height: H,
-                transform: `translate(-50%, -50%) translateY(calc(${STEP} * ${k})) scale(${(1 - Math.min(a, 1.5) * 0.3).toFixed(3)})`,
-                opacity: a >= 2 ? 0 : 1 - a * 0.45,
+                transform: `translate(-50%, -50%) translateX(calc(${STEP} * ${k})) scale(${(1 - Math.min(a, 1.5) * 0.22).toFixed(3)})`,
+                opacity: a >= 2 ? 0 : 1 - a * 0.4,
                 zIndex: 10 - a,
                 transition: reduced ? "none" : "transform 0.65s cubic-bezier(.16,1,.3,1), opacity 0.65s cubic-bezier(.16,1,.3,1)",
               }}
             >
               <span className="book-scene block h-full w-full">
-                <Book3D book={b} w={W} h={H} d="22px" ry={k === 0 ? "14deg" : "22deg"} rx="3deg" />
+                <Book3D book={b} w={W} h={H} d="22px" ry={k === 0 ? "12deg" : k < 0 ? "26deg" : "-4deg"} rx="3deg" />
               </span>
             </button>
           );
         })}
         {/* fade the peeking books into the page */}
-        <span className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[18%] bg-gradient-to-b from-nl-bg to-transparent" aria-hidden="true" />
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[18%] bg-gradient-to-t from-nl-bg to-transparent" aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-y-0 left-0 z-20 w-[12%] bg-gradient-to-r from-nl-bg to-transparent" aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[12%] bg-gradient-to-l from-nl-bg to-transparent" aria-hidden="true" />
       </div>
 
       {/* controls */}
       <div className="mt-2 flex items-center justify-center gap-4">
         <button type="button" onClick={() => setCur((c) => c - 1)} className="grid h-11 w-11 place-items-center rounded-full border border-white/12 text-white/80" aria-label="Previous e-book">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 9l4-4 4 4" />
+            <path d="M9 3L5 7l4 4" />
           </svg>
         </button>
         <div className="flex gap-2" aria-hidden="true">
@@ -110,7 +110,7 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
         </div>
         <button type="button" onClick={() => setCur((c) => c + 1)} className="grid h-11 w-11 place-items-center rounded-full border border-white/12 text-white/80" aria-label="Next e-book">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 5l4 4 4-4" />
+            <path d="M5 3l4 4-4 4" />
           </svg>
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { Fraunces, Inter, JetBrains_Mono, Montserrat, Sora, Unbounded } from "next/font/google";
+import { Albert_Sans, Fraunces, Inter, JetBrains_Mono, Montserrat, Sora } from "next/font/google";
 
 /** Headlines. */
 export const display = Sora({ subsets: ["latin"], variable: "--font-display-src", display: "swap" });
@@ -11,10 +11,10 @@ export const accent = Fraunces({ subsets: ["latin"], variable: "--font-accent-sr
 /** The logo tagline ("NINE LABS / SOLUTIONS"), as in the client's logo file. */
 export const brand = Montserrat({ subsets: ["latin"], variable: "--font-brand-src", display: "swap", weight: ["800"] });
 /**
- * Every number (the particle 1 → 9, the 1–9 rail, card numbers): Unbounded Black — the public font
- * closest to the logo's lettering (wide, heavy, sharp; see docs/digit-font-comparison.png).
- * Swap here if the client names the exact font.
+ * Every number (the particle 1 → 9, the 1–9 rail, card numbers): Albert Sans Black — the closest
+ * match to the 9 in the client's reference artwork (round bowl and counter, straight diagonal
+ * tail with a flat cut). Swap here if the client names the exact font.
  */
-export const digits = Unbounded({ subsets: ["latin"], variable: "--font-digits-src", display: "swap", weight: ["900"] });
+export const digits = Albert_Sans({ subsets: ["latin"], variable: "--font-digits-src", display: "swap", weight: ["900"] });
 
 export const fontVariables = [display, sans, mono, accent, brand, digits].map((f) => f.variable).join(" ");
