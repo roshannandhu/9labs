@@ -6,7 +6,6 @@ import { About } from "@/components/about/About";
 import { QuizBlock } from "@/components/quiz/QuizBlock";
 import { Ebooks } from "@/components/ebooks/Ebooks";
 import { ClosingCta } from "@/components/cta/ClosingCta";
-import { BridgeDivider } from "@/components/layout/BridgeDivider";
 import { ParticleStage } from "@/components/particles/ParticleStage";
 import { buildJsonLd } from "@/lib/seo/jsonld";
 
@@ -23,13 +22,9 @@ export default function Home() {
       <main id="main" className="relative z-10 overflow-x-clip">
         <Hero />
         <Services />
-        <BridgeDivider />
         <About />
-        <BridgeDivider />
         <QuizBlock />
-        <BridgeDivider />
         <Ebooks />
-        <BridgeDivider />
         <ClosingCta />
       </main>
       <Footer />

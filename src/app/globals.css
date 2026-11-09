@@ -1012,50 +1012,6 @@ html.has-cursor textarea {
   0% { transform: translateX(-60%); }
   45%, 100% { transform: translateX(60%); }
 }
-/* ---------- Bridge divider between sections ---------- */
-.bd-cable,
-.bd-pylon {
-  stroke-dasharray: 1 1;
-  stroke-dashoffset: calc(1 - var(--draw, 0));
-}
-.bd-pylon {
-  stroke-dashoffset: calc(1 - min(1, var(--draw, 0) * 2));
-}
-.bd-dot {
-  stroke-dasharray: 0.001 1;
-  stroke-dashoffset: 0;
-  opacity: 0;
-}
-.bridge-divider[data-cross="true"] .bd-dot {
-  animation:
-    bd-fade 2.6s ease 0.2s both,
-    bd-cross 2.6s var(--ease-in-out) 0.2s both;
-}
-@keyframes bd-cross {
-  0% {
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dashoffset: -0.999;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes bd-fade {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  8%,
-  92% {
-    opacity: 1;
-  }
-}
-html[data-motion-resolved="reduce"] .bd-dot {
-  display: none;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Landing animation — "The Hidden 9" (see LogoIntro.tsx)             */
 /* ------------------------------------------------------------------ */
