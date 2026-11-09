@@ -1,87 +1,98 @@
 import { useId } from "react";
 
-/** Wordmark geometry (viewBox units). Traced from the client's logo image; swap for their SVG when supplied. */
+/** Wordmark geometry (viewBox units = pixels of the client's 1600 px logo image, wordmark crop). */
 export const LOGO_VB = { w: 709, h: 185 } as const;
 
+/** The original logo colours, sampled from the client's file: black → indigo on lavender. */
+export const LOGO_COLORS = { from: "#030303", to: "#3533cb", paper: "#e9ddeb", ink: "#030303" } as const;
+
+// Traced from the client's logo image (pixel contours, ±0.5 px). Swap for their SVG when supplied.
 const P = {
-  L: "M0 6H94V116H147L123 180H0Z",
-  nineTail: "M135 180H187Q244 123 267 65L232 85Q182 113 135 180Z",
-  leg: "M249 180L308 93L335 180Z",
-  B: "M338 6H447C507 6 522 38 522 65C522 83 512 93 502 96C522 103 527 123 527 138C527 168 507 180 457 180H338Z",
+  L: "M0.5 5.1H94.7V115H133.1V179.6H0.5Z",
+  // the 9: round head + a tail whose top is a concave arc — the tail is the A's left leg
+  tail: "M134.6 179.6L160.3 93.4A68.2 68.2 0 0 0 232.3 125.1L185.8 179.6Z",
+  // the A's right leg (left edge slightly concave)
+  leg: "M247.8 179.6L282 137.5L297.8 115L309.5 93.6L334.9 179.6Z",
+  B: "M338.2 179.6V5.1H453.1L470.5 7.2L486.5 10.1L496.4 13.5L503.5 17L508.5 20.3L512.9 24.5L516.8 29.5L520.7 38.5L521.9 44.5L522.8 55.5L521.6 68.5L520.7 72.5L518.7 77.5L515.6 82.5L511.5 86.9L504.1 92L511.5 97.2L517 102.5L520.8 108.5L523.8 116.5L525 122L525.2 135.5L523.8 144.5L520.9 152.5L516.5 159.1L510.7 164.5L505.5 168L496.5 172L487.5 174.8L469.5 177.8L457.5 179.6Z" +
+    // two D-shaped slot counters
+    "M427.2 56.8H430.6Q434.6 56.8 434.6 61V67.2Q434.6 71.4 430.6 71.4H427.2Z" +
+    "M427.2 113.1H430.6Q434.5 113.1 434.5 117.1V124Q434.5 128 430.6 128H427.2Z",
+  // S: both apertures are wedges that close in a small round node
+  S: "M634.5 184.5L622.5 184.9L599.5 183.8L591.5 182.8L582.5 180.9L574.5 178.9L568.5 176.7L556.5 171L550.5 166.8L546.7 163.5L542.5 159L539.1 154.5L536.3 149.5L534.2 144.5L531.2 132.5L530.6 123.5L530.9 121.9H614.4L615.4 125.5L616.3 126.5L618.5 127.1L620.5 126.5L622 124.5L621.5 121.9L620.5 121.1L618.5 120.3L597.5 117.9L583.5 115L569.5 111.7L558.5 107.1L551.5 102.9L545.5 98L539 90.5L535.1 83.5L532.1 73.5L531.3 67.5L531.2 58.5L533.3 45.5L535.3 38.5L537.4 33.5L542.9 24.5L549.6 17.5L556.5 12.4L562.5 9.1L569.5 6.2L576.5 4L590.5 1.2L610.5 -0.2L631.5 0.3L640.5 1.3L655.5 4.4L669.5 9.3L676.5 12.9L682.5 16.8L688.9 22.5L694.5 29.1L697.8 34.5L700.9 41.5L703.7 53.5L704.4 61.5L703.5 62.7H624.5L622.5 58.7L620.5 57.7L617.7 58.5L616.4 60.5V61.5L617.5 62.7L619.5 64.7L656.5 69.1L670.5 73.2L677.5 76.1L683.5 79.3L692.9 86.5L696.5 90.6L700.7 96.5L704.8 105.5L707 114.5L707.9 121.5L708.1 128.5L707.8 133.5L705.8 142.5L704.8 145.5L700.9 153.5L697.4 158.5L692.8 163.5L683.5 170.9L674.5 175.6L666.5 178.7L650.5 182.8Z",
 } as const;
+const HEAD = { cx: 231.8, cy: 51.4, r: 33.3 } as const;
 
 /**
- * The Nine Labs wordmark, "L9BS": "LABS" with the A built from a 9 — the 9's round head is the
- * A's hole, its tail is the A's left leg, and a solid triangle is the right leg. B has two slot
- * counters; S is cut by two slits that end in round "node" dots.
+ * Intro only: a full "A" in the logo's weight, drawn on the tail's and the leg's own edge lines.
+ * The landing animation starts on "LABS", drops the 9 in, and morphs this A into the leg
+ * (point i of A_OUTER → point i of A_TO_LEG; the counter shrinks to nothing).
+ */
+export const A_OUTER = [
+  [134.6, 179.6], [186.6, 5.1], [235, 5.1], [283.4, 5.1], [334.9, 179.6], [264.5, 179.6], [234.8, 118], [205, 179.6],
+] as const;
+export const A_TO_LEG = [
+  [247.8, 179.6], [282, 137.5], [297.8, 115], [309.5, 93.6], [334.9, 179.6], [300, 179.6], [280, 179.6], [260, 179.6],
+] as const;
+export const A_COUNTER = [[234.9, 50], [241.8, 74], [228, 74]] as const;
+
+/** Path for the A at morph progress `t` (0 = "A", 1 = the leg). */
+export function aPath(t: number) {
+  const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
+  const outer = A_OUTER.map(([x, y], i) => `${lerp(x, A_TO_LEG[i][0], t).toFixed(1)} ${lerp(y, A_TO_LEG[i][1], t).toFixed(1)}`);
+  // the counter closes in the first 40% of the morph
+  const k = Math.min(1, t / 0.4);
+  const cx = 234.9;
+  const cy = 66;
+  const counter = A_COUNTER.map(([x, y]) => `${lerp(x, cx, k).toFixed(1)} ${lerp(y, cy, k).toFixed(1)}`);
+  return `M${outer.join("L")}ZM${counter.join("L")}Z`;
+}
+
+/**
+ * The Nine Labs wordmark, "L9BS": "LABS" with the A built from a 9 — the 9's round head sits on
+ * top, its tail is the A's left leg, and a solid triangle is the right leg. In the client's own
+ * colours (black → indigo); on our dark pages it always sits on a lavender "paper" badge.
  *
  * Every part is its own group (`data-part`), so the landing animation can move them one by one.
- * Three extra parts are invisible until the intro uses them: a light `sweep` (clipped to the
- * letters), the glowing node `dots`, and the `flash` when the 9 locks into the A.
- *
- * Colours: the original runs near-black → indigo on lavender; on our black site the black end
- * would vanish, so this dark-background version runs lavender → violet → the brand indigo.
+ * Intro-only parts stay invisible at rest: the "A" it starts from and a light `sweep` (clipped
+ * to the letters).
  */
 export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { className?: string; title?: string }) {
   const uid = useId().replace(/:/g, "");
   const grad = `lg-${uid}`;
-  const holes = `lh-${uid}`;
   const clip = `lc-${uid}`;
   const sweep = `ls-${uid}`;
-  const glow = `lw-${uid}`;
 
   return (
     <svg viewBox={`0 0 ${LOGO_VB.w} ${LOGO_VB.h}`} className={className} role="img" aria-label={title}>
       <defs>
         <linearGradient id={grad} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={LOGO_VB.w} y2="0">
-          <stop offset="0" stopColor="#efe8fb" />
-          <stop offset="0.45" style={{ stopColor: "color-mix(in oklab, var(--nl-blue-soft) 70%, #ffffff)" }} />
-          <stop offset="1" style={{ stopColor: "var(--nl-blue)" }} />
+          <stop offset="0" stopColor={LOGO_COLORS.from} />
+          <stop offset="1" stopColor={LOGO_COLORS.to} />
         </linearGradient>
         <linearGradient id={sweep} x1="0" x2="1">
           <stop offset="0" stopColor="#fff" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#fff" stopOpacity="0.9" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.55" />
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
-        <filter id={glow} x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="5" />
-        </filter>
-        {/* B's counters and S's slits + node dots are real holes (the page shows through) */}
-        <mask id={holes} maskUnits="userSpaceOnUse" x="-20" y="-20" width={LOGO_VB.w + 40} height={LOGO_VB.h + 40}>
-          <rect x="-20" y="-20" width={LOGO_VB.w + 40} height={LOGO_VB.h + 40} fill="#fff" />
-          <rect x="425" y="57" width="10" height="16" rx="5" fill="#000" />
-          <rect x="425" y="113" width="10" height="16" rx="5" fill="#000" />
-          <rect x="619" y="60.5" width="100" height="5" fill="#000" />
-          <circle cx="619" cy="63" r="5.5" fill="#000" />
-          <rect x="520" y="120.5" width="99" height="5" fill="#000" />
-          <circle cx="619" cy="123" r="5.5" fill="#000" />
-        </mask>
         <clipPath id={clip}>
           <path d={P.L} />
-          <circle cx="232" cy="51" r="34" />
-          <path d={P.nineTail} />
+          <circle cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
+          <path d={P.tail} />
           <path d={P.leg} />
-          <path d={P.B} />
-          <rect x="530" y="0" width="179" height="185" rx="86" ry="72" />
+          <path d={P.B} clipRule="evenodd" />
+          <path d={P.S} />
         </clipPath>
       </defs>
 
       <g fill={`url(#${grad})`}>
-        <g data-part="L">
-          <path d={P.L} />
-        </g>
+        <path data-part="L" d={P.L} />
+        <path data-part="A" d={aPath(0)} fillRule="evenodd" opacity="0" />
+        <path data-part="leg" d={P.leg} />
+        <path data-part="B" d={P.B} fillRule="evenodd" />
+        <path data-part="S" d={P.S} />
         <g data-part="nine">
-          <circle cx="232" cy="51" r="34" />
-          <path d={P.nineTail} />
-        </g>
-        <g data-part="leg">
-          <path d={P.leg} />
-        </g>
-        <g data-part="B" mask={`url(#${holes})`}>
-          <path d={P.B} />
-        </g>
-        <g data-part="S" mask={`url(#${holes})`}>
-          <rect x="530" y="0" width="179" height="185" rx="86" ry="72" />
+          <circle cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
+          <path d={P.tail} />
         </g>
       </g>
 
@@ -89,21 +100,14 @@ export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { cl
       <g clipPath={`url(#${clip})`}>
         <rect data-part="sweep" x="-220" y="0" width="200" height={LOGO_VB.h} fill={`url(#${sweep})`} opacity="0" />
       </g>
-      <g data-part="dots" opacity="0">
-        <circle cx="619" cy="63" r="9" fill="#d8d0ff" filter={`url(#${glow})`} />
-        <circle cx="619" cy="123" r="9" fill="#d8d0ff" filter={`url(#${glow})`} />
-        <circle cx="619" cy="63" r="4.5" fill="#fff" />
-        <circle cx="619" cy="123" r="4.5" fill="#fff" />
-      </g>
-      <circle data-part="flash" cx="232" cy="51" r="44" fill="#fff" opacity="0" filter={`url(#${glow})`} />
     </svg>
   );
 }
 
-/** "NINE LABS / SOLUTIONS" lockup that sits under the wordmark. */
+/** "NINE LABS / SOLUTIONS" lockup that sits under the wordmark (sized in % of its container's width). */
 export function LogoTagline({ className = "" }: { className?: string }) {
   return (
-    <span className={`logo-tagline flex flex-col items-center leading-none ${className}`} aria-hidden="true">
+    <span className={`logo-tagline ${className}`} aria-hidden="true">
       <span className="logo-tagline__main">NINE LABS</span>
       <span className="logo-tagline__sub">SOLUTIONS</span>
     </span>

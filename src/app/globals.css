@@ -17,7 +17,7 @@
   --nl-blue-soft: #a99ff9;
   --nl-purple: #9d8cff;
   --nl-indigo: #3530d0;
-  --nl-lavender: #e8deec;
+  --nl-lavender: #e9ddeb; /* the logo's paper colour */
   --nl-purple-deep: #7c4dff;
   --nl-ink: #b8bcc8;
   --nl-dim: #7a8090;
@@ -1147,16 +1147,15 @@ html[data-intro="playing"] .rise-in {
   animation-play-state: paused;
 }
 .logo-intro__bg {
-  background:
-    radial-gradient(55% 45% at 50% 46%, color-mix(in srgb, var(--nl-lavender) 10%, transparent), transparent 70%),
-    radial-gradient(40% 35% at 50% 52%, color-mix(in srgb, var(--nl-blue) 14%, transparent), transparent 70%),
-    var(--nl-black);
+  background: var(--nl-lavender);
 }
 .logo-intro [data-part="L"],
+.logo-intro [data-part="A"],
 .logo-intro [data-part="B"],
 .logo-intro [data-part="S"],
 .logo-intro [data-part="nine"],
-.logo-intro [data-part="leg"] {
+.logo-intro [data-part="leg"],
+.logo-intro__tag {
   opacity: 0;
 }
 .logo-intro__mark {
@@ -1167,27 +1166,46 @@ html[data-intro="playing"] .rise-in {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.32);
+  color: rgb(3 3 3 / 0.38);
   opacity: 0;
 }
 
-/* "NINE LABS / SOLUTIONS" under the wordmark */
-.logo-tagline__main {
+/* The logo always sits on its own lavender "paper" (its black end would vanish on our black). */
+.logo-badge {
+  background: var(--nl-lavender);
+}
+/* wordmark + tagline lockup: the tagline is sized in % of the wordmark's width (cqw), as in the logo file */
+.logo-lockup {
+  container-type: inline-size;
+}
+
+/* "NINE LABS / SOLUTIONS" under the wordmark — measured from the client's logo file */
+.logo-tagline {
+  display: block;
+  text-align: center;
+  line-height: 1;
   font-family: var(--font-brand);
-  font-weight: 700;
-  font-size: var(--tag-size, 12px);
-  letter-spacing: var(--tag-track, 0.62em);
-  margin-right: calc(var(--tag-track, 0.62em) * -1);
-  color: #fff;
+  font-weight: 800;
+  color: #030303;
+}
+.logo-tagline__main,
+.logo-tagline__sub {
+  display: block;
+  white-space: nowrap;
+}
+.logo-tagline__main {
+  margin-top: 3.6cqw;
+  font-size: 4.03cqw;
+  letter-spacing: var(--tag-track, 0.54em);
+  padding-left: var(--tag-track, 0.54em); /* balances the trailing letter-space */
+  translate: -4.7cqw 0;
 }
 .logo-tagline__sub {
-  margin-top: 0.55em;
-  font-family: var(--font-brand);
-  font-weight: 600;
-  font-size: calc(var(--tag-size, 12px) * 0.64);
-  letter-spacing: 0.34em;
-  margin-right: -0.34em;
-  color: rgb(255 255 255 / 0.62);
+  margin-top: 0.7cqw;
+  font-size: 2.42cqw;
+  letter-spacing: 0.3em;
+  padding-left: 0.3em;
+  translate: -4.2cqw 0;
 }
 
 /* ------------------------------------------------------------------ */

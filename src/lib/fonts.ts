@@ -13,6 +13,6 @@ export const accent = Fraunces({ subsets: ["latin"], variable: "--font-accent-sr
  * wordmark). Used for the logo tagline and for every particle numeral (the hero 9 and 1 → 9),
  * so the numbers speak the logo's language. Swap here if the client names the exact font.
  */
-export const brand = Montserrat({ subsets: ["latin"], variable: "--font-brand-src", display: "swap", weight: ["600", "700", "900"] });
+export const brand = Montserrat({ subsets: ["latin"], variable: "--font-brand-src", display: "swap", weight: ["800", "900"] });
 
 export const fontVariables = [display, sans, mono, accent, brand].map((f) => f.variable).join(" ");

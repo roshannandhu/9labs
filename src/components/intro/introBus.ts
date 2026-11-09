@@ -38,4 +38,5 @@ export function onIntroDone(cb: () => void): () => void {
 }
 
 /** Inline, pre-paint: decide whether the intro plays (kept tiny; runs before React). */
-export const INTRO_BOOT_SCRIPT = `try{if(!sessionStorage.getItem("${SEEN}")&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&!/[?&]motion=reduce/.test(location.search)){document.documentElement.dataset.intro="playing"}}catch(e){}`;
+// `?intro` replays it on demand (for showing the client).
+export const INTRO_BOOT_SCRIPT = `try{if((/[?&]intro\\b/.test(location.search)||!sessionStorage.getItem("${SEEN}"))&&!matchMedia("(prefers-reduced-motion: reduce)").matches&&!/[?&]motion=reduce/.test(location.search)){document.documentElement.dataset.intro="playing"}}catch(e){}`;
