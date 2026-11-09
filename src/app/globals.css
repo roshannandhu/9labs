@@ -12,8 +12,8 @@
   /* Two themes, set on <html data-theme> pre-paint (follows the device, toggle in the nav).
      Light (default): the page is the logo's own lavender "paper", text the logo's near-black ink.
      --fg-rgb is the foreground (Tailwind's `white` maps to it); `.on-dark` flips it to white inside
-     the dark islands (book covers, the quiz shader block). The logo keeps its exact colours in both
-     themes — in dark it sits on its own lavender badge (.logo-paper). */
+     the dark islands (book covers, the quiz shader block). The logo (purple → cyan) keeps its
+     exact file colours in both themes, with no badge. */
   color-scheme: light;
   --fg-rgb: 14 12 32;
   --nl-bg: #e9ddeb;
@@ -39,8 +39,6 @@
   --flap-c: #f8f4f9;
   --flap-d: #ede6ef;
   --grad-start: var(--nl-indigo);
-  --logo-pad-x: 0px;
-  --logo-pad-y: 0px;
   --grid-alpha: 0.06;
   --nav-h: 72px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -66,9 +64,6 @@ html[data-theme="dark"] {
   --flap-c: #10121c;
   --flap-d: #090a10;
   --grad-start: #fff;
-  /* the logo's black end needs its lavender paper on a dark page */
-  --logo-pad-x: 12px;
-  --logo-pad-y: 9px;
 }
 .on-dark {
   color-scheme: dark;
@@ -1201,53 +1196,35 @@ html[data-intro="playing"] {
 html[data-intro="playing"] [data-logo-9] {
   opacity: 0;
 }
-/* the hero's own entrance waits for the intro to finish (they never overlap) */
-html[data-intro="playing"] .rise-in {
-  animation-play-state: paused;
-}
+/* the intro sits on a blurred view of the page; the hero's entrance plays underneath it */
 .logo-intro__bg {
-  background: var(--nl-lavender); /* the logo's paper, in both themes */
-}
-/* frame 1 is the logo without its 9 (visible from first paint); only the 9 waits */
-.logo-intro [data-part="nine"],
-.logo-intro__tag {
-  opacity: 0;
-}
-.logo-intro__mark {
-  transform-origin: 50% 50%;
+  background: color-mix(in srgb, var(--nl-bg) 62%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+  backdrop-filter: blur(18px) saturate(115%);
 }
 .logo-intro__hint {
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgb(3 3 3 / 0.38); /* on the logo's lavender in both themes */
+  color: rgb(var(--fg-rgb) / 0.4);
   opacity: 0;
 }
 
-/* The logo's own lavender paper: invisible in light (same as the page), a badge in dark. */
-.logo-paper {
-  background: var(--nl-lavender);
-  padding: var(--logo-pad-y) var(--logo-pad-x);
-  border-radius: 12px;
-}
-html[data-theme="dark"] .logo-paper--lg {
-  padding: 18px 22px 20px;
-  border-radius: 18px;
-}
 /* wordmark + tagline lockup: the tagline is sized in % of the wordmark's width (cqw), as in the logo file */
 .logo-lockup {
   container-type: inline-size;
 }
 
-/* "NINE LABS / SOLUTIONS" under the wordmark — measured from the client's logo file */
+/* "NINE LABS / SOLUTIONS" under the wordmark — measured from the client's logo file
+   (white on the dark page, the logo's near-black ink on the light one) */
 .logo-tagline {
   display: block;
   text-align: center;
   line-height: 1;
   font-family: var(--font-brand);
   font-weight: 800;
-  color: #030303; /* the logo file's tagline ink */
+  color: rgb(var(--fg-rgb));
 }
 .logo-tagline__main,
 .logo-tagline__sub {
@@ -1255,18 +1232,18 @@ html[data-theme="dark"] .logo-paper--lg {
   white-space: nowrap;
 }
 .logo-tagline__main {
-  margin-top: 3.6cqw;
-  font-size: 4.03cqw;
-  letter-spacing: var(--tag-track, 0.54em);
-  padding-left: var(--tag-track, 0.54em); /* balances the trailing letter-space */
-  translate: -4.7cqw 0;
+  margin-top: 3.52cqw;
+  font-size: 4.19cqw;
+  letter-spacing: 0.49em;
+  padding-left: 0.49em; /* balances the trailing letter-space */
+  translate: -4.85cqw 0;
 }
 .logo-tagline__sub {
-  margin-top: 0.7cqw;
-  font-size: 2.42cqw;
-  letter-spacing: 0.3em;
-  padding-left: 0.3em;
-  translate: -4.2cqw 0;
+  margin-top: 0.46cqw;
+  font-size: 2.59cqw;
+  letter-spacing: 0.23em;
+  padding-left: 0.23em;
+  translate: -4.29cqw 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1291,19 +1268,12 @@ html[data-theme="dark"] .logo-paper--lg {
 /*  Services — the pinned 1 → 9 stage                                  */
 /* ------------------------------------------------------------------ */
 .stage-card {
-  opacity: 0;
-  transform: translateY(18px) scale(0.985);
-  visibility: hidden;
-  transition:
-    opacity 0.4s var(--ease-out-expo),
-    transform 0.6s var(--ease-out-expo),
-    visibility 0s linear 0.4s;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .stage-card[data-on="true"] {
-  opacity: 1;
-  transform: none;
-  visibility: visible;
-  transition-delay: 0.08s, 0.08s, 0s;
+  cursor: default;
 }
 .finale-tile svg {
   color: var(--nl-blue-soft);

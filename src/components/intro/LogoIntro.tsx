@@ -8,18 +8,19 @@ import { LogoMark, LogoTagline } from "@/components/brand/LogoMark";
 import { introPlaying, markIntroDone } from "./introBus";
 
 /**
- * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the logo's lavender (both themes).
+ * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), over a blurred page.
  *
- *  1. The logo is on screen without its 9 (L, the A's triangle, B, S), still. The 9 is invisible.
- *  2. Only the 9 moves: it appears above and falls into the A and the 9 settles with one small bounce: the logo, "L9BS".
- *  3. "NINE LABS / SOLUTIONS" fades in underneath.
- *  4. The lavender shrinks into the nav logo's paper while the logo flies onto the nav logo.
- *     Only then does the hero start (it waits on `markIntroDone`).
+ *  1. "LABS" + "NINE LABS / SOLUTIONS" are on screen from the first paint (the A is whole).
+ *  2. An invisible 9 falls from above. It is a mask — the page's own background — so it can't be
+ *     seen; it only shows where it passes through the A, carving itself into it, its round eye
+ *     travelling down through the A. When it lands, the A *is* the logo's A (exactly: see
+ *     LogoMark). A tiny squash of the whole word marks the landing.
+ *  3. The tagline fades, the logo flies onto the nav logo (top-left) and the blur fades away,
+ *     revealing the hero (which has been animating in underneath). The particle 9 then assembles.
  *
  * The overlay is server-rendered and shown by CSS only while `<html data-intro="playing">`
- * (set pre-paint by the layout's boot script), so the logo is there from the first paint and the
- * site never flashes underneath. Reduced motion, or a second visit this session: no overlay.
- * `?intro` in the URL replays it.
+ * (set pre-paint by the layout's boot script). Reduced motion, or a second visit this session: no
+ * overlay. `?intro` in the URL replays it.
  */
 export function LogoIntro() {
   const { reduced, ready } = useDemo();
@@ -42,10 +43,8 @@ export function LogoIntro() {
     const tagEl = tag.current;
     const hintEl = hint.current;
     const bgEl = bg.current;
-    const svg = wrap?.querySelector("svg");
-    if (!wrap || !svg) return;
-    const part = (p: string) => svg.querySelector<SVGElement>(`[data-part="${p}"]`);
-    const nine = part("nine");
+    const nine = wrap?.querySelector<SVGGElement>('[data-part="nine"]');
+    if (!wrap || !nine) return;
     const lenis = getLenis();
     lenis?.stop();
 
@@ -59,7 +58,7 @@ export function LogoIntro() {
       setGone(true);
     };
 
-    const HIT = 1.15; // the moment the 9 lands on the A
+    const LAND = 1.25; // the 9 is in place
     const tl = gsap.timeline();
     // Safety net: never leave a visitor stuck behind the overlay (throttled/low-power devices,
     // background tabs). The intro normally ends in ~3 s.
@@ -69,26 +68,19 @@ export function LogoIntro() {
       finish();
     }, 8000);
 
-    tl.set(nine, { y: -330, opacity: 0 }, 0)
-      .to(nine, { opacity: 1, duration: 0.2, ease: "none" }, HIT - 0.5)
-      .to(nine, { y: 0, duration: 0.5, ease: "power3.in" }, HIT - 0.5)
-      // one small bounce
-      .to(nine, { y: -14, duration: 0.13, ease: "power2.out" }, HIT)
-      .to(nine, { y: 0, duration: 0.2, ease: "power2.in" }, HIT + 0.13)
-      .fromTo(tagEl, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, HIT + 0.4)
-      .fromTo(hintEl, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.4)
-      .to({}, { duration: 0.45 })
-      // fly onto the nav logo, overlay fades
+    // the 9 starts where LogoMark put it (NINE_START_Y above its place) and falls into the A
+    tl.to(nine, { y: 0, duration: 0.9, ease: "power1.in" }, LAND - 0.9)
+      // the landing: the whole word squashes a touch (all parts together, so nothing shifts apart)
+      .to(wrap, { scaleY: 0.97, transformOrigin: "50% 100%", duration: 0.07, ease: "power1.out", yoyo: true, repeat: 1 }, LAND)
+      .fromTo(hintEl, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.3)
+      .to({}, { duration: 0.8 })
       .add(() => {
-        // the lavender screen shrinks into the nav logo's lavender paper while the logo flies onto it
-        const paper = document.querySelector<HTMLElement>("[data-logo-9]");
-        const target = paper?.querySelector("svg")?.getBoundingClientRect();
-        const box = paper?.getBoundingClientRect();
+        const target = document.querySelector<HTMLElement>("[data-logo-9] svg")?.getBoundingClientRect();
         const from = wrap.getBoundingClientRect();
         const dur = skipped ? 0.45 : 0.85;
         fly = gsap.timeline({ onComplete: finish });
         fly.to([tagEl, hintEl], { opacity: 0, duration: 0.25, ease: "power2.in" }, 0);
-        if (paper && target && box && target.width > 0) {
+        if (target && target.width > 0) {
           fly.to(
             wrap,
             {
@@ -100,18 +92,11 @@ export function LogoIntro() {
             },
             0.05,
           );
-          const W = window.innerWidth;
-          const H = window.innerHeight;
-          const r = getComputedStyle(paper).borderTopLeftRadius || "12px";
-          fly.fromTo(
-            bgEl,
-            { clipPath: "inset(0px 0px 0px 0px round 0px)" },
-            { clipPath: `inset(${box.top}px ${W - box.right}px ${H - box.bottom}px ${box.left}px round ${r})`, duration: dur, ease: "expo.inOut" },
-            0.05,
-          );
         } else {
-          fly.to([wrap, bgEl], { opacity: 0, duration: 0.4 }, 0.05);
+          fly.to(wrap, { opacity: 0, duration: 0.4 }, 0.05);
         }
+        // the blur lifts as the logo arrives (a focus pull onto the page)
+        fly.to(bgEl, { opacity: 0, duration: dur * 0.7, ease: "power1.inOut" }, 0.05 + dur * 0.3);
       });
 
     // Any input skips ahead (fast-forwards to the fly-in; nothing is cut off mid-way).
@@ -144,10 +129,10 @@ export function LogoIntro() {
       <div ref={bg} className="logo-intro__bg absolute inset-0" />
       {/* the tagline is sized in % of this box (= the wordmark's width), as in the logo file */}
       <div className="logo-lockup relative w-[min(84vw,580px)]">
-        <div ref={mark} className="logo-intro__mark will-change-transform">
-          <LogoMark className="block h-auto w-full overflow-visible" />
+        <div ref={mark} className="will-change-transform">
+          <LogoMark intro className="block h-auto w-full overflow-visible" />
         </div>
-        <div ref={tag} className="logo-intro__tag">
+        <div ref={tag}>
           <LogoTagline />
         </div>
       </div>

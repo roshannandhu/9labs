@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   output: "export",
   basePath: process.env.NEXT_BASE_PATH ?? "",
   trailingSlash: true,
+  // shown small in the footer, so a stale cached copy of the demo is easy to spot
+  env: { NEXT_PUBLIC_BUILD: new Date().toISOString().slice(0, 16).replace("T", " ") },
   reactStrictMode: true,
   images: { unoptimized: true },
   turbopack: {

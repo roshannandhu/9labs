@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
 import { ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { registerAnchorPrefix } from "@/lib/scroll";
@@ -11,6 +11,7 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { particleBus } from "@/components/particles/bus";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { ServiceCard } from "./ServiceCard";
+import { ServiceCardsGallery } from "./ServiceCardsGallery";
 
 const services = site.services;
 const LAST = services.length - 1; // 8 steps between 1 and 9
@@ -49,6 +50,17 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
   const finale = useRef<HTMLDivElement>(null);
   const stRef = useRef<ScrollTrigger | null>(null);
   const [active, setActive] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const handleSelectCard = useCallback((index: number) => {
+    setActive(index);
+    setScrollProgress(index);
+    const st = stRef.current;
+    if (st) {
+      const targetScroll = st.start + (st.end - st.start) * (index / LAST);
+      window.scrollTo({ top: targetScroll, behavior: "smooth" });
+    }
+  }, []);
 
   useGSAP(
     () => {
@@ -56,7 +68,9 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
       const write = () => {
         // 0 → 1: hero 9 to the first digit · 1 → 9: the stage · 9 → 10: the finale's small 9
         particleBus.t = p.a + LAST * p.b + p.c;
-        const i = Math.min(LAST, Math.max(0, Math.round(p.b * LAST)));
+        const currentStep = p.b * LAST;
+        setScrollProgress(currentStep);
+        const i = Math.min(LAST, Math.max(0, Math.round(currentStep)));
         setActive((prev) => (prev === i ? prev : i));
       };
       ScrollTrigger.create({
@@ -144,12 +158,21 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
               className="relative mx-auto h-[26svh] w-full max-w-[520px] sm:h-[32svh] lg:h-[min(62svh,560px)] lsp:h-[56svh]"
               aria-hidden="true"
             />
-            <div className="grid w-full max-w-[520px] self-center justify-self-center lg:justify-self-start">
-              {services.map((s, i) => (
-                <div key={s.slug} className="stage-card [grid-area:1/1]" data-on={i === active ? "true" : "false"} inert={i !== active}>
-                  <ServiceCard service={s} mode="stage" active={i === active} />
-                </div>
-              ))}
+            <div className="flex w-full max-w-[520px] self-center justify-self-center lg:justify-self-start">
+              <ServiceCardsGallery
+                services={services}
+                active={active}
+                scrollProgress={scrollProgress}
+                onSelect={handleSelectCard}
+                bend={0}
+                textColor="#ffffff"
+                borderRadius={0.05}
+                scrollEase={0.05}
+                onItemClick={(item, index) => console.log(item.title, index)}
+                gap={0.16}
+                wave={0}
+                fadeEdges={0.2}
+              />
             </div>
           </div>
 

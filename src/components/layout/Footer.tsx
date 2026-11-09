@@ -93,7 +93,9 @@ export function Footer() {
       </div>
 
       <div className="container-x flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pb-24 pt-6 text-[12.5px] text-white/45 sm:flex-row sm:pb-24">
-        <p>{site.footer.copyright}</p>
+        <p>
+          {site.footer.copyright} <span className="opacity-60">· build {process.env.NEXT_PUBLIC_BUILD} UTC</span>
+        </p>
         <p>Dubai South, Dubai, UAE</p>
       </div>
     </footer>
