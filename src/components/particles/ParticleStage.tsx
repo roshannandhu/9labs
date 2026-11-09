@@ -1,32 +1,45 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { brand } from "@/lib/fonts";
+import { digits as digitFont } from "@/lib/fonts";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { onIntroDone } from "@/components/intro/introBus";
 import { particleBus } from "./bus";
 import { digitShape, rng, type Shape } from "./targets";
 
-// The brief's colours for the 9: electric-blue body, neon purple towards the edges.
-// Dark theme: glowing dots added together (white core). Light theme: solid dots, purple deepened
-// so they hold on the lavender page.
-const DARK = { glow: true, colors: ["#3b82ff", "#7f86ff", "#b98cff"] };
-const LIGHT = { glow: false, colors: ["#3b82ff", "#5a63f0", "#7c4dff"] };
+// The logo's gradient across every number: purple (left) → cyan (right).
+const FROM = [0x8c, 0x53, 0xfe];
+const TO = [0x5c, 0xe0, 0xe6];
+const STEPS = 16;
+const hex = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
 
-function sprite(color: string, glow: boolean, size = 32) {
+/** A fine dot: crisp core, short soft edge. Dark theme gets a touch more halo. */
+function sprite(color: string, dark: boolean, size = 16) {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
   if (!g) return c;
   const r = size / 2;
   const grd = g.createRadialGradient(r, r, 0, r, r, r);
-  grd.addColorStop(0, glow ? "#ffffff" : color);
-  grd.addColorStop(glow ? 0.16 : 0.3, color);
-  grd.addColorStop(glow ? 0.42 : 0.5, glow ? `${color}66` : `${color}88`);
+  grd.addColorStop(0, color);
+  grd.addColorStop(dark ? 0.45 : 0.6, color);
+  grd.addColorStop(dark ? 0.7 : 0.8, `${color}66`);
   grd.addColorStop(1, `${color}00`);
   g.fillStyle = grd;
   g.fillRect(0, 0, size, size);
   return c;
+}
+/** sprites[theme][edge 0|1][gradient step] */
+function sprites(dark: boolean) {
+  return [0, 1].map((edge) =>
+    Array.from({ length: STEPS }, (_, k) => {
+      let col = mix(FROM, TO, k / (STEPS - 1));
+      // the outline reads a little brighter (dark) / deeper (light), so each number has a crisp edge
+      if (edge) col = dark ? mix(col, [255, 255, 255], 0.3) : mix(col, [40, 20, 120], 0.18);
+      return sprite(hex(col), dark);
+    }),
+  );
 }
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -44,7 +57,8 @@ const plateau = (f: number) => {
  * Particles fly between DOM "slots" ([data-particle-slot]), measured every frame, so layout,
  * breakpoints and pinning stay in CSS. Positions are a pure function of the scroll position
  * (reversible: scrolling back re-forms the earlier number). No mouse/touch reaction by design.
- * Cost: one 2D canvas, 2,200 particles (1,400 on phones), DPR ≤ 2, paused off-screen.
+ * Cost: one 2D canvas, ~6,000 fine particles (~3,000 on phones), DPR ≤ 2, paused off-screen;
+ * if a device can't keep up in the first second, it quietly draws 60% of them.
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
@@ -57,7 +71,7 @@ export function ParticleStage() {
     if (!cv || !ctx) return;
 
     const phone = window.matchMedia("(max-width: 639px)").matches;
-    const N = phone ? 1400 : 2200;
+    const N = phone ? 3000 : 6000;
     const r = rng(9001);
 
     // assembly: each particle streams in from a point just beyond a screen edge
@@ -85,12 +99,14 @@ export function ParticleStage() {
       }
       return { dx, dy };
     });
-    const sets = {
-      dark: DARK.colors.map((c) => sprite(c, true)),
-      light: LIGHT.colors.map((c) => sprite(c, false)),
-    };
+    const sets = { dark: sprites(true), light: sprites(false) };
+    // adaptive quality: sample the first ~40 drawn frames; thin out if they're slow
+    let thin = false;
+    let probe = 0;
+    let probeSum = 0;
+    let last = 0;
 
-    let shapes: Shape[] = [];
+    let shapes: (Shape | undefined)[] = [];
     let raf = 0;
     let started = false;
     let t0 = 0;
@@ -135,20 +151,27 @@ export function ParticleStage() {
       const A = box(ra);
       const B = box(rb);
       const SA = shapes[k];
-      const SB = shapes[k + 1];
+      if (!SA) return; // that digit is still being sampled (a few ms after load)
+      const SB = shapes[k + 1] ?? SA;
       const sc = scatter[k];
       const spread = Math.max(A.h, B.h) * 0.42;
       const h = A.h + (B.h - A.h) * u;
-      const size = Math.max(3, Math.min(phone ? 8 : 9, h * (phone ? 0.024 : 0.018)));
-      const half = size / 2;
+      const size = Math.max(1.6, Math.min(phone ? 3 : 3.4, h * (phone ? 0.0125 : 0.0068)));
       const asm = clamp01((now - t0) / 1700);
       const v = 1 - u;
       const tw = now * 0.0016;
       const dark = document.documentElement.dataset.theme === "dark";
-      const sprites = dark ? sets.dark : sets.light;
+      const set = dark ? sets.dark : sets.light;
+      if (asm >= 1 && probe < 40) {
+        if (last) {
+          probeSum += now - last;
+          if (++probe === 40 && probeSum / 40 > 24) thin = true;
+        }
+        last = now;
+      }
 
-      ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
       for (let i = 0; i < N; i++) {
+        if (thin && i % 5 > 2) continue;
         const ax = A.cx + SA.x[i] * A.h;
         const ay = A.cy + SA.y[i] * A.h;
         const bx = B.cx + SB.x[i] * B.h;
@@ -164,11 +187,12 @@ export function ParticleStage() {
           y = sy[i] * H + (y - sy[i] * H) * e;
         }
         const edge = SA.e[i] * v + SB.e[i] * u;
-        ctx.globalAlpha = 0.72 + 0.22 * Math.sin(tw + phase[i]);
-        ctx.drawImage(sprites[edge > 0.7 ? 2 : edge > 0.25 ? 1 : 0], x - half, y - half, size, size);
+        const g = SA.g[i] * v + SB.g[i] * u;
+        ctx.globalAlpha = (edge > 0.5 ? 0.95 : 0.8) + 0.05 * Math.sin(tw + phase[i]);
+        const s = edge > 0.75 ? size * 1.08 : size;
+        ctx.drawImage(set[edge > 0.75 ? 1 : 0][Math.min(STEPS - 1, Math.round(g * (STEPS - 1)))], x - s / 2, y - s / 2, s, s);
       }
       ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
     };
 
     // Only run while the hero or the services stage is near the screen.
@@ -186,17 +210,25 @@ export function ParticleStage() {
 
     let cancelled = false;
     const offIntro = onIntroDone(async () => {
-      const family = brand.style.fontFamily;
+      const family = digitFont.style.fontFamily;
       try {
         await document.fonts.load(`900 120px ${family}`);
       } catch {
         /* fall back to whatever face is available */
       }
       if (cancelled) return;
-      const digits = Array.from({ length: 9 }, (_, d) => digitShape(String(d + 1), N, family));
-      shapes = [digits[8], ...digits, digits[8]];
+      // the hero 9 first (it's on screen now); the other digits one per tick, so the page never stalls
+      const nine = digitShape("9", N, family);
+      shapes = [nine];
+      shapes[10] = nine;
+      shapes[9] = nine;
       started = true;
       t0 = performance.now();
+      for (let dgt = 1; dgt <= 8; dgt++) {
+        await new Promise((res) => setTimeout(res, 0));
+        if (cancelled) return;
+        shapes[dgt] = digitShape(String(dgt), N, family);
+      }
     });
     raf = requestAnimationFrame(frame);
 

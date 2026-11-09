@@ -60,13 +60,16 @@ Payload `afterChange` on Leads: when approved (auto, the **Approve & send** butt
 - SEO: titles, descriptions, OG, canonical, index toggle, verification codes.
 - Integrations: GA4, GTM, Meta Pixel, LinkedIn Insight, Clarity, each with on/off and an automatic cookie banner.
 - E-book Delivery: approval mode, link expiry, sender details, editable template with `{{name}}`, `{{bookTitle}}`, `{{downloadLink}}`.
-- Quiz settings; Footer.
+- **Quiz settings**: intro copy + the **9 questions** (question, short label, hint, single/multi, and per option a label + points per activity; an option can be "only", e.g. *Nothing yet*). Order by drag-and-drop. This is what `site.quiz.questions` is today.
+- **Enquiry Options** ("Talk to us" window): title, intro line, **budget** chips, **timeline** chips (add / edit / remove / reorder). Per-activity "What do you need?" chips live on each Service (below).
+- Theme: default theme (light, as now), dark mode toggle on/off.
+- Footer.
 
 **Collections:**
-- Services (9), Values (5).
-- E-books: cover, private PDF, sample pages, chapters, form-field config, SEO.
+- Services (9): title, short name, description, tags, icon, **needs** (the "What do you need?" chips in the Talk-to-us window). Values (5).
+- E-books: title, subtitle, one-liner, **cover image upload** (optional: without one, the site draws a designed cover from the book's tone; titles wrap automatically), tone, pages, read time, chapters, private PDF, sample pages, form-field config, SEO, **order** and **on/off** (the phone carousel and the desktop shelf follow this order).
 - **Leads**: Approve & send, Reject, Resend, bulk approve, CSV export.
-- Quiz Submissions, Contact Messages, Pages (Privacy/Terms), Media, Users (Admin/Editor roles).
+- **Quiz Submissions** (all 9 answers, the top-3 result, and whether they tapped WhatsApp / e-mail), **Enquiries** (from the Talk-to-us window: activity, needs, budget, timeline, name, company, message, channel), Contact Messages, Pages (Privacy/Terms), Media, Users (Admin/Editor roles).
 
 **Extras:** a dashboard (pending approvals, leads per book), live preview, revalidation on save, optional Cloudflare Access on `/admin`.
 
@@ -77,9 +80,20 @@ Payload `afterChange` on Leads: when approved (auto, the **Approve & send** butt
 - Inner pages `/services/[slug]`, `/ebooks/[slug]`, `/quiz`, `/privacy`.
 - CWV targets: LCP < 2.5s, CLS < 0.1, INP < 200ms; WebGL only lazy on desktop.
 
-## 7. The 9 Quiz (production)
+## 7. The 9 Quiz (production) — rule-based, no AI
 
-`POST /api/quiz` behind the provider-neutral `provider.ts`. The AI provider (Gemini, Groq or another) is decided later. Turnstile, per-IP daily limit, 1,000-character cap; submissions saved in D1.
+Decided Nov 2026: **no AI / no API key**. The quiz is 9 tap-card questions; the result is worked out in the browser (`src/lib/quiz/score.ts`): every answer adds points to activities, the top 3 are shown with a match %, "why" (quoting the visitor's own answers) and a 3-step plan, then **Send on WhatsApp** (all answers pre-filled) or e-mail.
+
+Backend for production:
+- Questions/options/points come from the **Quiz settings** global (same shape as `site.quiz.questions`).
+- `POST /api/quiz-submissions` (Zod + Turnstile + rate limit) saves the answers + result to **Quiz Submissions** — fire-and-forget, never blocks the result.
+- "E-mail me this plan": `POST /api/quiz-email` → Resend with the plan (demo only fakes it today).
+
+## 7b. "Talk to us" enquiries (production)
+
+The Talk-to-us window on each activity card builds a WhatsApp message (activity, needs, budget, timeline, name, company, message) and opens `wa.me` — this needs no backend. For records:
+- `POST /api/enquiries` (Zod + Turnstile + rate limit) logs the enquiry to **Enquiries** just before the WhatsApp/e-mail redirect (fire-and-forget), plus an admin alert e-mail.
+- Options come from **Enquiry Options** + each Service's **needs**.
 
 ## 8. Phases
 
@@ -88,11 +102,11 @@ Payload `afterChange` on Leads: when approved (auto, the **Approve & send** butt
 | **1: Frontend demo** (now, about 1–1.5 weeks) | Full animated homepage, Concept Lab with 3 hero concepts, 3D e-books, mock quiz | Demo link + walkthrough video for client approval |
 | 2: Content and polish | Apply client feedback, final colours, logo, copy, covers | Approved design |
 | 3: Admin + backend (about 1.5 weeks) | OpenNext on Workers, Payload + D1 + R2, e-book approval → e-mail → download, socials/WhatsApp/integrations, privacy, cookie banner | Admin login for the client |
-| 4: Quiz AI + launch (about 1 week) | Real AI provider, SEO inner pages, QA, domain + e-mail DNS, production deploy, admin guide | Live site + handover |
+| 4: Launch (about 1 week) | Quiz/enquiry logging + quiz e-mail, SEO inner pages, QA, domain + e-mail DNS, production deploy, admin guide | Live site + handover |
 
 ## 9. Items needed from the client
 
-Logo (SVG) · exact colour codes · final headline, sub-headline and About copy · email, phone/WhatsApp and social links · **3 e-book PDFs, titles, one-liners and covers** · confirmation of the 9 activities · domain + Cloudflare account access · DNS access for e-mail · Resend account · admin users · tracking IDs (optional) · privacy policy text (UAE PDPL) · AI provider choice and key (later).
+Logo (SVG) · exact colour codes · final headline, sub-headline and About copy · email, phone/WhatsApp and social links · **3 e-book PDFs, titles, one-liners and covers** · confirmation of the 9 activities · domain + Cloudflare account access · DNS access for e-mail · Resend account · admin users · tracking IDs (optional) · privacy policy text (UAE PDPL) · sign-off on the 9 quiz questions and the Talk-to-us options (budgets, timelines, needs per activity).
 
 ## 10. Production verification
 

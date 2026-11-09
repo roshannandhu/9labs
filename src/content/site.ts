@@ -26,8 +26,27 @@ export type Service = {
   short: string;
   description: string;
   tags: string[];
-  /** Words the demo quiz uses to match a visitor's need to this activity. */
-  keywords: string[];
+  /** "What do you need?" chips in the Talk-to-us window (admin: add / edit / remove). */
+  needs: string[];
+};
+
+/** The 9 Quiz: each answer adds points to activities (by their icon key); the top 3 are suggested. */
+export type QuizOption = {
+  id: string;
+  label: string;
+  weights: Partial<Record<IconKey, number>>;
+  /** In a "pick all" question, choosing this clears the others (e.g. "Nothing yet"). */
+  only?: boolean;
+};
+export type QuizQuestion = {
+  id: string;
+  /** Short label used in the WhatsApp summary ("Main goal: ..."). */
+  label: string;
+  q: string;
+  hint?: string;
+  /** Allow several answers (shows a Next button). */
+  multi?: boolean;
+  options: QuizOption[];
 };
 
 export type Value = { key: string; title: string; line: string };
@@ -42,6 +61,8 @@ export type Ebook = {
   pages: number;
   readTime: string;
   chapters: string[];
+  /** Cover image (uploaded in the admin later). Without one, a designed cover is drawn from `tone`. */
+  cover?: string;
 };
 
 export const site = {
@@ -94,7 +115,7 @@ export const site = {
       description:
         "Strategy, content and management that grow your brand across social platforms.",
       tags: ["Strategy", "Content calendars", "Community"],
-      keywords: ["social", "social media", "know about", "awareness", "instagram", "tiktok", "followers", "community", "content", "brand awareness", "engagement", "linkedin", "influencer", "grow", "audience", "reels", "posts"],
+      needs: ["Social media strategy", "Content calendar", "Account management", "Reels & short video", "Influencers", "Community growth"],
     },
     {
       n: 2,
@@ -105,7 +126,7 @@ export const site = {
       description:
         "Digital and online advertising that puts your message in front of the right audience.",
       tags: ["Paid social", "Search ads", "Retargeting"],
-      keywords: ["ads", "advertising", "campaign", "leads", "sales", "google", "meta", "paid", "conversion", "traffic", "customers", "roi", "launch"],
+      needs: ["Google Ads", "Social media ads", "Campaign creative", "Outdoor & print", "Landing pages", "Retargeting"],
     },
     {
       n: 3,
@@ -115,7 +136,7 @@ export const site = {
       short: "Content & creative",
       description: "Videos, motion graphics and creative content that tell your story.",
       tags: ["Video", "Motion graphics", "Brand stories"],
-      keywords: ["video", "motion", "creative", "animation", "story", "reel", "brand film", "design", "graphics", "content", "youtube"],
+      needs: ["Brand video", "Motion graphics", "Social content pack", "Copywriting", "Brand identity", "Product content"],
     },
     {
       n: 4,
@@ -126,7 +147,7 @@ export const site = {
       description:
         "Commercial photography and event filming that capture your brand at its best.",
       tags: ["Product shoots", "Event coverage", "Aftermovies"],
-      keywords: ["photo", "photos", "photography", "photographer", "shoot", "shooting", "images", "camera", "filming", "film", "product", "event coverage", "pictures", "menu", "catalogue"],
+      needs: ["Product photography", "Event coverage", "Corporate headshots", "Aerial / drone", "Highlight film", "Live streaming"],
     },
     {
       n: 5,
@@ -137,7 +158,7 @@ export const site = {
       description:
         "We plan, promote and manage business events, conferences and exhibitions.",
       tags: ["Conferences", "Exhibitions", "Launch events"],
-      keywords: ["event", "events", "launch event", "conference", "exhibition", "trade show", "stand", "booth", "launch event", "gala", "guests", "venue", "expo", "opening"],
+      needs: ["Corporate event", "Product launch", "Exhibition stand", "Conference", "Gala / awards night", "Event staffing"],
     },
     {
       n: 6,
@@ -148,7 +169,7 @@ export const site = {
       description:
         "Public relations and communications that build your reputation and your voice.",
       tags: ["Media relations", "Press releases", "Reputation"],
-      keywords: ["pr", "press", "media", "reputation", "news", "journalist", "announcement", "communications", "crisis", "voice", "visibility"],
+      needs: ["Press release", "Media relations", "Launch PR", "Crisis communications", "Thought leadership", "Award submissions"],
     },
     {
       n: 7,
@@ -159,7 +180,7 @@ export const site = {
       description:
         "Research-led marketing and strategy advice, so every decision has a clear direction.",
       tags: ["Market research", "Go-to-market", "Brand positioning"],
-      keywords: ["strategy", "plan", "research", "market", "positioning", "brand", "competitors", "go-to-market", "direction", "new business", "startup", "expand", "dubai", "uae"],
+      needs: ["Marketing plan", "Brand positioning", "Market research", "Go-to-market", "Marketing audit", "Team training"],
     },
     {
       n: 8,
@@ -169,7 +190,7 @@ export const site = {
       short: "AI consultancy",
       description: "Practical advice on using AI to work smarter and grow faster.",
       tags: ["AI roadmaps", "Automation", "Team training"],
-      keywords: ["ai", "artificial intelligence", "automation", "automate", "chatbot", "gpt", "machine learning", "efficiency", "smarter", "workflow", "agents"],
+      needs: ["AI strategy", "Automate a workflow", "AI chatbot / assistant", "Team AI training", "Data & reporting", "AI content tools"],
     },
     {
       n: 9,
@@ -179,7 +200,7 @@ export const site = {
       short: "IT consultancy",
       description: "Planning and supporting the technology your business runs on.",
       tags: ["Systems planning", "Cloud & security", "Support"],
-      keywords: ["website", "websites", "software", "systems", "cloud", "security", "network", "technology", "infrastructure", "crm", "erp", "app", "tech"],
+      needs: ["Website / web app", "Cloud setup", "Cyber security", "IT support", "CRM / ERP", "Network & devices"],
     },
   ] satisfies Service[],
 
@@ -211,22 +232,124 @@ export const site = {
 
   quiz: {
     heading: "Meet The 9 Quiz.",
-    text: "Tell us what you need, and our AI will show you how Nine Labs Solutions can deliver it.",
+    text: "Nine quick questions, about a minute. Tap your answers and see which of our nine activities fit your business best.",
     cta: "Start The 9 Quiz",
-    examples: [
-      "We’re opening a new restaurant in Dubai Marina and need people to know about it…",
-      "We need more B2B leads for our software company in the UAE…",
-      "We’re planning a product launch event for 500 guests…",
-      "We want to use AI to save our team time every week…",
-    ],
-    chips: [
-      "Launch a brand",
-      "Grow on social",
-      "Plan an event",
-      "Get more leads",
-      "Use AI in my business",
-      "Upgrade our IT",
-    ],
+    questions: [
+      {
+        id: "who",
+        label: "About us",
+        q: "What best describes you?",
+        options: [
+          { id: "startup", label: "A new business or startup", weights: { strategy: 2, social: 1, content: 1, it: 1 } },
+          { id: "small", label: "A small business that wants to grow", weights: { social: 2, advertising: 1, content: 1 } },
+          { id: "established", label: "An established company", weights: { strategy: 1, pr: 1, ai: 1, it: 1 } },
+          { id: "brand", label: "A brand launching a product", weights: { advertising: 2, events: 1, pr: 1, content: 1 } },
+          { id: "events", label: "An organiser, exhibitor or venue", weights: { events: 3, photo: 1 } },
+        ],
+      },
+      {
+        id: "goal",
+        label: "Main goal",
+        q: "What is your main goal right now?",
+        options: [
+          { id: "sales", label: "More customers and sales", weights: { advertising: 3, social: 2 } },
+          { id: "known", label: "Make our brand known", weights: { social: 2, pr: 2, content: 1 } },
+          { id: "launch", label: "Launch something new", weights: { events: 2, pr: 2, advertising: 1, content: 1 } },
+          { id: "event", label: "Run an event or exhibition", weights: { events: 3, photo: 2 } },
+          { id: "smarter", label: "Work smarter with AI and tech", weights: { ai: 3, it: 2 } },
+        ],
+      },
+      {
+        id: "where",
+        label: "Customers",
+        q: "Where do your customers find you?",
+        options: [
+          { id: "social", label: "On social media", weights: { social: 3, content: 1 } },
+          { id: "search", label: "Searching on Google", weights: { advertising: 3 } },
+          { id: "b2b", label: "Other businesses (B2B)", weights: { strategy: 2, pr: 1, events: 1 } },
+          { id: "local", label: "Nearby, in person", weights: { advertising: 1, social: 1, events: 1 } },
+          { id: "unsure", label: "We are not sure yet", weights: { strategy: 3 } },
+        ],
+      },
+      {
+        id: "online",
+        label: "Online today",
+        q: "How is your online presence today?",
+        options: [
+          { id: "zero", label: "We are starting from zero", weights: { strategy: 2, content: 2, it: 1 } },
+          { id: "quiet", label: "We have pages, but they are quiet", weights: { social: 3, content: 2 } },
+          { id: "flat", label: "Active, but not growing", weights: { advertising: 2, strategy: 2 } },
+          { id: "strong", label: "Strong, and we want to scale", weights: { advertising: 2, ai: 1, pr: 1 } },
+        ],
+      },
+      {
+        id: "make",
+        label: "Needs made",
+        q: "What do you need made?",
+        hint: "Pick all that apply.",
+        multi: true,
+        options: [
+          { id: "photo", label: "Photos and video", weights: { photo: 3, content: 1 } },
+          { id: "posts", label: "Social posts and reels", weights: { social: 2, content: 2 } },
+          { id: "ads", label: "Ads and campaigns", weights: { advertising: 3 } },
+          { id: "press", label: "Press and PR stories", weights: { pr: 3 } },
+          { id: "advice", label: "Nothing yet, advice first", weights: { strategy: 3 }, only: true },
+        ],
+      },
+      {
+        id: "event",
+        label: "Events",
+        q: "Do you have an event coming up?",
+        options: [
+          { id: "soon", label: "Yes, within 3 months", weights: { events: 3, photo: 2 } },
+          { id: "later", label: "Later this year", weights: { events: 2, photo: 1 } },
+          { id: "regular", label: "We run events regularly", weights: { events: 2, photo: 2, pr: 1 } },
+          { id: "none", label: "No events planned", weights: {} },
+        ],
+      },
+      {
+        id: "tech",
+        label: "Tech & AI",
+        q: "How does your team use tech and AI?",
+        options: [
+          { id: "little", label: "Hardly at all", weights: { it: 2, ai: 1 } },
+          { id: "manual", label: "Basic tools, lots of manual work", weights: { ai: 3, it: 1 } },
+          { id: "ai", label: "We want automation and AI", weights: { ai: 3 } },
+          { id: "systems", label: "We need better systems or IT support", weights: { it: 3 } },
+        ],
+      },
+      {
+        id: "budget",
+        label: "Monthly budget",
+        q: "What monthly budget can you put into growth?",
+        options: [
+          { id: "lt5", label: "Under AED 5,000", weights: { social: 1, strategy: 1 } },
+          { id: "5to20", label: "AED 5,000 – 20,000", weights: { social: 1, advertising: 1, content: 1 } },
+          { id: "20to50", label: "AED 20,000 – 50,000", weights: { advertising: 1, events: 1, photo: 1 } },
+          { id: "gt50", label: "AED 50,000+", weights: { events: 1, pr: 1, advertising: 1, ai: 1 } },
+          { id: "unsure", label: "Not sure yet", weights: { strategy: 1 } },
+        ],
+      },
+      {
+        id: "when",
+        label: "Start",
+        q: "When would you like to start?",
+        options: [
+          { id: "asap", label: "As soon as possible", weights: {} },
+          { id: "month", label: "Within a month", weights: {} },
+          { id: "quarter", label: "In 1–3 months", weights: {} },
+          { id: "exploring", label: "Just exploring for now", weights: { strategy: 1 } },
+        ],
+      },
+    ] satisfies QuizQuestion[],
+  },
+
+  /** The "Talk to us about this" window (admin: add / edit / remove options). */
+  enquiry: {
+    title: "Talk to us",
+    intro: "Tell us a little, and it goes straight to our team on WhatsApp.",
+    budgets: ["Under AED 5k", "AED 5–20k", "AED 20–50k", "AED 50k+", "Not sure yet"],
+    timelines: ["As soon as possible", "Within a month", "In 1–3 months", "Just exploring"],
   },
 
   ebooks: [
@@ -278,4 +401,7 @@ export const site = {
 
 export type Site = typeof site;
 
-export const whatsappHref = `https://wa.me/${site.contact.whatsappNumber}?text=${encodeURIComponent(site.contact.whatsappText)}`;
+/** A WhatsApp chat link to Nine Labs with a pre-filled message. */
+export const waHref = (text: string = site.contact.whatsappText) =>
+  `https://wa.me/${site.contact.whatsappNumber}?text=${encodeURIComponent(text)}`;
+export const whatsappHref = waHref();

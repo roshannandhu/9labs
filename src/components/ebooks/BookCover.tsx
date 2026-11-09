@@ -1,18 +1,32 @@
 import type { Ebook } from "@/content/site";
 import { NINE_PATH } from "@/components/hero/nine-path";
 
-const TITLE_LINES: Record<string, string[]> = {
-  "the-foundations": ["The", "Foundations"],
-  "why-digital-why-now": ["Why Digital,", "Why Now"],
-  "the-nine-labs-method": ["The Nine Labs", "Method"],
-};
+/** Break a title into short lines for the cover (works for any title the admin enters). */
+function titleLines(title: string, max = 14) {
+  const out: string[] = [];
+  for (const w of title.split(/\s+/)) {
+    const last = out[out.length - 1];
+    if (last && (last + " " + w).length <= max) out[out.length - 1] = `${last} ${w}`;
+    else out.push(w);
+  }
+  return out.slice(0, 3);
+}
 
-/** Cover art drawn in code (final covers to be supplied by the client). viewBox 200×290. */
+/**
+ * The cover. If the admin uploaded an image (`book.cover`) it is used as-is; otherwise a designed
+ * cover is drawn in code from the book's tone and order (viewBox 200×290).
+ */
 export function BookCover({ book }: { book: Ebook }) {
+  if (book.cover) {
+    // eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers
+    return <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />;
+  }
   const id = book.slug;
+  const art = (parseInt(book.n, 10) - 1 + 3) % 3; // three art styles, by order
   const accent = book.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)";
   const accent2 = book.tone === "blue" ? "var(--nl-blue-soft)" : "var(--nl-purple)";
-  const lines = TITLE_LINES[book.slug] ?? [book.title];
+  const lines = titleLines(book.title);
+  const top = lines.length > 2 ? 228 : 248; // first title line's baseline
 
   return (
     <svg viewBox="0 0 200 290" className="block h-full w-full" role="img" aria-label={`${book.title} — cover`} preserveAspectRatio="xMidYMid slice">
@@ -47,7 +61,7 @@ export function BookCover({ book }: { book: Ebook }) {
       <rect x="10" width="1" height="290" fill="white" opacity="0.08" />
 
       {/* art */}
-      {book.slug === "the-foundations" && (
+      {art === 0 && (
         <g fill="none" strokeLinecap="round" strokeLinejoin="round">
           {[0, 1, 2].map((i) => (
             <g key={i} transform={`translate(0 ${-i * 30})`}>
@@ -62,7 +76,7 @@ export function BookCover({ book }: { book: Ebook }) {
           </text>
         </g>
       )}
-      {book.slug === "why-digital-why-now" && (
+      {art === 1 && (
         <g fill="none" strokeLinecap="round">
           {[18, 34, 50, 66].map((r, i) => (
             <path
@@ -79,7 +93,7 @@ export function BookCover({ book }: { book: Ebook }) {
           <circle cx="100" cy="176" r="3" fill="#fff" />
         </g>
       )}
-      {book.slug === "the-nine-labs-method" && (
+      {art === 2 && (
         <g>
           <g transform="translate(66 80) scale(0.17)">
             <path d={NINE_PATH} fill="var(--nl-purple)" fillOpacity="0.5" filter={`url(#blur-${id})`} />
@@ -98,14 +112,14 @@ export function BookCover({ book }: { book: Ebook }) {
         NINE LABS · E-BOOK {book.n}
       </text>
       <path d="M20 32 H62" stroke={accent} strokeWidth="1" />
-      <text x="20" y="248" fontFamily="var(--font-display)" fontWeight="700" fontSize="19" fill="#fff" letterSpacing="-0.4">
+      <text x="20" y={top} fontFamily="var(--font-display)" fontWeight="700" fontSize="19" fill="#fff" letterSpacing="-0.4">
         {lines.map((l, i) => (
-          <tspan key={l} x="20" dy={i === 0 ? 0 : 20}>
+          <tspan key={`${i}${l}`} x="20" dy={i === 0 ? 0 : 20}>
             {l}
           </tspan>
         ))}
       </text>
-      <text x="20" y={248 + lines.length * 20 - 4} fontSize="6.4" fill="white" fillOpacity="0.6" fontFamily="var(--font-sans)">
+      <text x="20" y={top + lines.length * 20 - 4} fontSize="6.4" fill="white" fillOpacity="0.6" fontFamily="var(--font-sans)">
         {book.subtitle}
       </text>
       <text x="180" y="26" textAnchor="end" fontSize="6" fill={accent2} fontFamily="var(--font-mono)" letterSpacing="1.6">

@@ -11,6 +11,7 @@ import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { ConceptLab } from "@/components/lab/ConceptLab";
 import { LogoIntro } from "@/components/intro/LogoIntro";
 import { INTRO_BOOT_SCRIPT } from "@/components/intro/introBus";
+import { EnquiryProvider } from "@/components/enquiry/EnquiryProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 const title = "Nine Labs Solutions — Marketing, Events & Technology in Dubai";
@@ -71,13 +72,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <DemoSettingsProvider>
           <QuizProvider>
-            <BlueprintGrid />
-            <SmoothScroll />
-            <LogoIntro />
-            {children}
-            <WhatsAppFab />
-            <ConceptLab />
-            <CustomCursor />
+            <EnquiryProvider>
+              <BlueprintGrid />
+              <SmoothScroll />
+              <LogoIntro />
+              {children}
+              <WhatsAppFab />
+              <ConceptLab />
+              <CustomCursor />
+            </EnquiryProvider>
           </QuizProvider>
         </DemoSettingsProvider>
       </body>

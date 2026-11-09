@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
 import { ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { registerAnchorPrefix } from "@/lib/scroll";
@@ -11,7 +11,7 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { particleBus } from "@/components/particles/bus";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { ServiceCard } from "./ServiceCard";
-import { ServiceCardsGallery } from "./ServiceCardsGallery";
+import { ServiceDeck } from "./ServiceDeck";
 
 const services = site.services;
 const LAST = services.length - 1; // 8 steps between 1 and 9
@@ -50,17 +50,7 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
   const finale = useRef<HTMLDivElement>(null);
   const stRef = useRef<ScrollTrigger | null>(null);
   const [active, setActive] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-
-  const handleSelectCard = useCallback((index: number) => {
-    setActive(index);
-    setScrollProgress(index);
-    const st = stRef.current;
-    if (st) {
-      const targetScroll = st.start + (st.end - st.start) * (index / LAST);
-      window.scrollTo({ top: targetScroll, behavior: "smooth" });
-    }
-  }, []);
+  const driveRef = useRef<((progress: number) => void) | null>(null);
 
   useGSAP(
     () => {
@@ -68,9 +58,9 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
       const write = () => {
         // 0 → 1: hero 9 to the first digit · 1 → 9: the stage · 9 → 10: the finale's small 9
         particleBus.t = p.a + LAST * p.b + p.c;
-        const currentStep = p.b * LAST;
-        setScrollProgress(currentStep);
-        const i = Math.min(LAST, Math.max(0, Math.round(currentStep)));
+        const step = p.b * LAST;
+        driveRef.current?.(step);
+        const i = Math.min(LAST, Math.max(0, Math.round(step)));
         setActive((prev) => (prev === i ? prev : i));
       };
       ScrollTrigger.create({
@@ -158,21 +148,8 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
               className="relative mx-auto h-[26svh] w-full max-w-[520px] sm:h-[32svh] lg:h-[min(62svh,560px)] lsp:h-[56svh]"
               aria-hidden="true"
             />
-            <div className="flex w-full max-w-[520px] self-center justify-self-center lg:justify-self-start">
-              <ServiceCardsGallery
-                services={services}
-                active={active}
-                scrollProgress={scrollProgress}
-                onSelect={handleSelectCard}
-                bend={0}
-                textColor="#ffffff"
-                borderRadius={0.05}
-                scrollEase={0.05}
-                onItemClick={(item, index) => console.log(item.title, index)}
-                gap={0.16}
-                wave={0}
-                fadeEdges={0.2}
-              />
+            <div className="w-full max-w-[520px] self-center justify-self-center pb-6 sm:pb-8 lg:justify-self-start">
+              <ServiceDeck services={services} active={active} driveRef={driveRef} />
             </div>
           </div>
 
@@ -191,7 +168,7 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
                     href={`#service-${s.slug}`}
                     aria-label={`${i + 1}. ${s.title}`}
                     aria-current={i === active ? "step" : undefined}
-                    className={`rail-step grid h-8 w-8 place-items-center rounded-full border font-brand text-xs font-black transition-all duration-500 sm:h-9 sm:w-9 ${
+                    className={`rail-step grid h-8 w-8 place-items-center rounded-full border font-digits text-xs font-black transition-all duration-500 sm:h-9 sm:w-9 ${
                       i === active
                         ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-paper shadow-[0_0_18px_-2px_var(--nl-blue)]"
                         : i < active
@@ -218,7 +195,7 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
 function Finale({ still = false }: { still?: boolean }) {
   return (
     <div className="container-x flex flex-col items-center pb-20 pt-14 text-center sm:pb-28 sm:pt-20">
-      <div data-particle-slot="finale" className="relative h-24 w-20 sm:h-32 sm:w-24" aria-hidden="true">
+      <div data-particle-slot="finale" className="relative h-32 w-32 sm:h-44 sm:w-40" aria-hidden="true">
         {still && <StaticDigit ch="9" />}
       </div>
       <h3 className="mt-4 font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]">

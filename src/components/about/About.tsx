@@ -6,8 +6,7 @@ import CountUp from "@/components/reactbits/CountUp";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
-import { BridgeIllustration } from "./BridgeIllustration";
-import { RoadmapAscent } from "./RoadmapAscent";
+import { BridgeStory } from "./BridgeStory";
 import { SpringHeading } from "@/components/layout/SpringHeading";
 import { useDemo } from "@/components/providers/DemoSettings";
 
@@ -86,27 +85,8 @@ export function About() {
         </div>
       </div>
 
-      {/* The bridge: a pure shape (no lettering baked in), so it scales to any width — never
-          needs to scroll sideways on a phone. The caption below is plain HTML and wraps freely. */}
-      <div className="relative mt-20 sm:mt-28">
-        <div className="container-x">
-          <BridgeIllustration />
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center text-[13px] text-white/50 sm:text-sm">
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-nl-blue" aria-hidden="true" />
-              Your goals reach us
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-nl-purple" aria-hidden="true" />
-              Our expertise reaches you
-            </span>
-            <span className="font-accent text-white/70">together, we get across.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* How we work — Roadmap Ascent */}
-      <RoadmapAscent />
+      {/* How we work: the bridge, built in three steps as you scroll */}
+      <BridgeStory />
 
       {/* Values */}
       <div className="container-x mt-24 sm:mt-28">

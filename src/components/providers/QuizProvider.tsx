@@ -5,16 +5,17 @@ import dynamic from "next/dynamic";
 
 const QuizOverlay = dynamic(() => import("@/components/quiz/QuizOverlay"), { ssr: false });
 
-type QuizCtx = { open: (prefill?: string) => void; close: () => void; isOpen: boolean };
+/** `open(first?)`: optionally with question 1 already answered (an option id), e.g. from the quiz section. */
+type QuizCtx = { open: (first?: string) => void; close: () => void; isOpen: boolean };
 const Ctx = createContext<QuizCtx | null>(null);
 
 export function QuizProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setOpen] = useState(false);
-  const [prefill, setPrefill] = useState("");
+  const [first, setFirst] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  const open = useCallback((text?: string) => {
-    setPrefill(text ?? "");
+  const open = useCallback((answer?: string) => {
+    setFirst(answer ?? "");
     setMounted(true);
     setOpen(true);
   }, []);
@@ -24,7 +25,7 @@ export function QuizProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={value}>
       {children}
-      {mounted && <QuizOverlay open={isOpen} prefill={prefill} onClose={close} />}
+      {mounted && <QuizOverlay open={isOpen} first={first} onClose={close} />}
     </Ctx.Provider>
   );
 }

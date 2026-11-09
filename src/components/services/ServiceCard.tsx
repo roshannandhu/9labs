@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Service } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
-import { useQuiz } from "@/components/providers/QuizProvider";
+import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
 
 type Props = {
   service: Service;
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function ServiceCard({ service: s, mode, active = false, className = "" }: Props) {
-  const quiz = useQuiz();
+  const enquiry = useEnquiry();
   const ref = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
 
@@ -42,7 +42,7 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
 
       <div className="relative flex items-center justify-between gap-4">
         <span className="label-mono !text-[11px]">{num} / 09</span>
-        <span className="svc-num grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] font-brand text-[13px] font-black text-white/60 transition-colors duration-500 group-data-[on=true]:border-nl-purple/50 group-data-[on=true]:bg-nl-purple/15 group-data-[on=true]:text-white">
+        <span className="svc-num grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] font-digits text-[13px] font-black text-white/60 transition-colors duration-500 group-data-[on=true]:border-nl-purple/50 group-data-[on=true]:bg-nl-purple/15 group-data-[on=true]:text-white">
           {s.n}
         </span>
       </div>
@@ -74,7 +74,7 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
       <div className="relative mt-auto pt-5 sm:pt-7 lsp:pt-3">
         <button
           type="button"
-          onClick={() => quiz.open(`I'm interested in ${s.title.toLowerCase()} for my business. `)}
+          onClick={() => enquiry.open(s.slug)}
           className="link-glow -my-2 inline-flex items-center gap-2 py-2 text-sm font-medium text-white"
           data-cursor="Ask"
         >

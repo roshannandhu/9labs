@@ -6,8 +6,10 @@ import type { Ebook } from "@/content/site";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { useQuiz } from "@/components/providers/QuizProvider";
 import { getLenis } from "@/lib/scroll";
+import { useModalLock } from "@/lib/useModalLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Book3D } from "./Book3D";
+import { BookCover } from "./BookCover";
 import { LeadForm, type LeadValues } from "./LeadForm";
 
 type Phase = "fly" | "front" | "open" | "closing";
@@ -75,7 +77,7 @@ function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null;
     <div className="flex h-full flex-col items-start p-6 sm:p-7" role="status" aria-live="polite">
       <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true" className="drop-shadow-[0_0_14px_var(--nl-purple)]">
         <circle cx="28" cy="28" r="26" stroke="var(--nl-purple)" strokeWidth="1.5" pathLength={1} className="construct-draw" style={{ animationDelay: "0.9s" }} />
-        <path d="M17 29l7 7 15-16" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" pathLength={1} className="construct-draw" style={{ animationDelay: "1.3s" }} />
+        <path d="M17 29l7 7 15-16" stroke="rgb(var(--fg-rgb))" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" pathLength={1} className="construct-draw" style={{ animationDelay: "1.3s" }} />
       </svg>
       <h3 className="mt-5 text-[22px] font-semibold leading-tight">You’re on the list{first ? `, ${first}` : ""}!</h3>
       <p className="mt-2 text-[14px] leading-relaxed text-nl-ink">
@@ -96,7 +98,8 @@ function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null;
 
 export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void }) {
   const { reduced } = useDemo();
-  const wide = useMediaQuery("(min-width: 768px)", true);
+  // the 3D spread needs room; phones (and short landscape screens) get a flat page instead
+  const wide = useMediaQuery("(min-width: 768px) and (min-height: 560px)", true);
   const [phase, setPhase] = useState<Phase>(reduced ? "open" : "fly");
   const [lead, setLead] = useState<LeadValues | null>(null);
   const formPage = useRef<HTMLDivElement>(null);
@@ -106,7 +109,8 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   const close = () => {
     if (reduced) return onClose();
     setPhase("closing");
-    window.setTimeout(onClose, 650);
+    // wait for the cover to swing shut (1.15 s) before the book flies back to the shelf
+    window.setTimeout(onClose, 950);
   };
   const closeRef = useRef(close);
   useEffect(() => {
@@ -131,6 +135,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   }, [phase, reduced, lead]);
 
   useEffect(() => {
+    if (!wide) return; // the phone page has its own lock (useModalLock)
     const prev = document.activeElement as HTMLElement | null;
     const lenis = getLenis();
     lenis?.stop();
@@ -161,18 +166,17 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
       lenis?.start();
       prev?.focus?.({ preventScroll: true });
     };
-  }, []);
+  }, [wide]);
 
   const isOpen = phase === "open";
   const turned = !!lead;
+
+  if (!wide) return <BookPage book={book} onClose={onClose} reduced={reduced} />;
 
   // Page size for the open spread (desktop/tablet): left page = contents, right page = form.
   const pw = "min(372px, 42vw, calc((100svh - 120px) / 1.42))";
   const ph = `calc(${pw} * 1.42)`;
 
-  // Phone: one page, as wide as the screen allows — the form, visible the moment the cover opens.
-  const mw = "min(92vw, 400px, calc((100svh - 150px) / 1.3))";
-  const mh = `calc(${mw} * 1.3)`;
 
   return (
     <motion.div
@@ -202,7 +206,6 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
           </svg>
         </button>
 
-        {wide ? (
           <motion.div layoutId={`book-${book.slug}`} className="book-scene" transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
             <Book3D
               book={book}
@@ -217,41 +220,92 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
               turned={turned}
               insideCover={<Inside book={book} />}
               firstPage={
-                <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined}>
+                <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined} inert={turned || !isOpen}>
                   <LeadForm book={book} onDone={setLead} />
                 </div>
               }
               underPage={turned ? <Success book={book} lead={lead} onBack={close} /> : null}
             />
           </motion.div>
-        ) : (
-          /* Phone: a single page. The cover opens straight onto the form — that's what someone
-             tapped "get the free e-book" to do — with the chapter list one tap away above it,
-             not a page they have to get past first. Sending the form turns the same page over
-             to the confirmation, exactly like the desktop spread's right-hand page. */
-          <div className="flex w-full flex-col items-center">
-            <motion.div layoutId={`book-${book.slug}`} className="book-scene" transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-              <Book3D
-                book={book}
-                w={mw}
-                h={mh}
-                d="22px"
-                ry={phase === "fly" ? "24deg" : "0deg"}
-                rx={phase === "fly" ? "4deg" : "0deg"}
-                open={isOpen}
-                turned={turned}
-                insideCover={<div className="h-full" aria-hidden="true" />}
-                firstPage={
-                  <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-5" aria-hidden={turned || !isOpen ? true : undefined} inert={turned || !isOpen}>
-                    <ChaptersDisclosure book={book} />
-                    <LeadForm book={book} onDone={setLead} compact />
-                  </div>
-                }
-                underPage={turned ? <Success book={book} lead={lead} onBack={close} /> : null}
-              />
-            </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Phones (and short landscape screens): the book opens into a flat, full-screen page — the cover
+ * peels open as a short animation, then a normal scrolling page with the chapters and the form.
+ * No 3D page to scroll inside, 16 px inputs (no iOS zoom), no auto-focus (no surprise keyboard),
+ * fields scroll above the keyboard, and the confirmation is never cut off.
+ */
+function BookPage({ book, onClose, reduced }: { book: Ebook; onClose: () => void; reduced: boolean }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const [lead, setLead] = useState<LeadValues | null>(null);
+  useModalLock(true, panel, onClose);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[100] bg-nl-bg"
+      initial={{ opacity: 0, y: reduced ? 0 : 28 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: reduced ? 0 : 28 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Get the free e-book: ${book.title}`}
+        tabIndex={-1}
+        className="h-full overflow-y-auto overscroll-contain outline-none"
+        data-lenis-prevent
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-nl-bg/85 px-4 py-3 backdrop-blur-xl">
+          <p className="label-mono">Free e-book {book.n}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/12 text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M2 2l10 10M12 2L2 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mx-auto max-w-[520px] px-5 pb-[max(28px,env(safe-area-inset-bottom))] pt-6">
+          <div className="flex items-center gap-5">
+            {/* the cover peels open onto the first page */}
+            <div className="bp-book relative h-[150px] w-[104px] shrink-0" aria-hidden="true">
+              <div className="bp-paper absolute inset-0 rounded-[3px_8px_8px_3px]" />
+              <div className={`bp-cover on-dark absolute inset-0 overflow-hidden rounded-[3px_8px_8px_3px] ${reduced ? "" : "bp-cover--open"}`}>
+                <BookCover book={book} />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[22px] font-semibold leading-tight">{book.title}</h2>
+              <p className="mt-1 text-[14px] leading-snug text-nl-ink">{book.subtitle}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[12px] text-white/60">
+                <span className="rounded-full border border-white/12 px-2.5 py-1">{book.pages} pages</span>
+                <span className="rounded-full border border-white/12 px-2.5 py-1">PDF</span>
+                <span className="rounded-full border border-white/12 px-2.5 py-1">{book.readTime}</span>
+              </div>
+            </div>
           </div>
-        )}
+
+          <div className="mt-6">
+            <ChaptersDisclosure book={book} />
+          </div>
+
+          {lead ? (
+            <div className="mt-2 rounded-3xl border border-white/10 p-1">
+              <Success book={book} lead={lead} onBack={onClose} />
+            </div>
+          ) : (
+            <LeadForm book={book} onDone={setLead} />
+          )}
+        </div>
       </div>
     </motion.div>
   );

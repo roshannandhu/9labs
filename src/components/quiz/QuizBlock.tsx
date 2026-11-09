@@ -1,9 +1,8 @@
 "use client";
 
-import { site } from "@/content/site";
+import { site, type QuizQuestion } from "@/content/site";
 import { useQuiz } from "@/components/providers/QuizProvider";
 import { ShaderGradient } from "@/components/background/ShaderGradient";
-import TextType from "@/components/reactbits/TextType";
 import StarBorder from "@/components/reactbits/StarBorder";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
@@ -12,6 +11,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 export function QuizBlock() {
   const quiz = useQuiz();
   const q = site.quiz;
+  const q1 = (q.questions as QuizQuestion[])[0];
 
   return (
     <section id="quiz" aria-labelledby="quiz-title" className="relative py-16 sm:py-24">
@@ -36,45 +36,22 @@ export function QuizBlock() {
             />
             <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-white/75 sm:text-lg">{q.text}</p>
 
-            {/* faux input */}
-            <button
-              type="button"
-              onClick={() => quiz.open()}
-              data-cursor="Type"
-              className="group mt-9 flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/15 bg-black/45 p-2 pl-5 text-left backdrop-blur-xl transition-colors hover:border-nl-purple/70"
-              aria-label="Open The 9 Quiz and describe what you need"
-            >
-              <span className="label-mono hidden shrink-0 !text-nl-purple sm:inline">Need ›</span>
-              <span className="min-h-[1.5em] flex-1 truncate text-[15px] text-white/80">
-                <TextType
-                  as="span"
-                  text={q.examples}
-                  typingSpeed={34}
-                  deletingSpeed={16}
-                  pauseDuration={1800}
-                  cursorCharacter="▍"
-                  cursorClassName="text-nl-purple"
-                  startOnVisible
-                />
-              </span>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-nl-purple text-paper transition-transform group-hover:scale-105">
-                <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </button>
-
-            <div className="mt-4 flex max-w-xl flex-wrap justify-center gap-2">
-              {q.chips.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => quiz.open(`${c}. `)}
-                  className="rounded-full border border-white/12 bg-black/30 px-3.5 py-1.5 text-[13px] text-white/75 backdrop-blur transition-colors hover:border-nl-purple/70 hover:text-white"
-                >
-                  {c}
-                </button>
-              ))}
+            {/* question 1, right here: a tap starts the quiz with it answered */}
+            <div className="mt-9 w-full max-w-xl rounded-3xl border border-white/15 bg-black/40 p-4 text-left backdrop-blur-xl sm:p-5">
+              <p className="label-mono !text-[#b49bff]">Question 1 of 9</p>
+              <p className="mt-1.5 font-display text-[18px] font-semibold text-white sm:text-xl">{q1.q}</p>
+              <div className="mt-3.5 flex flex-wrap gap-2">
+                {q1.options.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => quiz.open(o.id)}
+                    className="rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-2 text-[13.5px] text-white/85 transition-colors hover:border-[#8c53fe] hover:bg-[#8c53fe]/25 hover:text-white"
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <StarBorder
@@ -93,7 +70,7 @@ export function QuizBlock() {
             >
               {q.cta}
             </StarBorder>
-            <p className="label-mono mt-4 !text-white/40">About 30 seconds · No sign-up</p>
+            <p className="label-mono mt-4 !text-white/40">9 questions · about a minute · no sign-up</p>
           </AnimatedContent>
         </div>
       </div>

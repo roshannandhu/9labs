@@ -42,7 +42,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
   const show = (k: keyof LeadValues) => (touched[k] ? errors[k] : undefined);
   const set = <K extends keyof LeadValues>(k: K, val: LeadValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
-  const fieldBase = "rounded-xl border bg-black/30 px-3.5 text-[14.5px] text-white placeholder:text-white/30 transition-colors focus:outline-none focus:border-nl-purple/80 focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--nl-purple)_18%,transparent)]";
+  const fieldBase = "rounded-xl border bg-white/[0.04] px-3.5 text-[16px] text-white placeholder:text-white/35 transition-colors focus:outline-none focus:border-nl-purple/80 focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--nl-purple)_18%,transparent)]";
   const field = `w-full min-w-0 ${fieldBase}`;
   const h = compact ? "h-11" : "h-[42px]";
   const border = (k: keyof LeadValues) => (show(k) ? "border-red-400/70" : "border-white/12");
@@ -51,6 +51,13 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
     <form
       noValidate
       className="flex h-full flex-col"
+      // phones: keep the field being typed in above the on-screen keyboard
+      onFocusCapture={(e) => {
+        if (window.matchMedia("(max-width: 767px)").matches && e.target instanceof HTMLElement) {
+          const el = e.target;
+          window.setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 250);
+        }
+      }}
       onSubmit={async (e) => {
         e.preventDefault();
         setTouched({ name: true, email: true, phone: true, consent: true });

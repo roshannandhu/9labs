@@ -12,6 +12,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Book3D } from "./Book3D";
 import { BookDialog } from "./BookDialog";
+import { PhoneShelf } from "./PhoneShelf";
 
 const BW = "clamp(168px, 17vw, 210px)";
 /** Halo colours keyed to each cover (Spectra). */
@@ -71,7 +72,12 @@ export function Ebooks() {
           </p>
         </div>
 
-        <div className="relative mt-16 grid gap-y-20 sm:mt-20 md:grid-cols-3 md:gap-x-8">
+        <div className="mt-10 sm:mt-14">
+          <PhoneShelf onOpen={setOpenSlug} />
+        </div>
+
+        {/* tablet / laptop: the mirror shelf */}
+        <div className="relative mt-20 hidden md:grid md:grid-cols-3 md:gap-x-8">
           {/* the shelf line */}
           <div className="pointer-events-none absolute inset-x-0 top-[calc(clamp(168px,17vw,210px)*1.45+20px)] hidden h-px bg-gradient-to-r from-transparent via-white/25 to-transparent md:block" aria-hidden="true">
             <span className="absolute inset-x-[10%] -top-px h-[3px] bg-gradient-to-r from-transparent via-nl-purple/50 to-transparent blur-[2px]" />
