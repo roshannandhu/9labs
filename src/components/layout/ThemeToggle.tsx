@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { currentTheme, setTheme, type Theme } from "@/lib/theme";
+
+/** The current theme, re-rendering when it changes (the nav toggle flips `<html data-theme>`). */
+export function useTheme(): Theme {
+  return useSyncExternalStore(
+    (cb) => {
+      const mo = new MutationObserver(cb);
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      return () => mo.disconnect();
+    },
+    currentTheme,
+    () => "light",
+  );
+}
 
 /** Sun / moon button in the nav: switches the light (lavender) and dark themes. */
 export function ThemeToggle() {
-  const [theme, set] = useState<Theme | null>(null);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- read the pre-paint theme once mounted
-  useEffect(() => set(currentTheme()), []);
+  const theme = useTheme();
 
   const next: Theme = theme === "dark" ? "light" : "dark";
   return (
@@ -15,7 +26,6 @@ export function ThemeToggle() {
       type="button"
       onClick={() => {
         setTheme(next);
-        set(next);
       }}
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}

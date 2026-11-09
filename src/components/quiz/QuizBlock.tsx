@@ -7,20 +7,29 @@ import StarBorder from "@/components/reactbits/StarBorder";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
+import { useTheme } from "@/components/layout/ThemeToggle";
 
 export function QuizBlock() {
   const quiz = useQuiz();
   const q = site.quiz;
   const q1 = (q.questions as QuizQuestion[])[0];
+  const dark = useTheme() === "dark";
 
   return (
     <section id="quiz" aria-labelledby="quiz-title" className="relative py-16 sm:py-24">
       <div className="container-x">
-        <div className="on-dark relative isolate overflow-hidden rounded-[32px] border border-white/10 sm:rounded-[40px]">
-          <ShaderGradient className="absolute inset-0 -z-10" />
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(80%_70%_at_50%_45%,transparent_0%,rgba(5,5,7,.55)_70%,rgba(5,5,7,.85)_100%)]" />
+        {/* light: a white glass card with a slow aurora in the logo colours; dark: the shader card */}
+        <div className="quiz-card relative isolate overflow-hidden rounded-[32px] border border-white/10 sm:rounded-[40px]">
+          {dark ? (
+            <>
+              <ShaderGradient className="absolute inset-0 -z-10" />
+              <div className="absolute inset-0 -z-10 bg-[radial-gradient(80%_70%_at_50%_45%,transparent_0%,rgba(5,5,7,.55)_70%,rgba(5,5,7,.85)_100%)]" />
+            </>
+          ) : (
+            <div className="quiz-aurora absolute inset-0 -z-10" aria-hidden="true" />
+          )}
           <div
-            className="absolute inset-0 -z-10 opacity-40 [background-image:linear-gradient(rgba(255,255,255,.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(70%_70%_at_50%_50%,#000,transparent)]"
+            className="quiz-grid absolute inset-0 -z-10 opacity-40 [background-size:48px_48px] [mask-image:radial-gradient(70%_70%_at_50%_50%,#000,transparent)]"
             aria-hidden="true"
           />
 
@@ -37,8 +46,8 @@ export function QuizBlock() {
             <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-white/75 sm:text-lg">{q.text}</p>
 
             {/* question 1, right here: a tap starts the quiz with it answered */}
-            <div className="mt-9 w-full max-w-xl rounded-3xl border border-white/15 bg-black/40 p-4 text-left backdrop-blur-xl sm:p-5">
-              <p className="label-mono !text-[#b49bff]">Question 1 of 9</p>
+            <div className="quiz-q1 mt-9 w-full max-w-xl rounded-3xl border border-white/15 p-4 text-left backdrop-blur-xl sm:p-5">
+              <p className="label-mono quiz-accent">Question 1 of 9</p>
               <p className="mt-1.5 font-display text-[18px] font-semibold text-white sm:text-xl">{q1.q}</p>
               <div className="mt-3.5 flex flex-wrap gap-2">
                 {q1.options.map((o) => (
@@ -46,7 +55,7 @@ export function QuizBlock() {
                     key={o.id}
                     type="button"
                     onClick={() => quiz.open(o.id)}
-                    className="rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-2 text-[13.5px] text-white/85 transition-colors hover:border-[#8c53fe] hover:bg-[#8c53fe]/25 hover:text-white"
+                    className="rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-2 text-[13.5px] text-white/85 transition-colors hover:border-[#8c53fe] hover:bg-[#8c53fe]/20 hover:text-white"
                   >
                     {o.label}
                   </button>
@@ -70,7 +79,7 @@ export function QuizBlock() {
             >
               {q.cta}
             </StarBorder>
-            <p className="label-mono mt-4 !text-white/40">9 questions · about a minute · no sign-up</p>
+            <p className="label-mono mt-4 text-balance !text-white/40">9 questions · about a minute · no sign-up</p>
           </AnimatedContent>
         </div>
       </div>

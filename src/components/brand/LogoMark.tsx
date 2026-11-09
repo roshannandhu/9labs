@@ -3,8 +3,6 @@ import { useId } from "react";
 /** Wordmark geometry (viewBox units; the client's logo file scaled so the wordmark is 708 wide). */
 export const LOGO_VB = { w: 709, h: 186 } as const;
 
-/** The logo's gradient, sampled from the client's file: purple → cyan, left to right. */
-const GRAD = { from: "#8c53fe", to: "#5ce0e6" } as const;
 
 // Traced from the client's logo file (pixel contours: 25 of 87,583 px differ). Swap for their SVG when supplied.
 const P = {
@@ -46,8 +44,9 @@ export function LogoMark({ className = "", title = "Nine Labs Solutions", intro 
     <svg viewBox={`0 0 ${LOGO_VB.w} ${LOGO_VB.h}`} className={className} role="img" aria-label={title}>
       <defs>
         <linearGradient id={grad} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={LOGO_VB.w} y2="0">
-          <stop offset="0" stopColor={GRAD.from} />
-          <stop offset="1" stopColor={GRAD.to} />
+          {/* theme-aware (globals.css): light = black → indigo, dark = purple → cyan — the two logo files */}
+          <stop offset="0" style={{ stopColor: "var(--logo-from)" }} />
+          <stop offset="1" style={{ stopColor: "var(--logo-to)" }} />
         </linearGradient>
         {intro && (
           <mask id={cut} maskUnits="userSpaceOnUse" x="-40" y="-700" width={LOGO_VB.w + 80} height="1000">

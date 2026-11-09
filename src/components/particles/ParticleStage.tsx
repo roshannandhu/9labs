@@ -8,20 +8,26 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { particleBus } from "./bus";
 import { digitShape, GLYPH_SIZE, rng, type Shape } from "./targets";
 
-// The logo's gradient across every number: purple (left) → cyan (right).
-const FROM = [0x8c, 0x53, 0xfe];
-const TO = [0x5c, 0xe0, 0xe6];
+// The logo's gradient across every number, as in the two logo files (globals.css --logo-from/to):
+// light = black → indigo, dark = purple → cyan.
+const GRAD = {
+  light: [[0x03, 0x03, 0x03], [0x35, 0x33, 0xcb]],
+  dark: [[0x8c, 0x53, 0xfe], [0x5c, 0xe0, 0xe6]],
+} as const;
 const STEPS = 16;
 const hex = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
 const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
 /** colours[edge 0|1][step]: the outline a touch brighter (dark) / deeper (light) for a crisp edge */
-const colours = (dark: boolean) =>
-  [0, 1].map((edge) =>
+const colours = (dark: boolean) => {
+  const [from, to] = GRAD[dark ? "dark" : "light"];
+  return [0, 1].map((edge) =>
     Array.from({ length: STEPS }, (_, k) => {
-      const c = mix(FROM, TO, k / (STEPS - 1));
-      return hex(edge ? (dark ? mix(c, [255, 255, 255], 0.3) : mix(c, [40, 20, 120], 0.18)) : c);
+      const c = mix([...from], [...to], k / (STEPS - 1));
+      return hex(edge ? (dark ? mix(c, [255, 255, 255], 0.3) : mix(c, [8, 6, 60], 0.2)) : c);
     }),
   );
+};
+const isDark = () => document.documentElement.dataset.theme === "dark";
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 /** Hold each number for the first and last ~22% of a step, morph in the middle — so every digit is readable. */
@@ -135,7 +141,8 @@ export function ParticleStage() {
       const s = rest.get(name);
       if (!s) return;
       const px2 = Math.max(2, Math.round(side * dpr));
-      const key = `${ch}|${px2}`;
+      const dark = isDark();
+      const key = `${ch}|${px2}|${dark}`; // redrawn when the theme flips
       if (s.key === key) return;
       s.key = key;
       s.c.width = px2;
@@ -149,8 +156,9 @@ export function ParticleStage() {
       g.textBaseline = "alphabetic";
       const m = g.measureText(ch);
       const grad = g.createLinearGradient(px2 / 2 - m.actualBoundingBoxLeft, 0, px2 / 2 + m.actualBoundingBoxRight, 0);
-      grad.addColorStop(0, hex(FROM));
-      grad.addColorStop(1, hex(TO));
+      const [from, to] = GRAD[dark ? "dark" : "light"];
+      grad.addColorStop(0, hex([...from]));
+      grad.addColorStop(1, hex([...to]));
       g.fillStyle = grad;
       g.fillText(ch, px2 / 2, px2 / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
     };
@@ -254,7 +262,7 @@ export function ParticleStage() {
       const fill = start.slice();
       for (let i = 0; i < N; i++) if (bucket[i] < STEPS * 2) order[fill[bucket[i]]++] = i;
 
-      const cols = document.documentElement.dataset.theme === "dark" ? pal.dark : pal.light;
+      const cols = isDark() ? pal.dark : pal.light;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalAlpha = alpha;
       const half = size / 2;
