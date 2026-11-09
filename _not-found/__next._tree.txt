@@ -2,4 +2,4 @@
 :HL["/9labs/_next/static/chunks/270ftmcfdp_oy.css","style"]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"/_not-found","h":96,"c":"$Q2"}]]
-0:{"b":"en82wV-oSuB2nmf-YIyFn","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"ERHMtCoItXu6pZH43IcMO","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
