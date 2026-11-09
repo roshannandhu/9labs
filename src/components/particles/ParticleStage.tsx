@@ -35,21 +35,24 @@ const plateau = (f: number) => {
   const u = clamp01((f - 0.22) / 0.56);
   return u * u * (3 - 2 * u);
 };
-const SLOTS = ["hero", "stage", "finale"] as const;
-type SlotName = (typeof SLOTS)[number];
-const slotOf = (k: number): SlotName => (k === 0 ? "hero" : k >= 10 ? "finale" : "stage");
+// hero 9 · one slot per service card (s1…s9) · the finale's small 9
+const SLOTS = ["hero", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "finale"];
+const slotOf = (k: number) => SLOTS[Math.min(10, k)];
 const digitOf = (k: number) => (k === 0 || k >= 10 ? "9" : String(k));
+/** a card's number when the swarm is elsewhere: a faint watermark the particles fill in */
+const GHOST = 0.07;
 
 /**
  * The particle numbers. One swarm assembles the hero 9 (after the landing animation), then —
- * driven only by scroll — splits and re-forms 1, 2 … 9 in the services stage, and finally a small
- * 9 above the "all nine" grid.
+ * driven only by scroll — travels down the services list: between two cards it lifts off one
+ * card's number and pours into the next (1, 2 … 9), and finally forms a small 9 above the
+ * "all nine" grid. Cards the swarm is not on show their number as a faint watermark.
  *
  * Two layers, so a number never jitters:
  * - **Formed** (at rest): a solid, crisp glyph drawn on a small canvas that lives *inside* its
  *   slot in the page — it scrolls natively with the content, on every device.
  * - **Moving** (splitting / re-forming): ~12,000 particles (~6,000 on phones) on one fixed
- *   full-screen canvas, drawn on GSAP's ticker right after Lenis has scrolled, so the positions
+ *   full-screen canvas above the content (so the swarm visibly crosses the cards), drawn on GSAP's ticker right after Lenis has scrolled, so the positions
  *   it reads are always this frame's. The two cross-fade while the particles sit exactly on the
  *   glyph, so the hand-over is seamless. Nothing is drawn while a number simply sits there.
  * Particles are batched by colour (a few fillStyle changes per frame, not thousands); a device
@@ -126,7 +129,7 @@ export function ParticleStage() {
     window.addEventListener("resize", resize);
 
     // the solid glyph layer: one small canvas inside each slot
-    const rest = new Map<SlotName, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number }>();
+    const rest = new Map<string, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number }>();
     for (const name of SLOTS) {
       const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
       const c = document.createElement("canvas");
@@ -137,7 +140,7 @@ export function ParticleStage() {
       el.appendChild(c);
       rest.set(name, { el, c, g, key: "", op: 0 });
     }
-    const drawGlyph = (name: SlotName, ch: string, side: number) => {
+    const drawGlyph = (name: string, ch: string, side: number) => {
       const s = rest.get(name);
       if (!s) return;
       const px2 = Math.max(2, Math.round(side * dpr));
@@ -162,7 +165,7 @@ export function ParticleStage() {
       g.fillStyle = grad;
       g.fillText(ch, px2 / 2, px2 / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
     };
-    const setOpacity = (name: SlotName, op: number) => {
+    const setOpacity = (name: string, op: number) => {
       const s = rest.get(name);
       if (!s) return;
       const v = Math.round(op * 100) / 100;
@@ -198,8 +201,23 @@ export function ParticleStage() {
       const restSlot = slotOf(nearB ? k + 1 : k);
       const RB = nearB ? B : A;
       const RS = nearB ? SB : SA;
+      // the other cards' watermarks (read every size first, then draw: no layout thrash)
+      const ghosts: [string, string, number][] = [];
+      for (let d = 1; d <= 9; d++) {
+        const name = SLOTS[d];
+        const sh = shapes[d];
+        const s = rest.get(name);
+        if (!sh || !s || name === restSlot) continue;
+        const b = s.el.getBoundingClientRect();
+        if (b.bottom > -H && b.top < 2 * H) ghosts.push([name, String(d), box(b, sh).h / sh.hr]);
+      }
       drawGlyph(restSlot, digitOf(nearB ? k + 1 : k), RB.h / RS.hr);
-      for (const name of SLOTS) setOpacity(name, name === restSlot ? formed : 0);
+      for (const [name, ch, side] of ghosts) drawGlyph(name, ch, side);
+      const ghost = GHOST * clamp01((now - t0 - 1700) / 450);
+      for (const name of SLOTS) {
+        const card = name !== "hero" && name !== "finale";
+        setOpacity(name, name === restSlot ? (card ? Math.max(ghost, formed) : formed) : card ? ghost : 0);
+      }
 
       // particles: only while the number is moving
       if (dirty) {
@@ -333,5 +351,6 @@ export function ParticleStage() {
   }, [reduced]);
 
   if (reduced) return null;
-  return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-[5]" aria-hidden="true" />;
+  // above the page content (z-10) and below the nav (z-80): only drawn while numbers move
+  return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-[15]" aria-hidden="true" />;
 }

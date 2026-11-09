@@ -11,17 +11,16 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { particleBus } from "@/components/particles/bus";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { ServiceCard } from "./ServiceCard";
-import { ServiceDeck } from "./ServiceDeck";
 
 const services = site.services;
 const LAST = services.length - 1; // 8 steps between 1 and 9
 
 /**
- * "Our 9 labs" — the pinned split stage. The section holds still while you scroll; on one side
- * the particle swarm (ParticleStage) forms the number, on the other the matching card swaps in,
- * one per step from 1 to 9, with a 1–9 rail underneath. It ends on "All nine. One team." — the
- * swarm becomes a small 9 above a 3×3 grid of every activity.
- * Reduced motion: no pin — a plain list of the nine cards with a still number each.
+ * "Our 9 labs" — the travelling swarm. Nothing pins or snaps: the nine cards scroll normally, each
+ * with its own number. Between two cards the particle swarm (ParticleStage) leaves one number and
+ * re-forms the next; the card whose number is formed lights up. It ends on "All nine. One team." —
+ * the swarm becomes a small 9 above a 3×3 grid of every activity.
+ * Reduced motion: a plain list of the nine cards with a still number each.
  */
 export function Services() {
   const { reduced } = useDemo();
@@ -46,86 +45,65 @@ export function Services() {
 
 function ServicesStage({ heading }: { heading: React.ReactNode }) {
   const section = useRef<HTMLElement>(null);
-  const pin = useRef<HTMLDivElement>(null);
-  const finale = useRef<HTMLDivElement>(null);
-  const stRef = useRef<ScrollTrigger | null>(null);
-  const [active, setActive] = useState(0);
-  const driveRef = useRef<((progress: number) => void) | null>(null);
+  const anchors = useRef<number[]>([]);
+  const [active, setActive] = useState(-1);
 
   useGSAP(
     () => {
-      const p = { a: 0, b: 0, c: 0 };
-      const write = () => {
-        // 0 → 1: hero 9 to the first digit · 1 → 9: the stage · 9 → 10: the finale's small 9
-        particleBus.t = p.a + LAST * p.b + p.c;
-        const step = p.b * LAST;
-        driveRef.current?.(step);
-        const i = Math.min(LAST, Math.max(0, Math.round(step)));
-        setActive((prev) => (prev === i ? prev : i));
+      const root = section.current;
+      if (!root) return;
+      // The scroll position where each number is "home": 0 = the hero 9, 1–9 = each card's row, 10 = the finale.
+      // A row is home when it is centred in the screen below the nav — or, if it is taller, when its number
+      // sits just under the nav.
+      const measure = () => {
+        const H = window.innerHeight;
+        const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 72;
+        const S = [0];
+        for (const row of root.querySelectorAll<HTMLElement>("[data-swarm-row]")) {
+          const r = row.getBoundingClientRect();
+          const slot = row.querySelector("[data-particle-slot]")?.getBoundingClientRect() ?? r;
+          const at = window.scrollY + Math.min(r.top + r.height / 2 - (H + nav) / 2, slot.top - nav - 12);
+          S.push(Math.max(at, S[S.length - 1] + 1));
+        }
+        anchors.current = S;
+      };
+      // 0 → 10 between those positions; ParticleStage holds each number and morphs in between
+      const write = (y: number) => {
+        const S = anchors.current;
+        let t = S.length - 1;
+        for (let k = 0; k < S.length - 1; k++) {
+          if (y < S[k + 1]) {
+            t = k + Math.max(0, (y - S[k]) / (S[k + 1] - S[k]));
+            break;
+          }
+        }
+        particleBus.t = t;
+        const i = Math.round(t) - 1;
+        const on = i >= 0 && i <= LAST ? i : -1;
+        setActive((prev) => (prev === on ? prev : on));
       };
       ScrollTrigger.create({
-        trigger: document.getElementById("home"),
-        start: "top top",
-        endTrigger: pin.current,
-        end: "top top",
-        onUpdate: (s) => {
-          p.a = s.progress;
-          write();
-        },
-        onRefresh: (s) => {
-          p.a = s.progress;
-          write();
+        start: 0,
+        end: "max",
+        onUpdate: (st) => write(st.scroll()),
+        onRefresh: (st) => {
+          measure();
+          write(st.scroll());
         },
       });
-      stRef.current = ScrollTrigger.create({
-        trigger: pin.current,
-        start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 0.75 * LAST)}`,
-        pin: true,
-        // any refreshPriority makes ScrollTrigger sort triggers by page position on refresh
-        refreshPriority: 0,
-        invalidateOnRefresh: true,
-        // always come to rest on a whole number, so every digit and card is readable
-        snap: { snapTo: 1 / LAST, duration: { min: 0.2, max: 0.6 }, delay: 0.08, ease: "power2.inOut" },
-        onUpdate: (s) => {
-          p.b = s.progress;
-          write();
-        },
-        onRefresh: (s) => {
-          p.b = s.progress;
-          write();
-        },
-      });
-      ScrollTrigger.create({
-        trigger: finale.current,
-        start: "top 85%",
-        end: "top 30%",
-        onUpdate: (s) => {
-          p.c = s.progress;
-          write();
-        },
-        onRefresh: (s) => {
-          p.c = s.progress;
-          write();
-        },
-      });
-      write();
       return () => {
-        stRef.current = null;
         particleBus.t = 0;
       };
     },
     { scope: section },
   );
 
-  // "#service-<slug>" lands on that step of the stage.
+  // "#service-<slug>" lands where that card's number is formed.
   useEffect(
     () =>
       registerAnchorPrefix("service-", (id) => {
-        const st = stRef.current;
         const i = services.findIndex((s) => `service-${s.slug}` === id);
-        if (!st || i < 0) return null;
-        return st.start + (st.end - st.start) * (i / LAST);
+        return i < 0 ? null : (anchors.current[i + 1] ?? null);
       }),
     [],
   );
@@ -137,55 +115,30 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
 
   return (
     <section ref={section} id="services" aria-labelledby="services-title" className="relative">
-      <div className="container-x pb-4 pt-24 sm:pt-28">{heading}</div>
+      <div className="container-x pt-24 sm:pt-28">{heading}</div>
 
-      <div ref={pin} className="relative h-[100svh]">
-        {/* sm+: the rail sits above the floating WhatsApp / Concept Lab buttons (phones hide WhatsApp here) */}
-        <div className="container-x flex h-full flex-col pb-5 pt-[calc(var(--nav-h)+8px)] sm:pb-[92px] lsp:pb-4">
-          <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-5 lg:grid-cols-2 lg:grid-rows-1 lg:gap-12 lsp:grid-cols-2 lsp:grid-rows-1">
+      {/* One number per card. Scrolling from one card to the next, the number's particles lift off and pour
+          into the next card's number (ParticleStage). Laptop: rows zig-zag, so the swarm sweeps across. */}
+      <ol className="container-x mt-4 lg:mt-0">
+        {services.map((s, i) => (
+          <li
+            key={s.slug}
+            data-swarm-row
+            className="swarm-row grid items-center gap-1 py-8 sm:py-12 lg:min-h-[78svh] lg:grid-cols-2 lg:gap-16 lg:py-[5svh] lsp:min-h-[100svh] lsp:grid-cols-2 lsp:gap-8 lsp:py-4"
+          >
             <div
-              data-particle-slot="stage"
-              className="relative mx-auto h-[26svh] w-full max-w-[520px] sm:h-[32svh] lg:h-[min(62svh,560px)] lsp:h-[56svh]"
+              data-particle-slot={`s${i + 1}`}
+              className={`relative mx-auto h-[24svh] w-full max-w-[520px] sm:h-[30svh] lg:h-[min(60svh,540px)] lsp:h-[70svh] ${i % 2 ? "lg:order-2 lsp:order-2" : ""}`}
               aria-hidden="true"
             />
-            <div className="w-full max-w-[520px] self-center justify-self-center pb-6 sm:pb-8 lg:justify-self-start">
-              <ServiceDeck services={services} active={active} driveRef={driveRef} />
+            <div className="stage-card mx-auto w-full max-w-[520px]">
+              <ServiceCard service={s} mode="stage" active={i === active} />
             </div>
-          </div>
+          </li>
+        ))}
+      </ol>
 
-          {/* 1–9 rail */}
-          <nav aria-label="Jump to an activity" className="relative mx-auto mt-4 w-full max-w-[640px] sm:mt-6">
-            <span className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-white/10" aria-hidden="true" />
-            <span
-              className="absolute left-3 top-1/2 h-px origin-left -translate-y-1/2 bg-gradient-to-r from-nl-blue to-nl-purple transition-[width] duration-500"
-              style={{ width: `calc((100% - 1.5rem) * ${active / LAST})` }}
-              aria-hidden="true"
-            />
-            <ol className="relative flex items-center justify-between">
-              {services.map((s, i) => (
-                <li key={s.slug}>
-                  <a
-                    href={`#service-${s.slug}`}
-                    aria-label={`${i + 1}. ${s.title}`}
-                    aria-current={i === active ? "step" : undefined}
-                    className={`rail-step grid h-8 w-8 place-items-center rounded-full border font-digits text-xs font-black transition-all duration-500 sm:h-9 sm:w-9 ${
-                      i === active
-                        ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-paper shadow-[0_0_18px_-2px_var(--nl-blue)]"
-                        : i < active
-                          ? "border-nl-purple/50 bg-nl-bg text-white/80"
-                          : "border-white/15 bg-nl-bg text-white/45 hover:text-white"
-                    }`}
-                  >
-                    {i + 1}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        </div>
-      </div>
-
-      <div ref={finale}>
+      <div data-swarm-row>
         <Finale />
       </div>
     </section>
@@ -218,7 +171,7 @@ function Finale({ still = false }: { still?: boolean }) {
   );
 }
 
-/** Reduced motion: nothing pinned or moving — the nine cards in a list, each with a still number. */
+/** Reduced motion: nothing moving — the nine cards in a list, each with a still number. */
 function ServicesList({ heading }: { heading: React.ReactNode }) {
   return (
     <section id="services" aria-labelledby="services-title" className="relative pt-24 sm:pt-28">

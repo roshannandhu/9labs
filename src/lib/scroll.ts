@@ -4,9 +4,9 @@ import type Lenis from "lenis";
 
 /**
  * Tiny scroll coordinator shared by the smooth-scroll provider, the nav, the hero orbit
- * and the pinned Services journey. Components can register a custom resolver for an
- * anchor id (e.g. a card inside a pinned horizontal track whose DOM offset is not where
- * the page must scroll to).
+ * and the Services rows. Components can register a custom resolver for an
+ * anchor id (e.g. a service card: the page should stop where its number is formed, not at
+ * the card's top).
  */
 
 let lenis: Lenis | null = null;

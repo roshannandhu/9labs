@@ -1104,52 +1104,21 @@ html[data-intro="playing"] [data-logo-9] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Services — the pinned 1 → 9 stage                                  */
+/*  Services — the travelling swarm (one number per card, free scroll)  */
 /* ------------------------------------------------------------------ */
-.stage-card {
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
+/* each card eases in as it enters (scroll-driven where supported; elsewhere it is simply there) */
+@supports (animation-timeline: view()) {
+  html:not([data-motion-resolved="reduce"]) .swarm-row .stage-card {
+    animation: swarm-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 80%;
+  }
 }
-.stage-card[data-on="true"] {
-  cursor: default;
-}
-/* the stacked deck (ServiceDeck writes transform / opacity / filter / --dim each frame) */
-.deck-card {
-  position: relative;
-  transform-origin: 50% 100%;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
-.deck-card:not(:first-child) {
-  visibility: hidden; /* until the deck's first frame */
-}
-/* stacked cards must be solid, or the one behind shows through the front card's text */
-.deck-card .svc-card {
-  height: 100%; /* every card as tall as the tallest, so only the clean bottom edge peeks out */
-  background: linear-gradient(160deg, var(--surface-1), var(--surface-2));
-}
-/* cards waiting behind recede into the page */
-.deck-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 28px;
-  background: var(--nl-bg);
-  opacity: var(--dim, 0);
-  pointer-events: none;
-}
-/* the front card glows in its own step of the logo gradient (1 purple → 9 cyan) */
-.deck-card[data-on="true"] .svc-card {
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.35),
-    0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
-    0 36px 80px -40px color-mix(in srgb, var(--accent) 80%, transparent),
-    0 0 70px -18px color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.deck-card[data-on="true"] .svc-num {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+@keyframes swarm-in {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.97);
+  }
 }
 .finale-tile svg {
   color: var(--nl-blue-soft);
@@ -1176,17 +1145,11 @@ html[data-intro="playing"] [data-logo-9] {
 .bs-pill-text--dark {
   fill: #0e0c20;
 }
-.bs-pill-text--lg {
-  font-size: 21px;
-}
 .bs-nine-text {
   font-family: var(--font-digits);
   font-weight: 900;
   font-size: 28px;
   fill: rgb(var(--fg-rgb));
-}
-.bs-nine-text--lg {
-  font-size: 42px;
 }
 /* traffic only once the bridge is complete */
 .bs-traffic {
@@ -1197,16 +1160,12 @@ html[data-intro="playing"] [data-logo-9] {
   opacity: 1;
 }
 .bs-ltr,
-.bs-rtl,
-.bs-down,
-.bs-up {
+.bs-rtl {
   animation: 5.6s cubic-bezier(0.45, 0, 0.55, 1) infinite paused;
 }
 .bs-ltr { animation-name: bs-run-x; }
 .bs-rtl { animation-name: bs-run-x-back; animation-delay: -2.8s; }
-.bs-down { animation-name: bs-run-y; }
-.bs-up { animation-name: bs-run-y-back; animation-delay: -2.8s; }
-.bridge-story[data-live="true"] :is(.bs-ltr, .bs-rtl, .bs-down, .bs-up) {
+.bridge-story[data-live="true"] :is(.bs-ltr, .bs-rtl) {
   animation-play-state: running;
 }
 @keyframes bs-run-x {
@@ -1219,15 +1178,26 @@ html[data-intro="playing"] [data-logo-9] {
   8%, 88% { opacity: 1; }
   100% { transform: translateX(calc(var(--run) * -1)); opacity: 0; }
 }
-@keyframes bs-run-y {
-  0% { transform: translateY(0); opacity: 0; }
-  8%, 88% { opacity: 1; }
-  100% { transform: translateY(var(--run)); opacity: 0; }
+/* phone panorama: swipe sideways along the bridge (no scrollbar; the page still scrolls vertically) */
+.bs-pano {
+  scrollbar-width: none;
+  touch-action: pan-x pan-y;
 }
-@keyframes bs-run-y-back {
-  0% { transform: translateY(0); opacity: 0; }
-  8%, 88% { opacity: 1; }
-  100% { transform: translateY(calc(var(--run) * -1)); opacity: 0; }
+.bs-pano::-webkit-scrollbar {
+  display: none;
+}
+.bs-pano:focus-visible {
+  outline: 2px solid var(--nl-purple);
+  outline-offset: -2px;
+}
+.bs-nudge {
+  animation: bs-nudge 1.4s ease-in-out infinite;
+}
+@keyframes bs-nudge {
+  50% { transform: translateX(5px); }
+}
+html[data-motion-resolved="reduce"] .bs-nudge {
+  animation: none;
 }
 .bs-step-in {
   animation: bs-step-in 0.55s var(--ease-out-expo) both;

@@ -118,101 +118,6 @@ function SideBridge() {
   );
 }
 
-/* ---------------------------------------------------------------- top-down view (phone) */
-const V = { l: 158, r: 202, y0: 70, y1: 630, towers: [220, 480] };
-
-function TopBridge() {
-  const hang: { y: number; xl: number }[] = [];
-  // the cables bulge outwards between the towers (a top-down suspension bridge)
-  const cableX = (y: number) => {
-    if (y < V.towers[0]) return V.l - 18 - (36 * (y - V.y0)) / (V.towers[0] - V.y0);
-    if (y > V.towers[1]) return V.l - 18 - (36 * (V.y1 - y)) / (V.y1 - V.towers[1]);
-    return quad(V.l - 54, V.l - 118, V.l - 54, (y - V.towers[0]) / (V.towers[1] - V.towers[0]));
-  };
-  for (let y = 100; y <= 600; y += 26) hang.push({ y, xl: cableX(y) });
-  const mirror = (x: number) => 360 - x;
-
-  return (
-    <svg viewBox="0 0 360 700" className="block h-full w-auto max-w-full overflow-visible text-white" aria-hidden="true">
-      <defs>
-        <linearGradient id="bt-cable" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#8c53fe" />
-          <stop offset="1" stopColor="#5ce0e6" />
-        </linearGradient>
-        <filter id="bt-glow" x="-200%" y="-50%" width="500%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* towers (crossbars): top one in step 1, bottom one in step 2 */}
-      {V.towers.map((y, i) => (
-        <g key={y} className={i === 0 ? "bs-1" : "bs-2"}>
-          <path className="bs-draw" d={`M${V.l - 70} ${y} H${V.r + 70}`} {...stroke} stroke="currentColor" strokeOpacity="0.6" strokeWidth={1.6} />
-          <circle className="bs-pop" cx={V.l - 74} cy={y} r="3.5" fill={i === 0 ? "#8c53fe" : "#5ce0e6"} filter="url(#bt-glow)" />
-          <circle className="bs-pop" cx={V.r + 74} cy={y} r="3.5" fill={i === 0 ? "#8c53fe" : "#5ce0e6"} filter="url(#bt-glow)" />
-        </g>
-      ))}
-
-      {/* cables + hangers, both sides */}
-      {[false, true].map((m) => {
-        const X = (x: number) => (m ? mirror(x) : x);
-        const pts = Array.from({ length: 57 }, (_, k) => V.y0 + ((V.y1 - V.y0) * k) / 56);
-        const top = pts.filter((y) => y <= V.towers[0]);
-        const rest = pts.filter((y) => y >= V.towers[0]);
-        return (
-          <g key={String(m)}>
-            <path className="bs-draw bs-1" d={`M${top.map((y) => `${X(cableX(y)).toFixed(1)} ${y.toFixed(1)}`).join(" L")}`} {...stroke} stroke="url(#bt-cable)" strokeWidth={1.7} filter="url(#bt-glow)" />
-            <path className="bs-draw bs-2" d={`M${rest.map((y) => `${X(cableX(y)).toFixed(1)} ${y.toFixed(1)}`).join(" L")}`} {...stroke} stroke="url(#bt-cable)" strokeWidth={1.7} filter="url(#bt-glow)" />
-            {hang.map((h) => (
-              <path
-                key={h.y}
-                className={`bs-draw ${h.y <= V.towers[0] ? "bs-1" : "bs-2"}`}
-                d={`M${X(h.xl).toFixed(1)} ${h.y} H${X(m ? V.r : V.l)}`}
-                {...stroke}
-                stroke="currentColor"
-                strokeOpacity="0.2"
-              />
-            ))}
-          </g>
-        );
-      })}
-
-      {/* deck (step 3) */}
-      <g className="bs-3">
-        <path className="bs-draw bs-deck" d={`M${V.l} ${V.y0} V${V.y1} M${V.r} ${V.y0} V${V.y1}`} {...stroke} stroke="currentColor" strokeOpacity="0.85" strokeWidth={1.7} />
-        <path className="bs-draw bs-deck" d={`M180 ${V.y0} V${V.y1}`} {...stroke} stroke="currentColor" strokeOpacity="0.22" strokeDasharray="8 10" />
-      </g>
-
-      {/* traffic */}
-      <g className="bs-traffic">
-        <g className="bs-down" style={{ ["--run" as string]: `${V.y1 - V.y0 - 90}px` }}>
-          <rect x={V.l - 118} y={V.y0} width="132" height="38" rx="19" fill="#8c53fe" />
-          <text x={V.l - 52} y={V.y0 + 26} textAnchor="middle" className="bs-pill-text bs-pill-text--lg">
-            Goals ↓
-          </text>
-        </g>
-        <g className="bs-up" style={{ ["--run" as string]: `${V.y1 - V.y0 - 90}px` }}>
-          <rect x={V.r - 14} y={V.y1 - 38} width="152" height="38" rx="19" fill="#5ce0e6" />
-          <text x={V.r + 62} y={V.y1 - 12} textAnchor="middle" className="bs-pill-text bs-pill-text--lg bs-pill-text--dark">
-            ↑ Expertise
-          </text>
-        </g>
-      </g>
-
-      <g className="bs-nine" transform="translate(180 350)">
-        <circle r="44" fill="var(--nl-bg)" stroke="url(#bt-cable)" strokeWidth="2.5" filter="url(#bt-glow)" />
-        <text y="15" textAnchor="middle" className="bs-nine-text bs-nine-text--lg">
-          9
-        </text>
-      </g>
-    </svg>
-  );
-}
-
 /* ---------------------------------------------------------------- the two banks (HTML, so text stays crisp and wraps) */
 function YouBank({ className = "" }: { className?: string }) {
   return (
@@ -234,7 +139,7 @@ function UsBank({ className = "" }: { className?: string }) {
     <div className={`bs-card bs-2 ${className}`}>
       <p className="label-mono !text-[10.5px]">Our side</p>
       <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">Nine Labs</p>
-      <div className="mt-2 grid w-max grid-cols-9 gap-1 sm:grid-cols-3">
+      <div className="mt-2 grid w-max grid-cols-3 gap-1">
         {site.services.map((s) => (
           <span key={s.slug} className="grid h-6 w-6 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-nl-blue-soft" title={s.short}>
             <ActivityIcon icon={s.icon} size={14} play={false} />
@@ -245,15 +150,125 @@ function UsBank({ className = "" }: { className?: string }) {
   );
 }
 
+/** A low skyline behind the phone panorama (moves slower than the bridge while you swipe: depth). */
+function Skyline() {
+  const r = (n: number) => (((Math.sin(n * 12.9898) * 43758.5453) % 1) + 1) % 1; // fixed pseudo-random
+  const blocks: string[] = [];
+  for (let x = 0, n = 1; x < 1250; n++) {
+    const w = 26 + r(n) * 44;
+    const h = 40 + r(n + 99) * (x < 200 || x > 1000 ? 90 : 46);
+    blocks.push(`M${x.toFixed(0)} 380 V${(380 - h).toFixed(0)} H${(x + w).toFixed(0)} V380`);
+    x += w + 4 + r(n + 7) * 10;
+  }
+  return (
+    <svg viewBox="0 0 1250 440" className="absolute inset-0 h-full w-full text-white" preserveAspectRatio="none" aria-hidden="true">
+      <path d={blocks.join(" ")} fill="currentColor" fillOpacity="0.04" />
+    </svg>
+  );
+}
+
+const STOPS = [
+  { label: "Your side", s: steps[0] },
+  { label: "The middle", s: steps[LAST] },
+  { label: "Our side", s: steps[1] },
+];
+
 /**
- * "How we work" — the brand idea (a bridge between your business and your results) told in three
- * steps as you scroll. The scene is pinned; scrolling builds it:
+ * Phone: the full, detailed bridge at real size, wider than the screen. Swipe sideways along it
+ * (the page still scrolls normally up and down); it snaps to three stops (your side, the middle
+ * with the 9 and two-way traffic, our side), each with its caption. The skyline moves slower than
+ * the bridge for depth.
+ */
+function PhoneBridge({ reduced }: { reduced: boolean }) {
+  const sc = useRef<HTMLDivElement>(null);
+  const [stop, setStop] = useState(0);
+  const [moved, setMoved] = useState(false);
+  const onScroll = () => {
+    const el = sc.current;
+    if (!el) return;
+    const max = Math.max(1, el.scrollWidth - el.clientWidth);
+    el.style.setProperty("--sx", String(el.scrollLeft));
+    const i = Math.round((el.scrollLeft / max) * 2);
+    setStop((p) => (p === i ? p : i));
+    if (el.scrollLeft > 12) setMoved(true);
+  };
+  const go = (i: number) => {
+    const el = sc.current;
+    if (el) el.scrollTo({ left: ((el.scrollWidth - el.clientWidth) * i) / 2, behavior: reduced ? "auto" : "smooth" });
+  };
+  const cur = STOPS[stop];
+
+  return (
+    <div className="mt-6">
+      <div
+        ref={sc}
+        onScroll={onScroll}
+        role="region"
+        aria-label="The bridge between your business and Nine Labs. Swipe sideways to cross it."
+        tabIndex={0}
+        className="bs-pano -mx-4 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain sm:-mx-8"
+      >
+        <div className="bs-stage relative w-[1250px] px-4 pt-2">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+            <div className="absolute inset-0" style={{ transform: "translateX(calc(var(--sx, 0) * 0.45px))" }}>
+              <Skyline />
+            </div>
+          </div>
+          <div className="relative">
+            <SideBridge />
+            <YouBank className="absolute left-0 top-0 w-[220px]" />
+            <UsBank className="absolute right-0 top-0 w-[220px]" />
+            <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
+              ✓ Results
+            </p>
+          </div>
+          {/* the three snap stops */}
+          <span className="absolute left-0 top-0 h-px w-px snap-start" aria-hidden="true" />
+          <span className="absolute left-1/2 top-0 h-px w-px snap-center" aria-hidden="true" />
+          <span className="absolute right-0 top-0 h-px w-px snap-end" aria-hidden="true" />
+        </div>
+      </div>
+
+      {/* stops: tap to travel there */}
+      <div className="mt-5 flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[var(--chip-bg)] p-1 shadow-[0_14px_34px_-24px_rgba(53,51,203,.5)]">
+        {STOPS.map((st, i) => (
+          <button
+            key={st.label}
+            type="button"
+            onClick={() => go(i)}
+            aria-pressed={i === stop}
+            className={`flex-1 rounded-full px-2 py-2 text-[12.5px] font-semibold transition-colors duration-300 ${
+              i === stop ? "bg-[linear-gradient(120deg,var(--nl-purple),var(--nl-blue))] text-paper" : "text-white/60"
+            }`}
+          >
+            {st.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 min-h-[118px] text-center" aria-live="polite">
+        <p key={`a${stop}`} className="bs-step-in font-display text-[19px] font-semibold leading-tight text-white">
+          {cur.s.title}
+        </p>
+        <p key={`b${stop}`} className="bs-step-in mx-auto mt-1.5 max-w-[36ch] text-[14.5px] leading-snug text-nl-ink">
+          {cur.s.text}
+        </p>
+        <p className={`label-mono mt-3 transition-opacity duration-500 ${moved ? "opacity-0" : "opacity-100"}`} aria-hidden="true">
+          Swipe along the bridge <span className="bs-nudge inline-block">→</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "How we work" — the brand idea (a bridge between your business and your results) in three steps:
  *   1. your side: your business with its goals, ideas and feedback (left tower + cable)
  *   2. our side: Nine Labs and its nine activities (right tower, the main span, hangers)
  *   3. the deck joins: two-way traffic, the 9 lights up in the middle, "Results".
- * Laptop/tablet: a side view. Phone: the same bridge seen from above, standing vertically (you at
- * the top, Nine Labs at the bottom) so it's big and readable. Reduced motion: the finished bridge
- * and all three steps, nothing pinned.
+ * Nothing pins. Laptop/tablet: a side view that builds as it scrolls up through the screen.
+ * Phone: the same bridge at full size in a sideways panorama (PhoneBridge); it builds once as it
+ * comes into view. Reduced motion: the finished bridge and all three steps.
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
@@ -267,7 +282,8 @@ export function BridgeStory() {
   useGSAP(
     () => {
       const el = root.current;
-      if (!el || reduced) return;
+      const stage = el?.querySelector(".bs-stage");
+      if (!el || !stage || reduced) return;
       const q = gsap.utils.selector(el);
       const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
       tl.from(q(".bs-1.bs-card, .bs-1 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 0)
@@ -281,25 +297,29 @@ export function BridgeStory() {
         .from(q(".bs-result"), { autoAlpha: 0, y: 10, duration: 0.3 }, 2.6)
         .to({}, { duration: 0.15 });
 
+      if (!wide) {
+        // phone: the whole build plays once as the panorama comes into view, then the traffic runs
+        tl.eventCallback("onComplete", () => {
+          el.dataset.live = "true";
+        });
+        ScrollTrigger.create({ trigger: stage, start: "top 85%", once: true, onEnter: () => void tl.timeScale(1.15).play() });
+        return;
+      }
+      // laptop / tablet: scroll builds it while the bridge rises through the screen (no pin)
       const setStep = (p: number) => {
         const i = Math.min(LAST, Math.floor(p * 3 + 0.02));
         setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
         el.dataset.live = p > 0.86 ? "true" : "false";
       };
       const st = ScrollTrigger.create({
-        trigger: el,
-        start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 2.4)}`,
-        pin: true,
-        refreshPriority: 0,
-        scrub: 0.5,
+        trigger: stage,
+        start: "top 88%",
+        end: "bottom 62%",
+        animation: tl,
+        scrub: 0.6,
         invalidateOnRefresh: true,
-        onUpdate: (s) => {
-          tl.progress(s.progress);
-          setStep(s.progress);
-        },
+        onUpdate: (s) => setStep(s.progress),
       });
-      tl.progress(st.progress);
       setStep(st.progress);
     },
     { scope: root, dependencies: [reduced, wide, short], revertOnUpdate: true },
@@ -320,8 +340,8 @@ export function BridgeStory() {
 
   return (
     <div ref={root} data-live="false" className="bridge-story relative mt-16 sm:mt-20">
-      <div className={`container-x flex flex-col ${reduced ? "" : "h-[100svh] pb-[88px] pt-[calc(var(--nav-h)+12px)] md:pb-8"}`}>
-        {/* heading + the current step */}
+      <div className="container-x flex flex-col">
+        {/* heading + the current step (laptop) */}
         <div className="grid gap-4 md:grid-cols-12 md:items-end md:gap-8">
           <div className="md:col-span-5">
             <p className="label-mono lsp:hidden">How we work</p>
@@ -332,22 +352,24 @@ export function BridgeStory() {
               className="mt-3 font-display text-[clamp(1.6rem,3.6vw,3rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white lsp:mt-0 lsp:text-[1.4rem]"
             />
           </div>
-          <div className="flex items-end gap-4 md:col-span-7 md:justify-end">
-            {counter}
-            <div className="min-w-0 max-w-[44ch] pb-1" aria-live="polite">
-              <p key={step} className="bs-step-in font-display text-[17px] font-semibold leading-tight text-white sm:text-xl">
-                {s.title}
-              </p>
-              <p key={`t${step}`} className="bs-step-in mt-1 text-[13.5px] leading-snug text-nl-ink sm:text-[15px] lsp:hidden">
-                {s.text}
-              </p>
+          {wide && (
+            <div className="flex items-end gap-4 md:col-span-7 md:justify-end">
+              {counter}
+              <div className="min-w-0 max-w-[44ch] pb-1" aria-live="polite">
+                <p key={step} className="bs-step-in font-display text-[17px] font-semibold leading-tight text-white sm:text-xl">
+                  {s.title}
+                </p>
+                <p key={`t${step}`} className="bs-step-in mt-1 text-[13.5px] leading-snug text-nl-ink sm:text-[15px] lsp:hidden">
+                  {s.text}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* the bridge */}
         {wide && short ? (
-          <div className="mt-3 flex min-h-0 flex-1 items-center gap-3">
+          <div className="bs-stage mt-3 flex items-center gap-3">
             <YouBank className="w-[150px] shrink-0" />
             <div className="relative mx-auto min-w-0 max-w-[calc((100svh_-_var(--nav-h)_-_150px)*2.72)] flex-1">
               <SideBridge />
@@ -358,27 +380,16 @@ export function BridgeStory() {
             <UsBank className="w-[150px] shrink-0" />
           </div>
         ) : wide ? (
-          <div className="relative mx-auto mt-6 w-full max-w-[min(100%,calc((100svh_-_var(--nav-h)_-_210px)*2.72))] flex-1 sm:mt-8">
-            <div className="relative">
-              <SideBridge />
-              <YouBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
-              <UsBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
-              <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
-                ✓ Results
-              </p>
-            </div>
+          <div className="bs-stage relative mx-auto mt-8 w-full max-w-[min(100%,calc((100svh_-_var(--nav-h)_-_210px)*2.72))]">
+            <SideBridge />
+            <YouBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
+            <UsBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
+            <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
+              ✓ Results
+            </p>
           </div>
         ) : (
-          <div className="relative mt-4 flex min-h-0 flex-1 flex-col items-center">
-            <YouBank className="relative z-10 w-full max-w-[320px]" />
-            <div className="relative -my-3 flex min-h-0 w-full flex-1 justify-center">
-              <TopBridge />
-              <p className="bs-result absolute left-1/2 top-[58%] -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
-                ✓ Results
-              </p>
-            </div>
-            <UsBank className="relative z-10 w-full max-w-[320px]" />
-          </div>
+          <PhoneBridge reduced={reduced} />
         )}
 
         {/* reduced motion: every step, plainly */}

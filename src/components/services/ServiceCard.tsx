@@ -7,7 +7,7 @@ import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
 
 type Props = {
   service: Service;
-  /** stage = the pinned 1→9 stage (driven by `active`); list = reduced-motion list (lights up in view). */
+  /** stage = the travelling-swarm rows (driven by `active`); list = reduced-motion list (lights up in view). */
   mode: "stage" | "list";
   active?: boolean;
   className?: string;
@@ -50,7 +50,7 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
       <h3 className="relative mt-3 text-[21px] font-semibold leading-tight sm:mt-4 sm:text-[26px] lsp:mt-2 lsp:text-[20px]">{s.title}</h3>
       <p className="relative mt-2 max-w-[46ch] text-[14.5px] leading-relaxed text-nl-ink sm:mt-2.5 sm:text-[15px] lsp:mt-1.5 lsp:text-[13.5px] lsp:leading-snug">{s.description}</p>
 
-      <div className="relative mt-4 flex items-center gap-4 sm:mt-6 sm:gap-6 [@media(max-height:680px)]:hidden">
+      <div className="relative mt-4 flex items-center gap-4 sm:mt-6 sm:gap-6">
         <div className="svc-icon relative grid h-[76px] w-[76px] shrink-0 place-items-center rounded-3xl border border-white/10 bg-white/[0.02] text-nl-blue-soft sm:h-[104px] sm:w-[104px]">
           <span className="svc-icon-glow absolute inset-3 rounded-full" aria-hidden="true" />
           <ActivityIcon icon={s.icon} size={52} play={isOn} className="relative sm:hidden" />
