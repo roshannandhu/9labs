@@ -9,26 +9,39 @@
 /*  Brand tokens (runtime-overridable: Concept Lab now, Payload later) */
 /* ------------------------------------------------------------------ */
 :root {
-  color-scheme: dark;
-  --nl-black: #050507;
-  --nl-panel: #0a0b10;
+  /* Light theme: the page is the logo's own lavender "paper", text is the logo's near-black ink.
+     --fg-rgb is the foreground (Tailwind's `white` maps to it); `.on-dark` flips it back to white
+     inside the few dark islands (book covers, the quiz shader block, the demo panel). */
+  color-scheme: light;
+  --fg-rgb: 14 12 32;
+  --nl-bg: #e9ddeb;
+  --nl-panel: #f4eef5;
   /* UI accents follow the client's logo (Concept Lab overrides --nl-blue / --nl-purple at runtime) */
   --nl-blue: #5a48f5;
-  --nl-blue-soft: #a99ff9;
-  --nl-purple: #9d8cff;
+  --nl-blue-soft: #4c3fd9;
+  --nl-purple: #6f55e8;
   --nl-indigo: #3530d0;
-  --nl-lavender: #e9ddeb; /* the logo's paper colour */
+  --nl-lavender: #e9ddeb; /* the logo's paper colour (= --nl-bg) */
   --nl-purple-deep: #7c4dff;
-  --nl-ink: #b8bcc8;
-  --nl-dim: #7a8090;
+  --nl-ink: #474156;
+  --nl-dim: #776f86;
   --grid-alpha: 0.06;
   --nav-h: 72px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
+.on-dark {
+  color-scheme: dark;
+  --fg-rgb: 255 255 255;
+  --nl-ink: #b8bcc8;
+  --nl-dim: #7a8090;
+  --nl-blue-soft: #a99ff9;
+}
 
 @theme inline {
-  --color-nl-black: var(--nl-black);
+  --color-white: rgb(var(--fg-rgb));
+  --color-paper: #fff;
+  --color-nl-bg: var(--nl-bg);
   --color-nl-panel: var(--nl-panel);
   --color-nl-blue: var(--nl-blue);
   --color-nl-blue-soft: var(--nl-blue-soft);
@@ -49,12 +62,12 @@
 /*  Base                                                               */
 /* ------------------------------------------------------------------ */
 html {
-  background: var(--nl-black);
+  background: var(--nl-bg);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--nl-black);
+  background: var(--nl-bg);
   color: var(--nl-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -67,7 +80,7 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display);
-  color: #fff;
+  color: rgb(var(--fg-rgb));
   letter-spacing: -0.02em;
 }
 
@@ -100,7 +113,7 @@ html.lenis body {
 /* Scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--nl-purple) 35%, #222) transparent;
+  scrollbar-color: color-mix(in srgb, var(--nl-purple) 45%, #fff) transparent;
 }
 
 /* ------------------------------------------------------------------ */
@@ -125,7 +138,7 @@ html.lenis body {
   line-height: 1.2;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.55);
+  color: rgb(var(--fg-rgb) / 0.55);
 }
 
 @utility font-accent {
@@ -136,7 +149,7 @@ html.lenis body {
 }
 
 @utility text-stroke {
-  -webkit-text-stroke: 1px rgb(255 255 255 / 0.14);
+  -webkit-text-stroke: 1px rgb(var(--fg-rgb) / 0.14);
   color: transparent;
 }
 
@@ -146,16 +159,16 @@ html.lenis body {
  * `glass-faux` is the same look without backdrop-filter, for elements inside 3D scenes.
  */
 @utility glass {
-  --glass-tint: rgb(10 11 18 / 0.66);
+  --glass-tint: rgb(255 255 255 / 0.5);
   background:
-    linear-gradient(150deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.018) 40%, transparent 70%),
+    linear-gradient(150deg, rgb(var(--fg-rgb) / 0.075), rgb(var(--fg-rgb) / 0.018) 40%, transparent 70%),
     var(--glass-tint);
   backdrop-filter: blur(var(--glass-blur, 22px)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(150%);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.15),
-    inset 0 -1px 0 rgb(0 0 0 / 0.35),
-    0 24px 60px -32px rgb(0 0 0 / 0.9);
+    inset 0 -1px 0 rgb(0 0 0 / 0.05),
+    0 24px 60px -32px rgb(53 51 203 / 0.3);
   &::before {
     content: "";
     position: absolute;
@@ -168,7 +181,7 @@ html.lenis body {
         135deg,
         color-mix(in oklab, var(--nl-blue-soft) 60%, transparent),
         color-mix(in oklab, var(--nl-purple) 34%, transparent) 38%,
-        rgb(255 255 255 / 0.05) 68%,
+        rgb(var(--fg-rgb) / 0.05) 68%,
         color-mix(in oklab, var(--nl-purple) 30%, transparent)
       )
     );
@@ -180,11 +193,11 @@ html.lenis body {
 }
 @utility glass-faux {
   background:
-    linear-gradient(150deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.02) 45%, rgb(255 255 255 / 0.01)),
-    linear-gradient(160deg, rgb(16 18 30 / 0.8), rgb(8 9 14 / 0.74));
+    linear-gradient(150deg, rgb(var(--fg-rgb) / 0.09), rgb(var(--fg-rgb) / 0.02) 45%, rgb(var(--fg-rgb) / 0.01)),
+    linear-gradient(160deg, rgb(255 255 255 / 0.72), rgb(250 246 252 / 0.6));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    inset 0 -1px 0 rgb(0 0 0 / 0.4);
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    inset 0 -1px 0 rgb(0 0 0 / 0.05);
   &::before {
     content: "";
     position: absolute;
@@ -195,7 +208,7 @@ html.lenis body {
       135deg,
       color-mix(in oklab, var(--nl-blue-soft) 50%, transparent),
       color-mix(in oklab, var(--nl-purple) 30%, transparent) 38%,
-      rgb(255 255 255 / 0.05) 68%,
+      rgb(var(--fg-rgb) / 0.05) 68%,
       color-mix(in oklab, var(--nl-purple) 26%, transparent)
     );
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -206,7 +219,7 @@ html.lenis body {
 }
 
 @utility text-gradient {
-  background: linear-gradient(100deg, #fff 0%, var(--nl-blue-soft) 45%, var(--nl-purple) 100%);
+  background: linear-gradient(100deg, var(--nl-indigo) 0%, var(--nl-blue) 45%, var(--nl-purple) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -262,7 +275,7 @@ html.lenis body {
   }
   .btn-outline {
     background: transparent;
-    color: #fff;
+    color: rgb(var(--fg-rgb));
     border: 1.5px solid color-mix(in srgb, var(--nl-purple) 85%, transparent);
     box-shadow: 0 0 30px -14px color-mix(in srgb, var(--nl-purple) 80%, transparent);
   }
@@ -323,10 +336,10 @@ html.lenis body {
   transition: translate 0.8s var(--ease-out-expo);
   --minor: calc(var(--grid-alpha) * 0.42);
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / var(--grid-alpha)) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / var(--grid-alpha)) 1px, transparent 1px),
-    linear-gradient(to right, rgb(255 255 255 / var(--minor)) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / var(--minor)) 1px, transparent 1px);
+    linear-gradient(to right, rgb(var(--fg-rgb) / var(--grid-alpha)) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--fg-rgb) / var(--grid-alpha)) 1px, transparent 1px),
+    linear-gradient(to right, rgb(var(--fg-rgb) / var(--minor)) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--fg-rgb) / var(--minor)) 1px, transparent 1px);
   background-size:
     120px 120px,
     120px 120px,
@@ -348,7 +361,7 @@ html.lenis body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 80% at 50% 30%, transparent 40%, rgb(5 5 7 / 0.65) 85%, var(--nl-black) 100%);
+    radial-gradient(120% 80% at 50% 30%, transparent 40%, color-mix(in srgb, var(--nl-bg) 65%, transparent) 85%, var(--nl-bg) 100%);
 }
 @keyframes bp-drift {
   to {
@@ -562,7 +575,7 @@ html.has-cursor textarea {
   height: 6px;
   margin: -3px 0 0 -3px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--nl-blue);
   box-shadow: 0 0 10px var(--nl-purple);
 }
 .cursor-ring {
@@ -610,7 +623,7 @@ html.has-cursor textarea {
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #0b0618;
+  color: #fff;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -721,7 +734,7 @@ html.has-cursor textarea {
   transform: rotateY(180deg) translateZ(calc(var(--bd) / 2));
   border-radius: 6px 2px 2px 6px;
   background: linear-gradient(160deg, #10121c, #07080c);
-  border: 1px solid rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(var(--fg-rgb) / 0.08);
 }
 .book-spine {
   top: 0;
@@ -783,19 +796,19 @@ html.has-cursor textarea {
 }
 .paper {
   background:
-    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px) 0 0 / 100% 22px,
-    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / 22px 100%,
-    linear-gradient(160deg, #0f1220, #090a10 70%);
-  border: 1px solid rgb(255 255 255 / 0.08);
+    linear-gradient(rgb(var(--fg-rgb) / 0.035) 1px, transparent 1px) 0 0 / 100% 22px,
+    linear-gradient(90deg, rgb(var(--fg-rgb) / 0.03) 1px, transparent 1px) 0 0 / 22px 100%,
+    linear-gradient(160deg, #fdfbfd, #f2ebf4 70%);
+  border: 1px solid rgb(var(--fg-rgb) / 0.08);
 }
 .paper-left {
-  box-shadow: inset -24px 0 40px -20px rgb(0 0 0 / 0.7);
+  box-shadow: inset -24px 0 40px -20px rgb(40 30 80 / 0.14);
 }
 .paper-right {
-  box-shadow: inset 24px 0 40px -20px rgb(0 0 0 / 0.7);
+  box-shadow: inset 24px 0 40px -20px rgb(40 30 80 / 0.14);
 }
 .shelf-book {
-  -webkit-box-reflect: below 12px linear-gradient(transparent 74%, rgb(255 255 255 / 0.13));
+  -webkit-box-reflect: below 12px linear-gradient(transparent 74%, rgb(var(--fg-rgb) / 0.13));
 }
 @media (prefers-reduced-motion: reduce) {
   html:not([data-motion="full"]) .book,
@@ -840,7 +853,7 @@ html.has-cursor textarea {
   top: var(--sp-a);
   height: var(--sp-len);
   width: 1px;
-  background: rgb(255 255 255 / 0.1);
+  background: rgb(var(--fg-rgb) / 0.1);
 }
 .roadmap-fill {
   position: absolute;
@@ -900,8 +913,8 @@ html.has-cursor textarea {
   width: 11px;
   height: 11px;
   transform: translate(-50%, -50%) rotate(45deg);
-  border: 1px solid rgb(255 255 255 / 0.3);
-  background: var(--nl-black);
+  border: 1px solid rgb(var(--fg-rgb) / 0.3);
+  background: var(--nl-bg);
   transition: background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
 }
 .roadmap li[data-lit="true"] .roadmap-marker {
@@ -926,8 +939,8 @@ html.has-cursor textarea {
   right: 0;
   height: 50%;
   overflow: hidden;
-  background: linear-gradient(#141724, #0b0c13);
-  border: 1px solid rgb(255 255 255 / 0.07);
+  background: linear-gradient(#ffffff, #f5f0f7);
+  border: 1px solid rgb(var(--fg-rgb) / 0.07);
 }
 .flap-half > span {
   position: absolute;
@@ -942,14 +955,14 @@ html.has-cursor textarea {
   top: 0;
   border-radius: 0.09em 0.09em 0 0;
   transform-origin: 50% 100%;
-  border-bottom-color: rgb(0 0 0 / 0.7);
+  border-bottom-color: rgb(0 0 0 / 0.12);
 }
 .flap-top > span { top: 0; }
 .flap-bottom {
   bottom: 0;
   border-radius: 0 0 0.09em 0.09em;
   transform-origin: 50% 0;
-  background: linear-gradient(#10121c, #090a10);
+  background: linear-gradient(#f8f4f9, #ede6ef);
 }
 .flap-bottom > span { bottom: 0; }
 .flap-fold-top {
@@ -1029,11 +1042,11 @@ html.has-cursor textarea {
 .stage-card .svc-card {
   border-color: transparent;
   background:
-    linear-gradient(150deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.022) 42%, rgb(255 255 255 / 0.01)),
-    linear-gradient(160deg, rgb(17 19 32 / 0.8), rgb(8 9 14 / 0.76));
+    linear-gradient(150deg, rgb(var(--fg-rgb) / 0.1), rgb(var(--fg-rgb) / 0.022) 42%, rgb(var(--fg-rgb) / 0.01)),
+    linear-gradient(160deg, rgb(255 255 255 / 0.78), rgb(250 246 252 / 0.66));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    inset 0 -1px 0 rgb(0 0 0 / 0.4);
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    inset 0 -1px 0 rgb(0 0 0 / 0.05);
 }
 .stage-card .svc-card::before {
   content: "";
@@ -1046,7 +1059,7 @@ html.has-cursor textarea {
     135deg,
     color-mix(in oklab, var(--nl-blue-soft) 48%, transparent),
     color-mix(in oklab, var(--nl-purple) 28%, transparent) 38%,
-    rgb(255 255 255 / 0.05) 68%,
+    rgb(var(--fg-rgb) / 0.05) 68%,
     color-mix(in oklab, var(--nl-purple) 24%, transparent)
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -1056,8 +1069,8 @@ html.has-cursor textarea {
 }
 .stage-card .svc-card[data-on="true"] {
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.2),
-    inset 0 -1px 0 rgb(0 0 0 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 -1px 0 rgb(0 0 0 / 0.05),
     0 0 0 1px color-mix(in srgb, var(--nl-purple) 45%, transparent),
     0 40px 90px -40px color-mix(in srgb, var(--nl-purple) 75%, transparent),
     0 0 60px -10px color-mix(in srgb, var(--nl-blue) 30%, transparent);
@@ -1068,7 +1081,7 @@ html.has-cursor textarea {
   position: absolute;
   inset: -40% -60%;
   z-index: 1;
-  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.09) 49%, rgb(255 255 255 / 0.02) 53%, transparent 58%);
+  background: linear-gradient(105deg, transparent 42%, rgb(var(--fg-rgb) / 0.09) 49%, rgb(var(--fg-rgb) / 0.02) 53%, transparent 58%);
   transform: translateX(-60%);
   opacity: 0;
   pointer-events: none;
@@ -1147,14 +1160,10 @@ html[data-intro="playing"] .rise-in {
   animation-play-state: paused;
 }
 .logo-intro__bg {
-  background: var(--nl-black);
+  background: var(--nl-bg);
 }
-/* frame 1 is the plain word "LABS" (visible from first paint); the 9 and the leg wait */
-.logo-intro [data-part="A"] {
-  opacity: 1;
-}
+/* frame 1 is the logo without its 9 (visible from first paint); only the 9 waits */
 .logo-intro [data-part="nine"],
-.logo-intro [data-part="leg"],
 .logo-intro__tag {
   opacity: 0;
 }
@@ -1166,7 +1175,7 @@ html[data-intro="playing"] .rise-in {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.32);
+  color: rgb(var(--fg-rgb) / 0.32);
   opacity: 0;
 }
 
@@ -1182,7 +1191,7 @@ html[data-intro="playing"] .rise-in {
   line-height: 1;
   font-family: var(--font-brand);
   font-weight: 800;
-  color: #fff;
+  color: #030303; /* the logo file's tagline ink */
 }
 .logo-tagline__main,
 .logo-tagline__sub {
@@ -1216,7 +1225,7 @@ html[data-intro="playing"] .rise-in {
   font-size: 92cqh;
   line-height: 1;
   color: #3b82ff;
-  -webkit-text-stroke: 2px #b98cff;
+  -webkit-text-stroke: 2px #7c4dff;
   text-shadow:
     0 0 24px color-mix(in srgb, #3b82ff 60%, transparent),
     0 0 60px color-mix(in srgb, #b98cff 35%, transparent);

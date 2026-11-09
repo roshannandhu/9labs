@@ -51,7 +51,7 @@ export function MobileMenu({ open, onClose, activeId }: { open: boolean; onClose
             exit={{ y: "-100%" }}
             transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
           />
-          <div className="absolute inset-0 bg-[#050507]/95 backdrop-blur-2xl" />
+          <div className="absolute inset-0 bg-nl-bg/95 backdrop-blur-2xl" />
           <div className="container-x relative flex min-h-full flex-col pb-10 pt-6">
             <p className="label-mono mb-4">Menu</p>
             <ul className="flex flex-col">

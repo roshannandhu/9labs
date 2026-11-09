@@ -122,8 +122,8 @@ export function BridgeIllustration() {
       <path className="br-deck" d={`M${X0} ${DECK_Y + 12} H${X1}`} {...stroke} stroke="white" strokeOpacity="0.18" strokeWidth={1} />
 
       {/* end markers */}
-      <circle className="br-mark" cx={X0} cy={DECK_Y} r="5" fill="var(--nl-black)" stroke="var(--nl-blue)" strokeWidth="1.5" />
-      <circle className="br-mark" cx={X1} cy={DECK_Y} r="5" fill="var(--nl-black)" stroke="var(--nl-purple)" strokeWidth="1.5" />
+      <circle className="br-mark" cx={X0} cy={DECK_Y} r="5" fill="var(--nl-bg)" stroke="var(--nl-blue)" strokeWidth="1.5" />
+      <circle className="br-mark" cx={X1} cy={DECK_Y} r="5" fill="var(--nl-bg)" stroke="var(--nl-purple)" strokeWidth="1.5" />
 
       {/* two-way traffic */}
       {!reduced && (
@@ -142,10 +142,10 @@ export function BridgeIllustration() {
       {/* meeting point: the 9 */}
       <g className="br-mark" transform={`translate(600 ${DECK_Y})`}>
         <g style={{ transformBox: "fill-box", transformOrigin: "center", animation: reduced ? undefined : "meet-flash 4.8s ease-in-out infinite" }}>
-          <circle r="26" fill="var(--nl-black)" stroke="var(--nl-purple)" strokeOpacity="0.8" strokeWidth="1.5" filter="url(#br-glow)" />
+          <circle r="26" fill="var(--nl-bg)" stroke="var(--nl-purple)" strokeOpacity="0.8" strokeWidth="1.5" filter="url(#br-glow)" />
           <circle r="34" fill="none" stroke="white" strokeOpacity="0.12" strokeDasharray="2 5" />
         </g>
-        <text y="9" textAnchor="middle" className="font-display text-[26px] font-semibold" style={{ fill: "#fff" }}>
+        <text y="9" textAnchor="middle" className="font-display text-[26px] font-semibold" style={{ fill: "rgb(var(--fg-rgb))" }}>
           9
         </text>
       </g>

@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, useDemo, type MotionPref } from "@/components/provide
 
 // Logo indigo family first (the client's colour), then the brief's electric blue for comparison.
 const BLUES = ["#5a48f5", "#3530d0", "#6d5dfc", "#3b82ff"];
-const PURPLES = ["#9d8cff", "#b98cff", "#c4b5fd", "#a78bfa"];
+const PURPLES = ["#6f55e8", "#7c4dff", "#8b5cf6", "#5b21b6"];
 
 /**
  * Demo-only control panel so the client can try brand colours and motion live
@@ -32,7 +32,7 @@ export function ConceptLab() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute bottom-[calc(100%+12px)] left-0 max-h-[min(78svh,640px)] w-[min(92vw,360px)] origin-bottom-left overflow-y-auto glass rounded-3xl p-5 [--glass-tint:rgb(10_11_16/0.82)] shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            className="absolute bottom-[calc(100%+12px)] left-0 max-h-[min(78svh,640px)] w-[min(92vw,360px)] origin-bottom-left overflow-y-auto glass rounded-3xl p-5 [--glass-tint:rgb(255_255_255/0.88)] shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-2xl"
             data-lenis-prevent
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -103,7 +103,7 @@ export function ConceptLab() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="concept-lab"
-        className="group flex items-center gap-2 rounded-full border border-white/12 bg-[#0b0d12]/85 p-1.5 sm:py-2 sm:pl-2 sm:pr-4 text-[13px] font-medium text-white shadow-[0_18px_50px_-18px_rgba(0,0,0,.9)] backdrop-blur-xl transition-colors hover:border-nl-purple/60"
+        className="group flex items-center gap-2 rounded-full border border-white/12 bg-paper/85 p-1.5 sm:py-2 sm:pl-2 sm:pr-4 text-[13px] font-medium text-white shadow-[0_18px_50px_-18px_rgba(53,51,203,.35)] backdrop-blur-xl transition-colors hover:border-nl-purple/60"
       >
         <span className="grid h-8 w-8 place-items-center rounded-full bg-nl-purple/15 text-nl-purple">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">

@@ -16,7 +16,7 @@ export function QuizBlock() {
   return (
     <section id="quiz" aria-labelledby="quiz-title" className="relative py-16 sm:py-24">
       <div className="container-x">
-        <div className="relative isolate overflow-hidden rounded-[32px] border border-white/10 sm:rounded-[40px]">
+        <div className="on-dark relative isolate overflow-hidden rounded-[32px] border border-white/10 sm:rounded-[40px]">
           <ShaderGradient className="absolute inset-0 -z-10" />
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(80%_70%_at_50%_45%,transparent_0%,rgba(5,5,7,.55)_70%,rgba(5,5,7,.85)_100%)]" />
           <div
@@ -57,7 +57,7 @@ export function QuizBlock() {
                   startOnVisible
                 />
               </span>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-nl-purple text-[#0b0618] transition-transform group-hover:scale-105">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-nl-purple text-paper transition-transform group-hover:scale-105">
                 <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -84,7 +84,7 @@ export function QuizBlock() {
               radius={999}
               color="#ffffff"
               backgroundColor="var(--nl-purple)"
-              textColor="#0b0618"
+              textColor="#ffffff"
               borderColor="color-mix(in srgb, var(--nl-purple) 60%, white)"
               glow={0.9}
               duration={3.2}

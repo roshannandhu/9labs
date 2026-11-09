@@ -5,11 +5,6 @@ export const LOGO_VB = { w: 709, h: 185 } as const;
 
 /** The original logo colours, sampled from the client's file: black → indigo on lavender. */
 export const LOGO_COLORS = { from: "#030303", to: "#3533cb", paper: "#e9ddeb", ink: "#030303" } as const;
-/**
- * On our black site the file's black end is invisible (and its indigo end is only 2.4:1), so the
- * wordmark runs from the logo's indigo to a brighter indigo — same hue, same dark→light direction.
- */
-export const LOGO_ON_DARK = { from: LOGO_COLORS.to, to: "#5b58ff" } as const;
 
 // Traced from the client's logo image (pixel contours, ±0.5 px). Swap for their SVG when supplied.
 const P = {
@@ -28,19 +23,11 @@ const P = {
 const HEAD = { cx: 231.8, cy: 51.4, r: 33.3 } as const;
 
 /**
- * Intro only: a full "A" in the logo's weight, drawn on the tail's and the leg's own edge lines.
- * The landing animation starts on "LABS"; the instant the falling 9 touches it, the A is
- * swapped for the leg (no in-between frames, so no piece of the A shows through the 9).
- */
-const A_PATH = "M134.6 179.6L186.6 5.1H283.4L334.9 179.6H264.5L234.8 118L205 179.6ZM234.9 50L241.8 74H228Z";
-
-/**
  * The Nine Labs wordmark, "L9BS": "LABS" with the A built from a 9 — the 9's round head sits on
- * top, its tail is the A's left leg, and a solid triangle is the right leg. In the client's own
- * hue on our black site (see LOGO_ON_DARK).
+ * top, its tail is the A's left leg, and a solid triangle is the right leg. In the client's exact
+ * colours (black → indigo), on the site's lavender — the logo file's own paper.
  *
  * Every part is its own group (`data-part`), so the landing animation can move them one by one.
- * The intro-only "A" (the word "LABS" before the 9 falls) stays invisible at rest.
  */
 export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { className?: string; title?: string }) {
   const uid = useId().replace(/:/g, "");
@@ -50,14 +37,13 @@ export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { cl
     <svg viewBox={`0 0 ${LOGO_VB.w} ${LOGO_VB.h}`} className={className} role="img" aria-label={title}>
       <defs>
         <linearGradient id={grad} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={LOGO_VB.w} y2="0">
-          <stop offset="0" stopColor={LOGO_ON_DARK.from} />
-          <stop offset="1" stopColor={LOGO_ON_DARK.to} />
+          <stop offset="0" stopColor={LOGO_COLORS.from} />
+          <stop offset="1" stopColor={LOGO_COLORS.to} />
         </linearGradient>
       </defs>
 
       <g fill={`url(#${grad})`}>
         <path data-part="L" d={P.L} />
-        <path data-part="A" d={A_PATH} fillRule="evenodd" opacity="0" />
         <path data-part="leg" d={P.leg} />
         <path data-part="B" d={P.B} fillRule="evenodd" />
         <path data-part="S" d={P.S} />

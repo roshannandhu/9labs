@@ -125,7 +125,7 @@ export default function QuizOverlay({ open, prefill, onClose }: { open: boolean;
           transition={{ duration: 0.35 }}
           data-lenis-prevent
         >
-          <div className="fixed inset-0 bg-[#050507]/85 backdrop-blur-2xl" onClick={onClose} aria-hidden="true" />
+          <div className="fixed inset-0 bg-nl-bg/90 backdrop-blur-2xl" onClick={onClose} aria-hidden="true" />
           <div
             className="pointer-events-none fixed inset-0 opacity-70"
             style={{

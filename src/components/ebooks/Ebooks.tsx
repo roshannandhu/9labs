@@ -125,7 +125,7 @@ export function Ebooks() {
                 <h3 className="mt-2 text-[22px] font-semibold sm:text-2xl">{b.title}</h3>
                 <p className="mt-2 max-w-[34ch] text-[15px] leading-relaxed text-nl-ink">{b.oneLiner}</p>
                 <div className="mt-6">
-                  <ClickSpark sparkColor={[settings.purple, settings.blue, "#ffffff"]} sparkCount={10} sparkRadius={38} glow={0.6}>
+                  <ClickSpark sparkColor={[settings.purple, settings.blue, "#3533cb"]} sparkCount={10} sparkRadius={38} glow={0.6}>
                     <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpenSlug(b.slug)} data-cursor="Open">
                       Get the free e-book
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">

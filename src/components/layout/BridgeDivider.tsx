@@ -53,7 +53,7 @@ export function BridgeDivider({ className = "" }: { className?: string }) {
         {/* main cable, drawn by scroll */}
         <path d="M60 10Q500 92 940 10" pathLength={1} className="bd-cable" {...line} strokeOpacity="0.75" strokeWidth="1.2" />
         {/* the dot: crosses once, in both directions */}
-        <path d="M60 10Q500 92 940 10" pathLength={1} className="bd-dot" {...line} stroke="#f1e8ff" strokeWidth="5" />
+        <path d="M60 10Q500 92 940 10" pathLength={1} className="bd-dot" {...line} stroke="var(--nl-blue)" strokeWidth="5" />
       </svg>
     </div>
   );

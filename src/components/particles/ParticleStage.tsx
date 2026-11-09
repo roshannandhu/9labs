@@ -7,10 +7,11 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { particleBus } from "./bus";
 import { digitShape, rng, type Shape } from "./targets";
 
-// The brief's colours for the 9: electric-blue body, neon purple towards the edges.
+// The brief's colours for the 9: electric-blue body, neon purple towards the edges
+// (deepened a little so they hold on the lavender page).
 const BLUE = "#3b82ff";
-const MID = "#7f86ff";
-const PURPLE = "#b98cff";
+const MID = "#5a63f0";
+const PURPLE = "#7c4dff";
 
 function sprite(color: string, size = 32) {
   const c = document.createElement("canvas");
@@ -19,9 +20,9 @@ function sprite(color: string, size = 32) {
   if (!g) return c;
   const r = size / 2;
   const grd = g.createRadialGradient(r, r, 0, r, r, r);
-  grd.addColorStop(0, "#ffffff");
-  grd.addColorStop(0.16, color);
-  grd.addColorStop(0.42, `${color}66`);
+  grd.addColorStop(0, color);
+  grd.addColorStop(0.3, color);
+  grd.addColorStop(0.5, `${color}88`);
   grd.addColorStop(1, `${color}00`);
   g.fillStyle = grd;
   g.fillRect(0, 0, size, size);
@@ -141,8 +142,7 @@ export function ParticleStage() {
       const v = 1 - u;
       const tw = now * 0.0016;
 
-      ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < N; i++) {
+            for (let i = 0; i < N; i++) {
         const ax = A.cx + SA.x[i] * A.h;
         const ay = A.cy + SA.y[i] * A.h;
         const bx = B.cx + SB.x[i] * B.h;
@@ -162,7 +162,6 @@ export function ParticleStage() {
         ctx.drawImage(sprites[edge > 0.7 ? 2 : edge > 0.25 ? 1 : 0], x - half, y - half, size, size);
       }
       ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
     };
 
     // Only run while the hero or the services stage is near the screen.

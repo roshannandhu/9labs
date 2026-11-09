@@ -75,7 +75,7 @@ const ICONS: Record<IconKey, React.ReactNode> = {
       <path d="M35 15h15M35 20h15M35 25h10" strokeOpacity=".5" />
       <path
         d="M13 26h24a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H23l-7.5 6.5V46H13a4 4 0 0 1-4-4V30a4 4 0 0 1 4-4z"
-        fill="var(--nl-black)"
+        fill="var(--nl-bg)"
       />
       <circle data-anim className="ai-blink" cx="18.5" cy="36" r="1.7" fill={P} stroke="none" />
       <circle data-anim className="ai-blink-2" cx="25" cy="36" r="1.7" fill={P} stroke="none" />

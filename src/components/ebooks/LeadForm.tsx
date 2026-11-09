@@ -129,7 +129,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
               onChange={(e) => set("code", e.target.value)}
             >
               {CODES.map((c) => (
-                <option key={c.code} value={c.code} className="bg-[#0b0d14]">
+                <option key={c.code} value={c.code} className="bg-paper text-[#0e0c20]">
                   {c.label}
                 </option>
               ))}
@@ -188,7 +188,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
       <button type="submit" disabled={submitting} className="btn btn-primary btn-sm mt-auto w-full !min-h-[46px] disabled:opacity-80" data-cursor="Send">
         {submitting ? (
           <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0b0618]/30 border-t-[#0b0618]" aria-hidden="true" />
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-paper/30 border-t-paper" aria-hidden="true" />
             Sending…
           </>
         ) : (

@@ -170,10 +170,10 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
                     aria-current={i === active ? "step" : undefined}
                     className={`rail-step grid h-8 w-8 place-items-center rounded-full border font-brand text-xs font-black transition-all duration-500 sm:h-9 sm:w-9 ${
                       i === active
-                        ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-white shadow-[0_0_18px_-2px_var(--nl-blue)]"
+                        ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-paper shadow-[0_0_18px_-2px_var(--nl-blue)]"
                         : i < active
-                          ? "border-nl-purple/50 bg-[#0b0c14] text-white/80"
-                          : "border-white/15 bg-[#0b0c14] text-white/45 hover:text-white"
+                          ? "border-nl-purple/50 bg-nl-bg text-white/80"
+                          : "border-white/15 bg-nl-bg text-white/45 hover:text-white"
                     }`}
                   >
                     {i + 1}

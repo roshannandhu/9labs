@@ -8,17 +8,16 @@ import { LogoMark, LogoTagline } from "@/components/brand/LogoMark";
 import { introPlaying, markIntroDone } from "./introBus";
 
 /**
- * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the site's black.
+ * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the logo's lavender.
  *
- *  1. The word "LABS" is on screen, still. The 9 is invisible.
- *  2. Only the 9 moves: it appears above and falls onto the A. The instant it touches, the A
- *     becomes the triangle leg and the 9 settles with one small bounce: the logo, "L9BS".
+ *  1. The logo is on screen without its 9 (L, the A's triangle, B, S), still. The 9 is invisible.
+ *  2. Only the 9 moves: it appears above and falls into the A and the 9 settles with one small bounce: the logo, "L9BS".
  *  3. "NINE LABS / SOLUTIONS" fades in underneath.
  *  4. The logo flies to the nav (top-left) and lands exactly on the nav logo; the overlay fades.
  *     Only then does the hero start (it waits on `markIntroDone`).
  *
  * The overlay is server-rendered and shown by CSS only while `<html data-intro="playing">`
- * (set pre-paint by the layout's boot script), so "LABS" is there from the first paint and the
+ * (set pre-paint by the layout's boot script), so the logo is there from the first paint and the
  * site never flashes underneath. Reduced motion, or a second visit this session: no overlay.
  * `?intro` in the URL replays it.
  */
@@ -46,7 +45,6 @@ export function LogoIntro() {
     const svg = wrap?.querySelector("svg");
     if (!wrap || !svg) return;
     const part = (p: string) => svg.querySelector<SVGElement>(`[data-part="${p}"]`);
-    const A = part("A");
     const nine = part("nine");
     const lenis = getLenis();
     lenis?.stop();
@@ -74,9 +72,6 @@ export function LogoIntro() {
     tl.set(nine, { y: -330, opacity: 0 }, 0)
       .to(nine, { opacity: 1, duration: 0.2, ease: "none" }, HIT - 0.5)
       .to(nine, { y: 0, duration: 0.5, ease: "power3.in" }, HIT - 0.5)
-      // the instant the 9 touches the A (its head reaches the A's top), the A becomes the leg
-      .set(A, { opacity: 0 }, HIT - 0.045)
-      .set(part("leg"), { opacity: 1 }, HIT - 0.045)
       // one small bounce
       .to(nine, { y: -14, duration: 0.13, ease: "power2.out" }, HIT)
       .to(nine, { y: 0, duration: 0.2, ease: "power2.in" }, HIT + 0.13)

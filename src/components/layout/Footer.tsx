@@ -20,9 +20,9 @@ export function Footer() {
   }));
 
   return (
-    <footer className="relative z-10 border-t border-white/[0.07] bg-[#050507]/80 backdrop-blur-sm">
+    <footer className="relative z-10 border-t border-white/[0.07] bg-nl-bg/80 backdrop-blur-sm">
       <div className="border-b border-white/[0.06] py-6">
-        <LogoLoop logos={logos} speed={42} gap={44} logoHeight={26} fadeOut fadeOutColor="#050507" pauseOnHover scaleOnHover={false} ariaLabel="Our nine activities" />
+        <LogoLoop logos={logos} speed={42} gap={44} logoHeight={26} fadeOut fadeOutColor="#e9ddeb" pauseOnHover scaleOnHover={false} ariaLabel="Our nine activities" />
       </div>
 
       <div className="container-x grid gap-12 py-16 md:grid-cols-12">

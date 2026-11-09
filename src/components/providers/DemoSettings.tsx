@@ -17,7 +17,7 @@ export type DemoSettings = {
 
 export const DEFAULT_SETTINGS: DemoSettings = {
   blue: "#5a48f5",
-  purple: "#9d8cff",
+  purple: "#6f55e8",
   grid: 0.06,
   motion: "system",
   cursor: true,
@@ -35,7 +35,7 @@ type Ctx = {
 };
 
 const DemoContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = "nl-demo-settings-v7"; // v7: logo-indigo palette (old saved colours would override it)
+const STORAGE_KEY = "nl-demo-settings-v8"; // v8: light lavender theme (old saved colours would override it)
 
 
 function mixWithWhite(hex: string, amount: number) {

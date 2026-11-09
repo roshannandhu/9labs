@@ -183,7 +183,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
       transition={{ duration: 0.3 }}
       data-lenis-prevent
     >
-      <div className="fixed inset-0 bg-[#050507]/80 backdrop-blur-xl" onClick={close} aria-hidden="true" />
+      <div className="fixed inset-0 bg-nl-bg/80 backdrop-blur-xl" onClick={close} aria-hidden="true" />
       <div
         className="pointer-events-none fixed inset-0"
         style={{ background: "radial-gradient(40% 50% at 50% 50%, color-mix(in srgb, var(--nl-purple) 14%, transparent), transparent 70%)" }}

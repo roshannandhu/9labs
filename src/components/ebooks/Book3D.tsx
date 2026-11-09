@@ -37,7 +37,7 @@ export function Book3D({ book, w, h, d = "30px", ry, rx, bx, bz, open, turned, i
   return (
     <div className={`book ${className}`} style={style as CSSProperties}>
       <div className="book-back" />
-      <div className="book-spine overflow-hidden">
+      <div className="book-spine on-dark overflow-hidden">
         <BookSpine book={book} />
       </div>
       <div className="book-edge-right" />
@@ -61,7 +61,7 @@ export function Book3D({ book, w, h, d = "30px", ry, rx, bx, bz, open, turned, i
 
       {/* cover — swings open */}
       <div className="book-leaf" style={{ "--lz": `calc(${d} / 2)`, "--la": open ? "-178deg" : "0deg" } as CSSProperties}>
-        <div className="face face-front overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
+        <div className="face face-front on-dark overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
           <BookCover book={book} />
           <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,transparent_35%,rgba(255,255,255,.09)_48%,transparent_60%)]" />
         </div>

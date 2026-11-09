@@ -5,7 +5,6 @@ import { useQuiz } from "@/components/providers/QuizProvider";
 import CurvedLoop from "@/components/reactbits/CurvedLoop";
 import StarBorder from "@/components/reactbits/StarBorder";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
-import { ShaderGradient } from "@/components/background/ShaderGradient";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
 import { SocialIcon } from "@/components/icons/SocialIcon";
@@ -17,7 +16,6 @@ export function ClosingCta() {
   return (
     <section id="contact" aria-labelledby="contact-title" className="relative overflow-hidden pb-24 pt-10 sm:pb-32">
       {/* light behind the arc */}
-      <ShaderGradient className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[70%] opacity-50 [mask-image:radial-gradient(60%_70%_at_50%_40%,#000,transparent)]" gain={0.8} />
 
       {/* the bridge arc with the closing line flowing along it */}
       <div className="relative text-nl-purple" aria-hidden="true">
@@ -58,7 +56,7 @@ export function ClosingCta() {
               radius={999}
               color="#ffffff"
               backgroundColor="var(--nl-purple)"
-              textColor="#0b0618"
+              textColor="#ffffff"
               borderColor="color-mix(in srgb, var(--nl-purple) 60%, white)"
               glow={0.9}
               duration={3.6}
