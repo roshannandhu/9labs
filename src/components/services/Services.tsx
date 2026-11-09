@@ -168,7 +168,7 @@ function ServicesStage({ heading }: { heading: React.ReactNode }) {
                     href={`#service-${s.slug}`}
                     aria-label={`${i + 1}. ${s.title}`}
                     aria-current={i === active ? "step" : undefined}
-                    className={`rail-step grid h-7 w-7 place-items-center rounded-full border font-brand text-[11px] font-black transition-all duration-500 sm:h-8 sm:w-8 sm:text-xs ${
+                    className={`rail-step grid h-8 w-8 place-items-center rounded-full border font-brand text-xs font-black transition-all duration-500 sm:h-9 sm:w-9 ${
                       i === active
                         ? "scale-110 border-transparent bg-[linear-gradient(135deg,var(--nl-blue),var(--nl-indigo))] text-white shadow-[0_0_18px_-2px_var(--nl-blue)]"
                         : i < active

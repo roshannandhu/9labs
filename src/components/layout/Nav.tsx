@@ -55,7 +55,7 @@ export function Nav() {
         aria-hidden="true"
       />
       <nav className="container-x relative flex h-[var(--nav-h)] items-center justify-between gap-6" aria-label="Main">
-        <a href="#home" aria-label="Nine Labs Solutions — back to top" className="rounded-xl" data-cursor="Home">
+        <a href="#home" aria-label="Nine Labs Solutions — back to top" className="-my-2 rounded-xl py-2" data-cursor="Home">
           <Logo />
         </a>
 

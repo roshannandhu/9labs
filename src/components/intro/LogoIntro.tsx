@@ -8,19 +8,19 @@ import { LogoMark, LogoTagline, aPath } from "@/components/brand/LogoMark";
 import { introPlaying, markIntroDone } from "./introBus";
 
 /**
- * Landing animation — "The Hidden 9" (~4 s, once per session, skippable), on the logo's own
- * lavender, in the logo's own colours.
+ * Landing animation — "The Hidden 9" (~3 s, once per session, skippable), on the site's black.
  *
- *  1. "LABS" rises in — an ordinary word.
- *  2. The 9 appears above and falls onto the A. On impact the A gives way and becomes the
- *     triangle leg, the 9 bounces once and settles: the logo, "L9BS".
- *  3. A light sweep crosses the wordmark; "NINE LABS / SOLUTIONS" spreads in underneath.
- *  4. The lavender screen shrinks into the nav's lavender logo badge while the logo flies onto
- *     the nav logo; only then does the hero start (it waits on `markIntroDone`).
+ *  1. The word "LABS" is on screen, still. The 9 is invisible.
+ *  2. Only the 9 moves: it appears above and falls onto the A. On impact the A takes the 9 in
+ *     (it becomes the triangle leg) and the 9 settles with one small bounce: the logo, "L9BS".
+ *  3. "NINE LABS / SOLUTIONS" fades in underneath.
+ *  4. The logo flies to the nav (top-left) and lands exactly on the nav logo; the overlay fades.
+ *     Only then does the hero start (it waits on `markIntroDone`).
  *
  * The overlay is server-rendered and shown by CSS only while `<html data-intro="playing">`
- * (set pre-paint by the layout's boot script), so the site never flashes underneath it.
- * Reduced motion, or a second visit this session: no overlay — the logo is simply in the nav.
+ * (set pre-paint by the layout's boot script), so "LABS" is there from the first paint and the
+ * site never flashes underneath. Reduced motion, or a second visit this session: no overlay.
+ * `?intro` in the URL replays it.
  */
 export function LogoIntro() {
   const { reduced, ready } = useDemo();
@@ -47,6 +47,7 @@ export function LogoIntro() {
     if (!wrap || !svg) return;
     const part = (p: string) => svg.querySelector<SVGElement>(`[data-part="${p}"]`);
     const A = part("A");
+    const nine = part("nine");
     const lenis = getLenis();
     lenis?.stop();
 
@@ -59,58 +60,39 @@ export function LogoIntro() {
       lenis?.start();
       setGone(true);
     };
+
+    const morph = { t: 0 };
+    const HIT = 1.15; // the moment the 9 lands on the A
+    const tl = gsap.timeline();
     // Safety net: never leave a visitor stuck behind the overlay (throttled/low-power devices,
-    // background tabs). The intro normally ends in ~4 s.
+    // background tabs). The intro normally ends in ~3 s.
     guard = window.setTimeout(() => {
       tl.kill();
       fly?.kill();
       finish();
     }, 8000);
 
-    const morph = { t: 0 };
-    const HIT = 1.6; // the moment the 9 lands on the A
-    const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
-    tl.fromTo(
-      [part("L"), A, part("B"), part("S")],
-      { y: 60, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.75, stagger: 0.07 },
-      0.1,
-    )
-      // the 9 shows up above the word and drops onto the A…
-      .fromTo(part("nine"), { y: -330, opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, HIT - 0.45)
-      .fromTo(part("nine"), { y: -330 }, { y: 0, duration: 0.45, ease: "power3.in" }, HIT - 0.45)
-      // …the A gives way and becomes the triangle leg
-      .to(
-        morph,
-        {
-          t: 1,
-          duration: 0.34,
-          ease: "power3.out",
-          onUpdate: () => A?.setAttribute("d", aPath(morph.t)),
-        },
-        HIT,
-      )
-      .set(A, { opacity: 0 }, HIT + 0.34)
-      .set(part("leg"), { opacity: 1 }, HIT + 0.34)
-      // the impact: the 9 bounces once, the word dips under it
-      .to(part("nine"), { y: -16, duration: 0.14, ease: "power2.out" }, HIT)
-      .to(part("nine"), { y: 0, duration: 0.22, ease: "power2.in" }, HIT + 0.14)
-      .to([part("L"), part("B"), part("S")], { y: 5, duration: 0.08, ease: "power1.out", yoyo: true, repeat: 1 }, HIT)
-      // light sweep + tagline
-      .fromTo(part("sweep"), { attr: { x: -220 }, opacity: 1 }, { attr: { x: 740 }, duration: 0.9, ease: "power2.inOut" }, HIT + 0.4)
-      .fromTo(tagEl, { opacity: 0, "--tag-track": "1.3em" }, { opacity: 1, "--tag-track": "0.54em", duration: 0.9 }, HIT + 0.45)
-      .fromTo(hintEl, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.6)
-      .to({}, { duration: 0.3 })
-      // the lavender screen shrinks into the nav badge; the logo flies onto the nav logo
+    tl.set(nine, { y: -330, opacity: 0 }, 0)
+      .to(nine, { opacity: 1, duration: 0.2, ease: "none" }, HIT - 0.5)
+      .to(nine, { y: 0, duration: 0.5, ease: "power3.in" }, HIT - 0.5)
+      // the A takes the 9 in: it becomes the triangle leg
+      .to(morph, { t: 1, duration: 0.24, ease: "power3.out", onUpdate: () => A?.setAttribute("d", aPath(morph.t)) }, HIT)
+      .set(A, { opacity: 0 }, HIT + 0.24)
+      .set(part("leg"), { opacity: 1 }, HIT + 0.24)
+      // one small bounce
+      .to(nine, { y: -14, duration: 0.13, ease: "power2.out" }, HIT)
+      .to(nine, { y: 0, duration: 0.2, ease: "power2.in" }, HIT + 0.13)
+      .fromTo(tagEl, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, HIT + 0.4)
+      .fromTo(hintEl, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.4)
+      .to({}, { duration: 0.45 })
+      // fly onto the nav logo, overlay fades
       .add(() => {
-        const badge = document.querySelector<HTMLElement>("[data-logo-9]");
-        const target = badge?.querySelector("svg")?.getBoundingClientRect();
-        const box = badge?.getBoundingClientRect();
+        const target = document.querySelector<HTMLElement>("[data-logo-9] svg")?.getBoundingClientRect();
         const from = wrap.getBoundingClientRect();
-        const dur = skipped ? 0.45 : 0.9;
+        const dur = skipped ? 0.45 : 0.85;
         fly = gsap.timeline({ onComplete: finish });
-        fly.to([tagEl, hintEl], { opacity: 0, y: 8, duration: 0.3, ease: "power2.in" }, 0);
-        if (target && box && target.width > 0) {
+        fly.to([tagEl, hintEl], { opacity: 0, duration: 0.25, ease: "power2.in" }, 0);
+        if (target && target.width > 0) {
           fly.to(
             wrap,
             {
@@ -120,24 +102,12 @@ export function LogoIntro() {
               duration: dur,
               ease: "expo.inOut",
             },
-            0.08,
-          );
-          const W = window.innerWidth;
-          const H = window.innerHeight;
-          const r = getComputedStyle(badge!).borderTopLeftRadius || "12px";
-          fly.fromTo(
-            bgEl,
-            { clipPath: "inset(0px 0px 0px 0px round 0px)" },
-            {
-              clipPath: `inset(${box.top}px ${W - box.right}px ${H - box.bottom}px ${box.left}px round ${r})`,
-              duration: dur,
-              ease: "expo.inOut",
-            },
-            0.08,
+            0.05,
           );
         } else {
-          fly.to([wrap, bgEl], { opacity: 0, duration: 0.4 }, 0.08);
+          fly.to(wrap, { opacity: 0, duration: 0.4 }, 0.05);
         }
+        fly.to(bgEl, { opacity: 0, duration: dur * 0.6, ease: "power1.out" }, 0.05 + dur * 0.4);
       });
 
     // Any input skips ahead (fast-forwards to the fly-in; nothing is cut off mid-way).
@@ -169,7 +139,7 @@ export function LogoIntro() {
     <div className="logo-intro fixed inset-0 z-[150] items-center justify-center" aria-hidden="true">
       <div ref={bg} className="logo-intro__bg absolute inset-0" />
       {/* the tagline is sized in % of this box (= the wordmark's width), as in the logo file */}
-      <div className="logo-lockup relative w-[min(86vw,580px)]">
+      <div className="logo-lockup relative w-[min(84vw,580px)]">
         <div ref={mark} className="logo-intro__mark will-change-transform">
           <LogoMark className="block h-auto w-full overflow-visible" />
         </div>

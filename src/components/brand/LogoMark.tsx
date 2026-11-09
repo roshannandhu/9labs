@@ -5,6 +5,11 @@ export const LOGO_VB = { w: 709, h: 185 } as const;
 
 /** The original logo colours, sampled from the client's file: black → indigo on lavender. */
 export const LOGO_COLORS = { from: "#030303", to: "#3533cb", paper: "#e9ddeb", ink: "#030303" } as const;
+/**
+ * On our black site the file's black end is invisible (and its indigo end is only 2.4:1), so the
+ * wordmark runs from the logo's indigo to a brighter indigo — same hue, same dark→light direction.
+ */
+export const LOGO_ON_DARK = { from: LOGO_COLORS.to, to: "#5b58ff" } as const;
 
 // Traced from the client's logo image (pixel contours, ±0.5 px). Swap for their SVG when supplied.
 const P = {
@@ -50,38 +55,22 @@ export function aPath(t: number) {
 /**
  * The Nine Labs wordmark, "L9BS": "LABS" with the A built from a 9 — the 9's round head sits on
  * top, its tail is the A's left leg, and a solid triangle is the right leg. In the client's own
- * colours (black → indigo); on our dark pages it always sits on a lavender "paper" badge.
+ * hue on our black site (see LOGO_ON_DARK).
  *
  * Every part is its own group (`data-part`), so the landing animation can move them one by one.
- * Intro-only parts stay invisible at rest: the "A" it starts from and a light `sweep` (clipped
- * to the letters).
+ * The intro-only "A" (the word "LABS" before the 9 falls) stays invisible at rest.
  */
 export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { className?: string; title?: string }) {
   const uid = useId().replace(/:/g, "");
   const grad = `lg-${uid}`;
-  const clip = `lc-${uid}`;
-  const sweep = `ls-${uid}`;
 
   return (
     <svg viewBox={`0 0 ${LOGO_VB.w} ${LOGO_VB.h}`} className={className} role="img" aria-label={title}>
       <defs>
         <linearGradient id={grad} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={LOGO_VB.w} y2="0">
-          <stop offset="0" stopColor={LOGO_COLORS.from} />
-          <stop offset="1" stopColor={LOGO_COLORS.to} />
+          <stop offset="0" stopColor={LOGO_ON_DARK.from} />
+          <stop offset="1" stopColor={LOGO_ON_DARK.to} />
         </linearGradient>
-        <linearGradient id={sweep} x1="0" x2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#fff" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
-        </linearGradient>
-        <clipPath id={clip}>
-          <path d={P.L} />
-          <circle cx={HEAD.cx} cy={HEAD.cy} r={HEAD.r} />
-          <path d={P.tail} />
-          <path d={P.leg} />
-          <path d={P.B} clipRule="evenodd" />
-          <path d={P.S} />
-        </clipPath>
       </defs>
 
       <g fill={`url(#${grad})`}>
@@ -96,10 +85,6 @@ export function LogoMark({ className = "", title = "Nine Labs Solutions" }: { cl
         </g>
       </g>
 
-      {/* intro-only extras (invisible at rest) */}
-      <g clipPath={`url(#${clip})`}>
-        <rect data-part="sweep" x="-220" y="0" width="200" height={LOGO_VB.h} fill={`url(#${sweep})`} opacity="0" />
-      </g>
     </svg>
   );
 }

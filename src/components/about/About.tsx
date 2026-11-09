@@ -133,7 +133,7 @@ export function About() {
                       {VALUE_ICONS[v.key]}
                     </svg>
                   </span>
-                  <span className="label-mono mt-6 !text-[10px]">0{i + 1}</span>
+                  <span className="label-mono mt-6 !text-[11px]">0{i + 1}</span>
                   <h3 className="mt-1.5 text-xl font-semibold">{v.title}</h3>
                   <p className="mt-2 text-[14.5px] leading-relaxed text-nl-ink">{v.line}</p>
                 </div>

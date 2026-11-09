@@ -65,7 +65,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
         onDone(v);
       }}
     >
-      <p className="label-mono !text-[10px] !text-nl-purple">Free e-book · {book.n}</p>
+      <p className="label-mono !text-[11px] !text-nl-purple">Free e-book · {book.n}</p>
       <h3 className="mt-1 text-[19px] font-semibold leading-tight">Where should we send it?</h3>
       <p className="mt-1 text-[12.5px] leading-snug text-nl-ink">We’ll email you a private download link for “{book.title}”.</p>
 

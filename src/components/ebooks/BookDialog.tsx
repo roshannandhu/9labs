@@ -15,7 +15,7 @@ type Phase = "fly" | "front" | "open" | "closing";
 function Inside({ book }: { book: Ebook }) {
   return (
     <div className="flex h-full flex-col p-6 sm:p-7">
-      <p className="label-mono !text-[10px] !text-nl-purple">Inside this book</p>
+      <p className="label-mono !text-[11px] !text-nl-purple">Inside this book</p>
       <h3 className="mt-2 text-[22px] font-semibold leading-tight">{book.title}</h3>
       <p className="mt-1.5 text-[13px] leading-snug text-nl-ink">{book.subtitle}</p>
       <ol className="mt-5 space-y-2.5">
@@ -58,7 +58,7 @@ function ChaptersDisclosure({ book }: { book: Ebook }) {
         <ol className="space-y-2 px-4 pb-4">
           {book.chapters.map((c, i) => (
             <li key={c} className="flex items-baseline gap-2.5 text-[12.5px] text-white/75">
-              <span className="text-[10.5px] font-semibold text-nl-purple">{String(i + 1).padStart(2, "0")}</span>
+              <span className="text-[11px] font-semibold text-nl-purple">{String(i + 1).padStart(2, "0")}</span>
               {c}
             </li>
           ))}

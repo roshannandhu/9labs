@@ -1147,12 +1147,12 @@ html[data-intro="playing"] .rise-in {
   animation-play-state: paused;
 }
 .logo-intro__bg {
-  background: var(--nl-lavender);
+  background: var(--nl-black);
 }
-.logo-intro [data-part="L"],
-.logo-intro [data-part="A"],
-.logo-intro [data-part="B"],
-.logo-intro [data-part="S"],
+/* frame 1 is the plain word "LABS" (visible from first paint); the 9 and the leg wait */
+.logo-intro [data-part="A"] {
+  opacity: 1;
+}
 .logo-intro [data-part="nine"],
 .logo-intro [data-part="leg"],
 .logo-intro__tag {
@@ -1166,14 +1166,10 @@ html[data-intro="playing"] .rise-in {
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgb(3 3 3 / 0.38);
+  color: rgb(255 255 255 / 0.32);
   opacity: 0;
 }
 
-/* The logo always sits on its own lavender "paper" (its black end would vanish on our black). */
-.logo-badge {
-  background: var(--nl-lavender);
-}
 /* wordmark + tagline lockup: the tagline is sized in % of the wordmark's width (cqw), as in the logo file */
 .logo-lockup {
   container-type: inline-size;
@@ -1186,7 +1182,7 @@ html[data-intro="playing"] .rise-in {
   line-height: 1;
   font-family: var(--font-brand);
   font-weight: 800;
-  color: #030303;
+  color: #fff;
 }
 .logo-tagline__main,
 .logo-tagline__sub {

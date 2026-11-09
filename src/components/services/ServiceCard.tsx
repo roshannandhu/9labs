@@ -36,19 +36,19 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
       id={`service-${s.slug}`}
       data-on={isOn ? "true" : "false"}
       data-mode={mode}
-      className={`svc-card group relative flex flex-col overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(160deg,#0d0f17_0%,#07080c_60%)] p-5 sm:p-8 ${className}`}
+      className={`svc-card group relative flex flex-col overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(160deg,#0d0f17_0%,#07080c_60%)] p-5 sm:p-8 lsp:p-5 ${className}`}
     >
       <span className="svc-glow pointer-events-none absolute inset-0 rounded-[inherit]" aria-hidden="true" />
 
       <div className="relative flex items-center justify-between gap-4">
-        <span className="label-mono !text-[10px]">{num} / 09</span>
+        <span className="label-mono !text-[11px]">{num} / 09</span>
         <span className="svc-num grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] font-brand text-[13px] font-black text-white/60 transition-colors duration-500 group-data-[on=true]:border-nl-purple/50 group-data-[on=true]:bg-nl-purple/15 group-data-[on=true]:text-white">
           {s.n}
         </span>
       </div>
 
-      <h3 className="relative mt-3 text-[21px] font-semibold leading-tight sm:mt-4 sm:text-[26px]">{s.title}</h3>
-      <p className="relative mt-2 max-w-[46ch] text-[14.5px] leading-relaxed text-nl-ink sm:mt-2.5 sm:text-[15px]">{s.description}</p>
+      <h3 className="relative mt-3 text-[21px] font-semibold leading-tight sm:mt-4 sm:text-[26px] lsp:mt-2 lsp:text-[20px]">{s.title}</h3>
+      <p className="relative mt-2 max-w-[46ch] text-[14.5px] leading-relaxed text-nl-ink sm:mt-2.5 sm:text-[15px] lsp:mt-1.5 lsp:text-[13.5px] lsp:leading-snug">{s.description}</p>
 
       <div className="relative mt-4 flex items-center gap-4 sm:mt-6 sm:gap-6 [@media(max-height:680px)]:hidden">
         <div className="svc-icon relative grid h-[76px] w-[76px] shrink-0 place-items-center rounded-3xl border border-white/10 bg-white/[0.02] text-nl-blue-soft sm:h-[104px] sm:w-[104px]">
@@ -71,11 +71,11 @@ export function ServiceCard({ service: s, mode, active = false, className = "" }
         </ul>
       </div>
 
-      <div className="relative mt-auto pt-5 sm:pt-7">
+      <div className="relative mt-auto pt-5 sm:pt-7 lsp:pt-3">
         <button
           type="button"
           onClick={() => quiz.open(`I'm interested in ${s.title.toLowerCase()} for my business. `)}
-          className="link-glow inline-flex items-center gap-2 text-sm font-medium text-white"
+          className="link-glow -my-2 inline-flex items-center gap-2 py-2 text-sm font-medium text-white"
           data-cursor="Ask"
         >
           Talk to us about this

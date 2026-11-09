@@ -50,10 +50,10 @@ export function Footer() {
 
         <nav className="md:col-span-2" aria-label="Footer">
           <p className="label-mono mb-4">Navigate</p>
-          <ul className="space-y-2.5">
+          <ul className="space-y-1">
             {site.nav.map((n) => (
               <li key={n.id}>
-                <a href={n.href} className="text-[14.5px] text-white/70 transition-colors hover:text-white">
+                <a href={n.href} className="inline-block py-1 text-[14.5px] text-white/70 transition-colors hover:text-white">
                   {n.label}
                 </a>
               </li>
@@ -63,10 +63,10 @@ export function Footer() {
 
         <div className="md:col-span-3">
           <p className="label-mono mb-4">Activities</p>
-          <ul className="space-y-2.5">
+          <ul className="space-y-1">
             {site.services.map((s) => (
               <li key={s.slug}>
-                <a href={`#service-${s.slug}`} className="text-[14px] text-white/70 transition-colors hover:text-white">
+                <a href={`#service-${s.slug}`} className="inline-block py-1 text-[14px] text-white/70 transition-colors hover:text-white">
                   {s.title}
                 </a>
               </li>

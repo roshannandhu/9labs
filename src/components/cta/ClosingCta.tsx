@@ -89,7 +89,7 @@ export function ClosingCta() {
                   <SocialIcon name={it.icon} size={19} />
                 </span>
                 <span className="min-w-0">
-                  <span className="label-mono block !text-[10px]">{it.label}</span>
+                  <span className="label-mono block !text-[11px]">{it.label}</span>
                   <span className="mt-1 block truncate text-[14.5px] text-white">{it.value}</span>
                 </span>
               </a>
