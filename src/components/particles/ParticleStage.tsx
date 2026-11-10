@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { gsap } from "@/lib/gsap";
 import { digits as digitFont } from "@/lib/fonts";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { onIntroDone } from "@/components/intro/introBus";
 import { palette, swatchTable, nearestSwatch, type SwatchTable } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
-import { particleBus, heroTarget, digitTarget, sameTarget, fireStageReached, type ParticleTarget } from "./bus";
+import { particleBus, heroTarget, digitTarget, sameTarget, type ParticleTarget } from "./bus";
 import type { IconKey } from "@/content/site";
 
 const SLOTS = ["hero", "stage"] as const;
@@ -30,11 +30,12 @@ const easeOut = (x: number) => 1 - (1 - x) ** 3;
 const STAGGER = 0.16;
 
 /**
- * The one particle swarm. It assembles the hero 9 (after the landing animation), flies down into
- * the Services Showcase as you scroll to it, and from then on is driven entirely by the Showcase
- * (`Services.tsx`, via `bus.ts`'s `goto()`/`snapTo()`): it flies between a digit (1-9), a service
- * picture, and the finale "all nine" 9, on tap or on an auto-play timer — never by scroll.
+ * The one particle swarm — only the "Social media" scene (`scenes/Scene1Social.tsx`) still uses
+ * it: that scene's own (non-pinned, reversible) scroll trigger writes `particleBus` directly as it
+ * scrolls into view, flying the swarm from the hero 9 through the digit "1" into the phone
+ * picture. Every other scene is plain CSS/canvas, untouched by this engine.
  *
+
  * Two layers, so nothing ever looks like dust once it has landed:
  * - **Formed** (at rest): a crisp picture or digit, drawn at full detail *inside* its slot in the
  *   page (so it scrolls natively, no jitter). A service picture keeps being redrawn every frame
@@ -403,39 +404,6 @@ export function ParticleStage() {
       window.removeEventListener("resize", resize);
       for (const s of rest.values()) s.c.remove();
     };
-  }, [reduced]);
-
-  // the scroll hand-off: the hero 9 flies down into the Showcase stage as you scroll to it, then
-  // control passes to the Showcase itself (Services.tsx, via bus.ts's goto()/snapTo())
-  const handedOff = useRef(false);
-  useGSAP(() => {
-    if (reduced) return;
-    const stage = document.querySelector('[data-particle-slot="stage"]');
-    if (!stage) return;
-    ScrollTrigger.create({
-      trigger: "#home",
-      start: "top top",
-      endTrigger: stage,
-      end: "top top",
-      onUpdate: (s) => {
-        if (handedOff.current) return;
-        particleBus.from = heroTarget;
-        particleBus.to = digitTarget(1);
-        particleBus.dir = 1;
-        particleBus.u = s.progress;
-        if (s.progress >= 0.999) {
-          handedOff.current = true;
-          particleBus.from = digitTarget(1);
-          fireStageReached();
-        }
-      },
-      onRefresh: (s) => {
-        if (handedOff.current) return;
-        particleBus.from = heroTarget;
-        particleBus.to = digitTarget(1);
-        particleBus.u = s.progress;
-      },
-    });
   }, [reduced]);
 
   if (reduced) return null;

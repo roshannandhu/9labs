@@ -1,4 +1,3 @@
-import { gsap } from "@/lib/gsap";
 import type { IconKey } from "@/content/site";
 
 /** A single particle target: the hero 9, a digit 1-9, a service picture, or the finale "all nine" 9. */
@@ -20,12 +19,12 @@ export function sameTarget(a: ParticleTarget, b: ParticleTarget): boolean {
  * Where the one particle swarm is, as a flight between two targets:
  *   - **resting** (`sameTarget(from, to)`): the swarm is fully formed at `to` — ParticleStage
  *     draws no particles, the slot's own crisp canvas shows the picture/digit, alive.
- *   - **flying** (`from !== to`, `u` tweening 0→1): the swarm is between `from` and `to`; `dir`
- *     only steers which way the flight swirls (+1 clockwise / −1 anticlockwise).
+ *   - **flying** (`from !== to`, `u` 0→1): the swarm is between `from` and `to`; `dir` only steers
+ *     which way the flight swirls (+1 clockwise / −1 anticlockwise).
  * `t0` is when the current flight started (performance.now()), used for the crossfade timing.
  *
- * Written two ways: the hero→stage scroll hand-off (ParticleStage.tsx) while scrolling through
- * it, and `goto()` below (the Services Showcase director) once the stage has been reached.
+ * Only `scenes/Scene1Social.tsx` writes this now — directly, from its own (non-pinned, reversible)
+ * scroll trigger, every other scene never touches it.
  */
 export const particleBus: { from: ParticleTarget; to: ParticleTarget; u: number; dir: 1 | -1; t0: number } = {
   from: heroTarget,
@@ -34,47 +33,3 @@ export const particleBus: { from: ParticleTarget; to: ParticleTarget; u: number;
   dir: 1,
   t0: 0,
 };
-
-/** Flies the swarm from its current resting target to `target`, resolving once it has landed. */
-export function goto(target: ParticleTarget, dir: 1 | -1 = 1, duration = 0.85): Promise<void> {
-  return new Promise((resolve) => {
-    const from = particleBus.to;
-    if (sameTarget(from, target)) {
-      resolve();
-      return;
-    }
-    gsap.killTweensOf(particleBus);
-    particleBus.from = from;
-    particleBus.to = target;
-    particleBus.dir = dir;
-    particleBus.u = 0;
-    particleBus.t0 = performance.now();
-    gsap.to(particleBus, {
-      u: 1,
-      duration,
-      ease: "power3.inOut",
-      onComplete: () => {
-        particleBus.from = target;
-        resolve();
-      },
-    });
-  });
-}
-
-/** Jumps straight to `target` with no flight (reduced motion). */
-export function snapTo(target: ParticleTarget) {
-  gsap.killTweensOf(particleBus);
-  particleBus.from = target;
-  particleBus.to = target;
-  particleBus.u = 0;
-}
-
-const stageListeners = new Set<() => void>();
-/** Fired once the hero→stage scroll hand-off reaches the stage (ParticleStage.tsx → Services.tsx). */
-export function onStageReached(cb: () => void): () => void {
-  stageListeners.add(cb);
-  return () => stageListeners.delete(cb);
-}
-export function fireStageReached() {
-  stageListeners.forEach((cb) => cb());
-}

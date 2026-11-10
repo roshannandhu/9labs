@@ -960,130 +960,35 @@ html[data-intro="playing"] [data-logo-9] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Services — the Showcase (one screen; the swarm forms a picture)    */
+/*  Services — nine scenes (plain scroll; each scene is its own thing) */
 /* ------------------------------------------------------------------ */
-.showcase-panel {
-  box-shadow: 0 50px 110px -60px color-mix(in srgb, var(--nl-purple) 45%, transparent);
+.scene-section {
+  container-type: inline-size;
 }
-.showcase-caption {
-  color: rgb(var(--fg-rgb) / 0.55);
-}
-.showcase-nav {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  border: 1px solid rgb(var(--fg-rgb) / 0.12);
-  background: var(--chip-bg);
-  color: rgb(var(--fg-rgb) / 0.75);
-  transition: border-color 0.3s ease, color 0.3s ease;
-}
-.showcase-nav:hover {
-  border-color: var(--nl-purple);
-  color: rgb(var(--fg-rgb));
-}
-/* mobile story segments */
-.showcase-seg {
-  transform-origin: left;
-  animation-name: showcase-fill;
-  animation-timing-function: linear;
-}
-@keyframes showcase-fill {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-html[data-motion-resolved="reduce"] .showcase-seg {
-  animation: none;
-  transform: scaleX(1);
-}
-/* the dock */
-.showcase-dock {
-  scrollbar-width: none;
-}
-.showcase-dock::-webkit-scrollbar {
-  display: none;
-}
-.dock-btn:hover {
-  color: rgb(var(--fg-rgb) / 0.85);
-}
-.dock-ring {
-  pointer-events: none;
-  transform: rotate(-90deg);
-}
-.dock-ring-fill {
-  stroke-dasharray: 116.2;
-  stroke-dashoffset: 116.2;
-  animation-name: dock-ring-fill;
-  animation-timing-function: linear;
-}
-@keyframes dock-ring-fill {
-  to { stroke-dashoffset: 0; }
-}
-html[data-motion-resolved="reduce"] .dock-ring-fill {
-  display: none;
-}
-/* controls are live only once the swarm has actually reached the stage */
-.showcase-panel:not([data-ready="true"]) .showcase-nav,
-.showcase-panel:not([data-ready="true"]) .dock-btn {
-  pointer-events: none;
-  opacity: 0.55;
-}
-
-/* the picture itself grounded in a little light, not flat on the page */
+/* the social-media picture (the only scene the particle swarm still forms) grounded in a little light */
 .particle-rest--stage {
   filter: drop-shadow(0 22px 26px color-mix(in srgb, var(--nl-purple) 30%, transparent)) drop-shadow(0 4px 8px rgb(0 0 0 / 0.1));
 }
-.showcase-glow {
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-purple) 16%, transparent), transparent 72%);
+/* echo pieces (scene 2's phones, scene 9's cloud/server/laptop/shield) */
+.scene-echo {
+  will-change: transform, opacity;
 }
-html[data-theme="dark"] .showcase-glow {
+/* scene 3's non-hero frames: a quiet gradient fill standing in for a thumbnail */
+.scene-frame-fill {
+  background: linear-gradient(155deg, var(--surface-1), var(--surface-2));
+}
+.scene-strip-mask {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+/* scene 5 and 8's soft backdrop glow */
+.scene-events-glow,
+.scene-ai-glow {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-purple) 14%, transparent), transparent 72%);
+}
+html[data-theme="dark"] .scene-events-glow,
+html[data-theme="dark"] .scene-ai-glow {
   background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-blue) 20%, transparent), transparent 72%);
-}
-
-/* a thin light sweeps across a picture once, right as it finishes forming */
-.stage-sheen::after {
-  content: "";
-  position: absolute;
-  inset: -20% -60%;
-  background: linear-gradient(100deg, transparent 44%, rgb(255 255 255 / 0.55) 50%, transparent 56%);
-  transform: translateX(-120%) rotate(6deg);
-  animation: stage-sheen 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
-}
-@keyframes stage-sheen {
-  0%, 18% { transform: translateX(-120%) rotate(6deg); opacity: 0; }
-  28% { opacity: 1; }
-  70%, 100% { transform: translateX(120%) rotate(6deg); opacity: 0; }
-}
-
-/* the landing "thud": a touch of overshoot, then settle — toggled by Services.tsx on every new picture */
-.stage-settle-play {
-  animation: stage-settle 0.5s cubic-bezier(0.17, 0.89, 0.32, 1.28) both;
-}
-@keyframes stage-settle {
-  from { transform: scale(0.93); }
-}
-
-html[data-motion-resolved="reduce"] .stage-sheen::after,
-html[data-motion-resolved="reduce"] .stage-settle-play {
-  animation: none;
-}
-
-/* "keep scrolling" hint, shown only before the first picture has landed */
-.scroll-hint {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgb(var(--fg-rgb) / 0.4);
-}
-.scroll-hint-chevron {
-  animation: scroll-hint-bounce 1.6s ease-in-out infinite;
-}
-@keyframes scroll-hint-bounce {
-  50% { transform: translateY(4px); }
-}
-html[data-motion-resolved="reduce"] .scroll-hint-chevron {
-  animation: none;
 }
 .finale-tile svg {
   color: var(--nl-blue-soft);
