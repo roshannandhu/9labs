@@ -5,56 +5,58 @@ import { gsap } from "@/lib/gsap";
 import { digits as digitFont } from "@/lib/fonts";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { onIntroDone } from "@/components/intro/introBus";
-import { palette, swatchTable, nearestSwatch, type SwatchTable } from "./palette";
+import { palette, colorKey, KEY_HEX, COLOR_KEYS } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
-import { particleBus, heroTarget, digitTarget, picTarget, sameTarget, type ParticleTarget } from "./bus";
+import { particleBus, heroTarget, allNineTarget, digitTarget, picTarget, sameTarget, type ParticleTarget } from "./bus";
 import { site, type IconKey } from "@/content/site";
 
 const SLOTS = ["hero", "stage-1", "stage-2", "stage-3", "stage-4", "stage-5", "stage-6", "stage-7", "stage-8", "stage-9", "finale"] as const;
 type SlotName = (typeof SLOTS)[number];
-/** each service's own full-screen scene has its own named slot (`stage-<n>`); a digit only ever
- * appears as the lead-in into scene 1, and "all nine" only ever appears in the finale. */
+/** each service card has its own slot (`stage-<n>`); its lead-in digit lives in the same slot */
+const STAGES = site.services.map((s) => ({ name: `stage-${s.n}` as SlotName, pic: picTarget(s.icon) }));
 const ICON_SLOT = new Map<IconKey, SlotName>(site.services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
 const slotFor = (t: ParticleTarget): SlotName => {
   if (t.kind === "hero") return "hero";
   if (t.kind === "all9") return "finale";
   if (t.kind === "pic") return ICON_SLOT.get(t.icon) ?? "stage-1";
-  return "stage-1";
+  return `stage-${t.ch}` as SlotName;
 };
 const isDark = () => document.documentElement.dataset.theme === "dark";
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (v: number) => {
+  const x = clamp01(v);
+  return x * x * (3 - 2 * x);
+};
 // how far into a flight the "landing" content still shows (fades out) / the "arriving" content
-// starts to show (fades in) — zero particles the rest of the time, as requested: the swarm is
-// only ever visible while actually transforming between two shapes.
+// starts to show (fades in) — zero particles the rest of the time: the swarm is only ever visible
+// while actually transforming between two shapes.
 const EDGE = 0.09;
 const earlyOp = (u: number) => (u < EDGE ? 1 - u / EDGE : 0);
 const lateOp = (u: number) => (u > 1 - EDGE ? (u - (1 - EDGE)) / EDGE : 0);
 // a particle decelerates smoothly into its landing spot — no overshoot, nothing flung past target
 const easeOut = (x: number) => 1 - (1 - x) ** 3;
 // particles whose landing spot sits near the target's own centre arrive first — the shape visibly
-// builds from the inside out, rather than every particle moving in lockstep. STAGGER is how much
-// of the flight that spread can eat into (0–1); kept gentle so it reads as smooth, not busy.
+// builds from the inside out, rather than every particle moving in lockstep.
 const STAGGER = 0.16;
+// a card that isn't the one in focus shows its object as a faint, still ghost
+const GHOST = 0.3;
+// the hero 9 assembling from the screen edges after the intro
+const ASM_MS = 1700;
 
 /**
- * The one particle swarm. `ServiceTrack` (`src/components/services/ServiceTrack.tsx`) writes
- * `particleBus` directly, continuously, from the services section's own scroll position: the
- * swarm flies from the hero 9 through the digit "1" into the first picture, then directly from
- * picture to picture as each of the nine scenes scrolls past, and finally into the finale "9" —
- * reversible the whole way, since it only ever follows that one scroll-derived number.
+ * The one particle swarm. `useServiceTrack` writes `particleBus`: the hero 9 assembles from the
+ * screen edges after the intro, flies through the current card's digit into its object as the
+ * services carousel scrolls into view, then from object to object as the carousel is swiped (or
+ * auto-advances), and finally into the finale "9" — reversible the whole way.
  *
  * Two layers, so nothing ever looks like dust once it has landed:
- * - **Formed** (at rest): a crisp picture or digit, drawn at full detail *inside* its slot in the
- *   page (so it scrolls natively, no jitter). A service picture keeps being redrawn every frame
- *   with real time, so its own small details live (hearts float, a flash fires, lights sweep);
- *   a digit is drawn once and left still. The swarm itself draws **nothing** while a shape is at
- *   rest — only while flying between two shapes.
- * - **Moving** (flying): ~13,000 particles (~7,000 on phones) on one fixed full-screen canvas,
- *   each carrying its source and target colour (from the shared palette, `palette.ts`) and flying
- *   a bowed path — bowed to one consistent side (a vortex, not a scramble), the direction set by
- *   which way the Showcase is navigating. A device that can't keep up in the first second quietly
- *   draws 60% of them.
+ * - **Formed**: a crisp picture or digit drawn *inside* its slot in the page. The card in focus
+ *   keeps redrawing with real time so its small details live; every other card shows a faint still
+ *   ghost of its object. The swarm draws nothing while a shape is at rest.
+ * - **Moving**: ~16,000 particles (~9,000 on phones) on one fixed full-screen canvas, each carrying
+ *   its own true pixel colour from both shapes and landing exactly where the crisp version is drawn,
+ *   so the hand-over has no jump. A device that can't keep up quietly draws 60% of them.
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
@@ -67,7 +69,7 @@ export function ParticleStage() {
     if (!cv || !ctx) return;
 
     const phone = window.matchMedia("(max-width: 639px)").matches;
-    const N = phone ? 7000 : 13000;
+    const N = phone ? 9000 : 16000;
     const r = rng(9001);
 
     // assembly: each particle streams in from a point just beyond a screen edge (hero forming, once)
@@ -95,12 +97,15 @@ export function ParticleStage() {
     const py = new Float32Array(N);
     const bucket = new Uint16Array(N);
     const order = new Uint32Array(N);
+    const counts = new Int32Array(COLOR_KEYS + 1);
+    const start = new Int32Array(COLOR_KEYS + 1);
 
     let thin = false;
     let probe = 0;
     let probeSum = 0;
     let lastT = 0;
     let started = false;
+    let assembling = false;
     let heroT0 = 0;
     let visible = true;
     let dirty = false;
@@ -119,11 +124,8 @@ export function ParticleStage() {
     resize();
     window.addEventListener("resize", resize);
 
-    // the two crisp "formed" layers: one small canvas inside each slot
-    const rest = new Map<
-      SlotName,
-      { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number }
-    >();
+    // the crisp "formed" layer: one small canvas inside each slot
+    const rest = new Map<SlotName, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number }>();
     for (const name of SLOTS) {
       const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
       const c = document.createElement("canvas");
@@ -133,38 +135,63 @@ export function ParticleStage() {
       c.className = `particle-rest particle-rest--${name}`;
       c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0";
       el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN });
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN }); // NaN: centring transform not applied yet
     }
-    // a soft parallax while the stage picture rests: it drifts a few px against the scroll, as if
-    // it sat a little in front of the page rather than glued flat to it
+
+    // a slot's on-screen rect, its layout size (unaffected by a card's scale), and that scale
+    const geom = (name: SlotName) => {
+      const s = rest.get(name);
+      if (!s) return null;
+      const b = s.el.getBoundingClientRect();
+      const lw = s.el.offsetWidth;
+      const lh = s.el.offsetHeight;
+      if (!lw || !lh) return null;
+      return { b, k: b.width / lw, side: Math.min(lh * 0.9, lw * 0.94), drift: Number.isNaN(s.drift) ? 0 : s.drift };
+    };
+
+    // a soft parallax while a picture rests: it drifts a few px against the scroll, as if it sat a
+    // little in front of the page rather than glued flat to it
     const updateDrift = (name: SlotName) => {
       const s = rest.get(name);
-      const b = name === "hero" ? undefined : slotRect(name);
       if (!s) return;
-      const off = b ? Math.max(-14, Math.min(14, (window.innerHeight / 2 - (b.top + b.height / 2)) * 0.045)) : 0;
+      const b = name === "hero" ? undefined : s.el.getBoundingClientRect();
+      const off = b ? Math.round(Math.max(-14, Math.min(14, (window.innerHeight / 2 - (b.top + b.height / 2)) * 0.045)) * 10) / 10 : 0;
       if (off === s.drift) return;
       s.drift = off;
-      s.c.style.transform = `translate(-50%, calc(-50% + ${off.toFixed(1)}px))`;
+      s.c.style.transform = `translate(-50%, calc(-50% + ${off}px))`;
     };
-    const slotRect = (name: SlotName) => rest.get(name)?.el.getBoundingClientRect();
 
-    const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>) => {
+    const fit = (s: { c: HTMLCanvasElement }, side: number, px2: number) => {
+      s.c.width = px2;
+      s.c.height = px2;
+      s.c.style.width = `${side}px`;
+      s.c.style.height = `${side}px`;
+    };
+    /** draws a slot's crisp layer; `still` = the faint ghost of a card that isn't in focus */
+    const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>, still = false) => {
       const s = rest.get(name);
-      const b = slotRect(name);
-      if (!s || !b || b.height <= 0) return;
-      const side = Math.min(b.height * 0.9, b.width * 0.94);
-      const px2 = Math.max(2, Math.round(side * dpr));
+      const gm = geom(name);
+      if (!s || !gm) return;
+      const px2 = Math.max(2, Math.round(gm.side * dpr));
       if (target.kind === "pic") {
+        if (still) {
+          const key = `g|${target.icon}|${px2}|${pal.ink}`;
+          if (s.key === key) return;
+          const { b } = gm;
+          const W = window.innerWidth;
+          const H = window.innerHeight;
+          if (b.bottom < -H || b.top > 2 * H || b.right < -W || b.left > 2 * W) return; // drawn once it comes near
+          s.key = key;
+          fit(s, gm.side, px2);
+          PICTURES[target.icon](s.g, px2, pal, 0);
+          return;
+        }
         // always redrawn, so its small details can move
-        s.c.width = px2;
-        s.c.height = px2;
-        s.c.style.width = `${side}px`;
-        s.c.style.height = `${side}px`;
         if (s.key !== `pic|${target.icon}`) {
           s.key = `pic|${target.icon}`;
           s.liveT0 = performance.now();
         }
-        s.g.clearRect(0, 0, px2, px2);
+        fit(s, gm.side, px2);
         PICTURES[target.icon](s.g, px2, pal, (performance.now() - s.liveT0) / 1000);
         return;
       }
@@ -172,12 +199,8 @@ export function ParticleStage() {
       const key = `d|${ch}|${px2}|${pal.textFrom}`;
       if (s.key === key) return;
       s.key = key;
-      s.c.width = px2;
-      s.c.height = px2;
-      s.c.style.width = `${side}px`;
-      s.c.style.height = `${side}px`;
+      fit(s, gm.side, px2);
       const g = s.g;
-      g.clearRect(0, 0, px2, px2);
       g.font = `900 ${Math.round(px2 * 0.78)}px ${family}`;
       g.textAlign = "center";
       g.textBaseline = "alphabetic";
@@ -197,8 +220,13 @@ export function ParticleStage() {
       s.c.style.opacity = String(v);
     };
 
-    // a shape's height in its slot: as tall as the slot allows, but never wider than the slot
-    const box = (b: DOMRect, s: Shape) => ({ cx: b.left + b.width / 2, cy: b.top + b.height / 2, h: Math.min(b.height * 0.9, (b.width * 0.94) / s.wr) });
+    // where a shape's particles land on screen: exactly where drawFormed paints its crisp canvas
+    const place = (name: SlotName, s: Shape) => {
+      const gm = geom(name);
+      if (!gm) return null;
+      const { b, k, side, drift } = gm;
+      return { b, cx: b.left + b.width / 2 + k * side * s.ox, cy: b.top + b.height / 2 + k * (drift + side * s.oy), h: k * side * s.hr };
+    };
 
     const shapeFor = (t: ParticleTarget, dark: boolean): Shape => {
       if (t.kind === "digit") return digitShape(t.ch, N, family, dark);
@@ -211,7 +239,6 @@ export function ParticleStage() {
     let SA: Shape | null = null;
     let SB: Shape | null = null;
     let curDark = isDark();
-    let table: SwatchTable = swatchTable(palette(curDark));
 
     const frame = () => {
       if (!started || !visible || document.hidden) return;
@@ -219,55 +246,65 @@ export function ParticleStage() {
       const dark = isDark();
       if (dark !== curDark) {
         curDark = dark;
-        table = swatchTable(palette(dark));
         curFromKey = "";
-        curToKey = ""; // force shape re-sample at the new theme's colours
+        curToKey = ""; // re-sample the shapes at the new theme's colours
       }
       const pal = palette(dark);
-      const { from, to, u, dir } = particleBus;
-      const resting = sameTarget(from, to);
+      let { from, to, u } = particleBus;
+      const { dir } = particleBus;
       for (const name of SLOTS) updateDrift(name);
 
-      // the formed layers (always on: hero is static, the active scene keeps living while resting;
-      // every other scene's slot is explicitly kept at 0 — only one is ever showing at a time)
+      // the intro: the swarm streams in from the screen edges into the hero 9, until it lands or
+      // the page starts scrolling (the normal flight then takes over, still blending in from the edges)
+      const asm = clamp01((now - heroT0) / ASM_MS);
+      if (assembling && (asm >= 1 || from.kind !== "hero" || u > 0.001)) assembling = false;
+      const heroFade = assembling ? smooth((asm - 0.82) / 0.18) : 1;
+      if (assembling) {
+        from = heroTarget;
+        to = heroTarget;
+        u = 0;
+      }
+      const resting = !assembling && sameTarget(from, to);
+      // how much of a target's crisp layer shows: fully at rest, fading out/in at a flight's two ends
+      const shown = (match: (t: ParticleTarget) => boolean) =>
+        resting ? (match(to) ? 1 : 0) : (match(from) ? earlyOp(u) : 0) + (match(to) ? lateOp(u) : 0);
+
       drawFormed("hero", heroTarget, pal);
-      if (resting) {
-        setOpacity("hero", 1);
-        const activeSlot = slotFor(to);
-        for (const name of SLOTS) {
-          if (name === "hero") continue;
-          if (name === activeSlot) {
-            drawFormed(name, to, pal);
-            setOpacity(name, 1);
-          } else {
-            setOpacity(name, 0);
-          }
-        }
-      } else {
-        const showFrom = u < 0.5;
-        const heroInvolved = from.kind === "hero" || to.kind === "hero";
-        setOpacity("hero", heroInvolved ? (showFrom ? earlyOp(u) : lateOp(u)) : 1);
-        const content = showFrom ? from : to;
-        const contentSlot = slotFor(content);
-        for (const name of SLOTS) {
-          if (name === "hero") continue;
-          if (name === contentSlot && content.kind !== "hero") {
-            drawFormed(name, content, pal);
-            setOpacity(name, showFrom ? earlyOp(u) : lateOp(u));
-          } else {
-            setOpacity(name, 0);
-          }
+      setOpacity("hero", assembling ? heroFade : from.kind === "hero" || to.kind === "hero" ? shown((t) => t.kind === "hero") : 1);
+
+      const fin = shown((t) => t.kind === "all9");
+      if (fin > 0) drawFormed("finale", allNineTarget, pal);
+      setOpacity("finale", fin);
+
+      for (const { name, pic } of STAGES) {
+        const digitHere = (t: ParticleTarget) => t.kind === "digit" && slotFor(t) === name;
+        const picHere = (t: ParticleTarget) => sameTarget(t, pic);
+        const d = shown(digitHere);
+        const p = shown(picHere);
+        // while this card's digit is part of the flight, its ghost stays out of the way
+        const ghost = !digitHere(from) && !digitHere(to);
+        if (d > 0) {
+          drawFormed(name, digitHere(from) ? from : to, pal);
+          setOpacity(name, d);
+        } else if (p > 0) {
+          drawFormed(name, pic, pal);
+          setOpacity(name, ghost ? GHOST + (1 - GHOST) * p : p);
+        } else if (ghost) {
+          if (!assembling) drawFormed(name, pic, pal, true);
+          setOpacity(name, GHOST);
+        } else {
+          setOpacity(name, 0);
         }
       }
 
-      // the particles: only while flying
+      // the particles: only while flying (or assembling)
       if (dirty) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, cv.width, cv.height);
         dirty = false;
       }
       if (resting) return;
-      const dustAlpha = 1 - earlyOp(u) - lateOp(u);
+      const dustAlpha = assembling ? 1 - heroFade : 1 - earlyOp(u) - lateOp(u);
       if (dustAlpha < 0.015) return;
 
       const fromKey = `${from.kind}${"ch" in from ? from.ch : ""}${"icon" in from ? from.icon : ""}`;
@@ -281,14 +318,13 @@ export function ParticleStage() {
         SB = shapeFor(to, dark);
       }
       if (!SA || !SB) return;
-      const ra = slotRect(slotFor(from));
-      const rb = slotRect(slotFor(to));
-      if (!ra || !rb) return;
-      const A = box(ra, SA);
-      const B = box(rb, SB);
+      const A = place(slotFor(from), SA);
+      const B = place(slotFor(to), SB);
+      if (!A || !B) return;
       const H = window.innerHeight;
-      const away = (b: DOMRect) => b.bottom < -H * 0.6 || b.top > H * 1.6 || b.width === 0;
-      if (away(ra) && away(rb)) return;
+      const W = window.innerWidth;
+      const away = (b: DOMRect) => b.bottom < -H * 0.6 || b.top > H * 1.6 || b.right < -W * 0.6 || b.left > W * 1.6;
+      if (away(A.b) && away(B.b)) return;
 
       const lx = B.cx - A.cx;
       const ly = B.cy - A.cy;
@@ -296,7 +332,6 @@ export function ParticleStage() {
       const perpX = -ly / len;
       const perpY = lx / len;
       const spread = Math.max(A.h, B.h) * 0.42;
-      const asm = clamp01((now - heroT0) / 1700);
 
       if (asm >= 1 && probe < 40) {
         if (lastT) {
@@ -306,13 +341,13 @@ export function ParticleStage() {
         lastT = now;
       }
 
-      const PN = table.hex.length;
-      const counts = new Int32Array(PN + 1);
-      const W = window.innerWidth;
+      const ra = SA.rgb;
+      const rb = SB.rgb;
+      counts.fill(0);
       for (let i = 0; i < N; i++) {
         if (thin && i % 5 > 2) {
-          bucket[i] = PN;
-          counts[PN]++;
+          bucket[i] = COLOR_KEYS;
+          counts[COLOR_KEYS]++;
           continue;
         }
         const ax = A.cx + SA.x[i] * A.h;
@@ -325,9 +360,9 @@ export function ParticleStage() {
         const my = (ay + by) / 2 + perpY * bowAmt + jitY[i] * spread * 0.16;
         // this particle's own progress: it starts a little late if its landing spot sits near the
         // target's edge (STAGGER), then eases smoothly in — position only, so the crossfade/colour
-        // timing below stays driven by the plain, predictable global `u`.
+        // timing stays driven by the plain, predictable global `u`.
         const d = Math.min(STAGGER, Math.hypot(SB.x[i], SB.y[i]) * 1.8 * STAGGER);
-        const ue = easeOut(d >= 1 ? 1 : clamp01((u - d) / (1 - d)));
+        const ue = easeOut(clamp01((u - d) / (1 - d)));
         const ve = 1 - ue;
         let x = ve * ve * ax + 2 * ve * ue * mx + ue * ue * bx;
         let y = ve * ve * ay + 2 * ve * ue * my + ue * ue * by;
@@ -339,34 +374,28 @@ export function ParticleStage() {
         }
         px[i] = x;
         py[i] = y;
-        const ca = table.rgb[SA.swatch[i]];
-        const cbb = table.rgb[SB.swatch[i]];
-        const cr = ca[0] + (cbb[0] - ca[0]) * u;
-        const cg = ca[1] + (cbb[1] - ca[1]) * u;
-        const cbl = ca[2] + (cbb[2] - ca[2]) * u;
-        const bIdx = nearestSwatch(table, cr, cg, cbl);
-        bucket[i] = bIdx;
-        counts[bIdx]++;
+        const j = i * 3;
+        const k = colorKey(ra[j] + (rb[j] - ra[j]) * u, ra[j + 1] + (rb[j + 1] - ra[j + 1]) * u, ra[j + 2] + (rb[j + 2] - ra[j + 2]) * u);
+        bucket[i] = k;
+        counts[k]++;
       }
       let acc = 0;
-      const start = new Int32Array(PN + 1);
-      for (let b = 0; b <= PN; b++) {
+      for (let b = 0; b <= COLOR_KEYS; b++) {
         start[b] = acc;
         acc += counts[b];
       }
-      const fill = start.slice();
-      for (let i = 0; i < N; i++) if (bucket[i] < PN) order[fill[bucket[i]]++] = i;
+      for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
 
       const size = Math.max(1.1, Math.min(phone ? 2.4 : 2.8, (A.h + (B.h - A.h) * u) * (phone ? 0.0085 : 0.005)));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalAlpha = dustAlpha;
       const half = size / 2;
-      for (let b = 0; b < PN; b++) {
-        const n0 = start[b];
-        const n1 = n0 + counts[b];
-        if (n1 === n0) continue;
-        ctx.fillStyle = table.hex[b];
-        for (let j = n0; j < n1; j++) {
+      // `start[b]` now marks the end of bucket b, so bucket b runs from end-count to end
+      for (let b = 0; b < COLOR_KEYS; b++) {
+        const n = counts[b];
+        if (!n) continue;
+        ctx.fillStyle = KEY_HEX[b];
+        for (let j = start[b] - n; j < start[b]; j++) {
           const i = order[j];
           ctx.fillRect(px[i] - half, py[i] - half, size, size);
         }
@@ -375,7 +404,7 @@ export function ParticleStage() {
       dirty = true;
     };
 
-    // only run while the hero or the Showcase is near the screen
+    // only run while the hero or the services are near the screen
     const watched = ["home", "services"].map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const seen = new Map<Element, boolean>();
     const io = new IntersectionObserver(
@@ -402,11 +431,15 @@ export function ParticleStage() {
       }
       if (cancelled) return;
       const dark = isDark();
+      digitShape("9", N, family, dark); // the hero (and the finale) — needed immediately
+      const hero = rest.get("hero")?.el.getBoundingClientRect();
+      assembling = !!hero && hero.bottom > 0 && hero.top < window.innerHeight && window.scrollY < 40;
       started = true;
       heroT0 = performance.now();
-      digitShape("9", N, family, dark); // the hero (and the finale) — needed immediately
-      const steps: ParticleTarget[] = [digitTarget(1)]; // the lead-in into scene 1
-      for (const s of site.services) steps.push(picTarget(s.icon)); // in scene order, scene 1 first
+      // the rest, in the order a visitor meets them: card 1's digit and object first
+      const steps: ParticleTarget[] = [digitTarget(1)];
+      for (const s of site.services) steps.push(picTarget(s.icon));
+      for (const s of site.services.slice(1)) steps.push(digitTarget(s.n));
       for (const step of steps) {
         await new Promise((res) => setTimeout(res, 0));
         if (cancelled) return;

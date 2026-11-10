@@ -1,33 +1,33 @@
-import { nearestSwatch, palette, swatchTable, type Pal } from "./palette";
+import { palette, type Pal } from "./palette";
 
 /**
  * Particle targets for a shape (a digit, or a service picture): draw it fully coloured on a large
  * offscreen canvas, lay exactly `n` blue-noise (Poisson-disc) points over its filled, visible
- * pixels — evenly spaced but organic: no rows, clumps or holes — and read each point's own pixel
- * colour, snapped to the shared palette (see `palette.ts`). Because every picture is drawn from
- * that same palette, the snapped colour always exactly matches what the formed picture looks
- * like — the swarm's colour never drifts from the real thing.
+ * pixels — evenly spaced but organic: no rows, clumps or holes — and keep each point's own pixel
+ * colour, so the swarm carries the picture's real gradients and shading.
  *
  * Every shape gets the same `n`, so particle i of one shape becomes particle i of the next — the
  * same swarm re-forms every time. Points are kept in **polar order** (angle around the shape's
  * centre, then radius), so a flight between two shapes reads as one coherent swirl/vortex rather
  * than criss-crossing.
  *
- * Coordinates are in units of the shape's height, centred on (0, 0): a slot just multiplies by
- * its own size. `z` is a fake depth (0 = flat/inner, 1 = near the edge/outline) used to widen and
- * brighten a particle's flight path for a bit of parallax.
+ * Coordinates are in units of the shape's height, centred on its bounding box. `hr`, `ox` and `oy`
+ * place that box inside the square canvas the crisp version is drawn on, so a slot can land the
+ * particles exactly on top of it. `z` is a fake depth (0 = flat/inner, 1 = near the edge/outline)
+ * used to widen a particle's flight path for a bit of parallax.
  */
 export type Shape = {
   x: Float32Array;
   y: Float32Array;
-  /** index into the shared palette (palette.ts) — the particle's colour while flying */
-  swatch: Uint8Array;
+  /** the particle's own pixel colour, [r, g, b] per particle */
+  rgb: Uint8Array;
   /** fake depth 0..1, used only for the flight (size / path width), not while resting */
   z: Float32Array;
-  /** the shape's height as a fraction of the sampling canvas (so a slot can draw it at the same scale) */
+  /** the shape's height as a fraction of the sampling canvas */
   hr: number;
-  /** the shape's width ÷ height (so a slot can make sure a wide shape still fits) */
-  wr: number;
+  /** the bounding box centre's offset from the canvas centre, as a fraction of the canvas */
+  ox: number;
+  oy: number;
 };
 
 /** Font size used for sampling a digit, as a fraction of the square canvas. */
@@ -59,10 +59,10 @@ export function rng(seed: number) {
 
 /**
  * Draws `draw(ctx, S)` fully coloured on a 600px canvas, then samples it into a Shape: `n`
- * blue-noise points over its visible (alpha ≥ 0.5) pixels, each carrying its own pixel colour
- * (snapped to `pal`'s shared palette) and a depth from how close it sits to the shape's edge.
+ * blue-noise points over its visible (alpha ≥ 0.5) pixels, each carrying its own pixel colour and
+ * a depth from how close it sits to the shape's edge.
  */
-function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRenderingContext2D, S: number) => void, pal: Pal): Shape {
+function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRenderingContext2D, S: number) => void): Shape {
   const hit = cache.get(key);
   if (hit) return hit;
 
@@ -196,14 +196,14 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
   });
 
   const radii = [0.018, 0.04, 0.07].map((f) => f * H);
-  const table = swatchTable(pal);
   const shape: Shape = {
     x: new Float32Array(n),
     y: new Float32Array(n),
-    swatch: new Uint8Array(n),
+    rgb: new Uint8Array(n * 3),
     z: new Float32Array(n),
     hr: H / S,
-    wr: Math.max(1, maxX - minX) / H,
+    ox: ((minX + maxX) / 2 - S / 2) / S,
+    oy: (cy - S / 2) / S,
   };
   for (let o = 0; o < n; o++) {
     const i = order[o];
@@ -219,14 +219,11 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
       }
     }
     const pi = (Math.round(py) * S + Math.round(px)) * 4;
-    // a touch brighter right on the outline, for a crisp edge highlight
-    const boost = edge >= 1 ? 0.22 : 0;
-    const cr = data[pi] + (255 - data[pi]) * boost;
-    const cg = data[pi + 1] + (255 - data[pi + 1]) * boost;
-    const cb = data[pi + 2] + (255 - data[pi + 2]) * boost;
     shape.x[o] = (px - (minX + maxX) / 2) / H;
     shape.y[o] = (py - cy) / H;
-    shape.swatch[o] = nearestSwatch(table, cr, cg, cb);
+    shape.rgb[o * 3] = data[pi];
+    shape.rgb[o * 3 + 1] = data[pi + 1];
+    shape.rgb[o * 3 + 2] = data[pi + 2];
     shape.z[o] = Math.min(1, edge * 0.55 + r() * 0.45);
   }
   cache.set(key, shape);
@@ -245,7 +242,7 @@ export function digitShape(ch: string, n: number, family: string, dark: boolean)
     grad.addColorStop(1, pal.textTo);
     ctx.fillStyle = grad;
     ctx.fillText(ch, S / 2, S / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
-  }, pal);
+  });
 }
 
 export type PictureDraw = (ctx: CanvasRenderingContext2D, S: number, pal: Pal, t: number) => void;
@@ -254,5 +251,5 @@ export function pictureShape(key: string, n: number, draw: PictureDraw, dark: bo
   const pal = palette(dark);
   let seed = 0;
   for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) >>> 0;
-  return sampleShape(`p|${key}|${n}|${dark}`, n, seed + n, (ctx, S) => draw(ctx, S, pal, 0), pal);
+  return sampleShape(`p|${key}|${n}|${dark}`, n, seed + n, (ctx, S) => draw(ctx, S, pal, 0));
 }

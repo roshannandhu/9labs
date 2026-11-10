@@ -22,11 +22,10 @@ import { ServiceCard } from "./ServiceCard";
 const services = site.services;
 
 /**
- * "Our 9 labs." Nine full-screen scenes, driven by one continuous read of scroll position
- * (`useServiceTrack`) — the particle swarm forms every scene's own object directly, in order,
- * reversible the whole way; scrolling that stops partway between two scenes glides the rest of
- * the way so each still lands filling the screen, the way a native swipe/snap page would, without
- * an actual scroll lock anywhere. Reduced motion: a plain list, every picture already still.
+ * "Our 9 labs." The nine services as a sideways carousel (`useServiceTrack`): swipe or trackpad
+ * freely, the next card peeks in dimmed, it auto-advances, and the particle swarm forms each card's
+ * object as it comes into focus — the page itself scrolls straight past, no lock. Reduced motion:
+ * a plain list, every picture already still.
  */
 export function Services() {
   const { reduced } = useDemo();
@@ -52,32 +51,73 @@ export function Services() {
 }
 
 function ServicesTrack({ heading }: { heading: React.ReactNode }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const stripRef = useRef<HTMLDivElement>(null);
-  const finaleRef = useRef<HTMLDivElement>(null);
-  const active = useServiceTrack(trackRef, stripRef, finaleRef);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const { active, goTo, playing, running, togglePlay } = useServiceTrack(scrollerRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
 
   return (
     <section id="services" aria-labelledby="services-title" className="relative py-16 sm:py-24">
       <div className="pb-8 sm:pb-12">{heading}</div>
-      {/* 9 scenes x 100svh: the scroll-range `useServiceTrack` reads; unchanged by the slide below */}
-      <div ref={trackRef} className="relative h-[900svh]">
-        <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
-          <div ref={stripRef} className="flex h-full" style={{ width: "900vw" }}>
-            <Scene1Social s={s1} />
-            <Scene2Advertising s={s2} active={active === 1} />
-            <Scene3Content s={s3} active={active === 2} />
-            <Scene4Photo s={s4} />
-            <Scene5Events s={s5} active={active === 4} />
-            <Scene6PR s={s6} />
-            <Scene7Strategy s={s7} />
-            <Scene8AI s={s8} active={active === 7} />
-            <Scene9IT s={s9} />
-          </div>
+      <div
+        ref={scrollerRef}
+        data-lenis-prevent-horizontal
+        tabIndex={0}
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="Our nine services"
+        className="svc-scroller"
+      >
+        <Scene1Social s={s1} />
+        <Scene2Advertising s={s2} active={active === 1} />
+        <Scene3Content s={s3} active={active === 2} />
+        <Scene4Photo s={s4} />
+        <Scene5Events s={s5} active={active === 4} />
+        <Scene6PR s={s6} />
+        <Scene7Strategy s={s7} />
+        <Scene8AI s={s8} active={active === 7} />
+        <Scene9IT s={s9} />
+      </div>
+      <div className="container-x mt-5 flex items-center justify-between gap-3 sm:mt-7">
+        <div className="flex items-center" role="group" aria-label="Choose a service">
+          {services.map((s, i) => (
+            <button
+              key={s.slug}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Go to ${s.short}`}
+              aria-current={i === active ? "true" : undefined}
+              className={`svc-dot${i === active ? " svc-dot--on" : ""}`}
+            >
+              {i === active && running && <span key={active} className="svc-dot-fill" />}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={togglePlay} aria-label={playing ? "Pause automatic scrolling" : "Play automatic scrolling"} className="svc-ctl">
+            {playing ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <rect x="3.5" y="2.5" width="3" height="11" rx="1" />
+                <rect x="9.5" y="2.5" width="3" height="11" rx="1" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.4-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7Z" />
+              </svg>
+            )}
+          </button>
+          <button type="button" onClick={() => goTo(active - 1)} disabled={active === 0} aria-label="Previous service" className="svc-ctl">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button type="button" onClick={() => goTo(active + 1)} disabled={active === services.length - 1} aria-label="Next service" className="svc-ctl">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
-      <div ref={finaleRef} className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
+      <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />
         </div>

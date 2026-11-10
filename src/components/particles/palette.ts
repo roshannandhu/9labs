@@ -1,8 +1,7 @@
 /**
- * The one shared colour palette for every particle shape (digits and the service pictures) and
- * for drawing the pictures themselves. Every colour a picture's canvas drawing uses comes from
- * this object, so the particle swarm's own colour (nearest-swatch, see `nearestSwatch`) always
- * exactly matches what the formed picture looks like — no quantisation drift.
+ * The one shared colour palette the service pictures and digits are drawn from. Particles take
+ * their colour from the drawn pixels themselves (see `targets.ts`), so gradients, gloss and shading
+ * carry into the swarm as they really look.
  */
 export type Pal = {
   /** digit gradient endpoints — the logo gradient (globals.css --logo-from/--logo-to) */
@@ -61,30 +60,10 @@ export function palette(dark: boolean): Pal {
       };
 }
 
-/** Every swatch in the palette, as [r,g,b] — the fixed set particles snap to. */
-function toRgb(hex: string): [number, number, number] {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-export type SwatchTable = { hex: string[]; rgb: [number, number, number][] };
-
-export function swatchTable(pal: Pal): SwatchTable {
-  const hex = Object.values(pal);
-  return { hex, rgb: hex.map(toRgb) };
-}
-
-/** The palette index whose colour is closest to [r,g,b] (plain squared distance — ≤12 entries, cheap). */
-export function nearestSwatch(table: SwatchTable, r: number, g: number, b: number): number {
-  let best = 0;
-  let bestD = Infinity;
-  for (let i = 0; i < table.rgb.length; i++) {
-    const [tr, tg, tb] = table.rgb[i];
-    const d = (tr - r) ** 2 + (tg - g) ** 2 + (tb - b) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  }
-  return best;
-}
+/** 16 levels per channel: the swarm batches its draw calls by this 12-bit key (≤ 4096 fill colours). */
+export const COLOR_KEYS = 4096;
+export const colorKey = (r: number, g: number, b: number) => (Math.round(r / 17) << 8) | (Math.round(g / 17) << 4) | Math.round(b / 17);
+export const KEY_HEX: string[] = Array.from({ length: COLOR_KEYS }, (_, k) => {
+  const c = (v: number) => (v * 17).toString(16).padStart(2, "0");
+  return `#${c(k >> 8)}${c((k >> 4) & 15)}${c(k & 15)}`;
+});

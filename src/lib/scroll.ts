@@ -37,7 +37,7 @@ export function registerAnchorPrefix(prefix: string, fn: (id: string) => number 
   };
 }
 
-function navOffset() {
+export function navOffset() {
   if (typeof window === "undefined") return 0;
   const v = getComputedStyle(document.documentElement).getPropertyValue("--nav-h");
   return parseFloat(v) || 72;
