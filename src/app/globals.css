@@ -967,6 +967,7 @@ html[data-intro="playing"] [data-logo-9] {
 .svc-scroller {
   --card-w: 82vw;
   --card-h: clamp(440px, calc(100svh - 220px), 720px);
+  position: relative; /* the particle swarm's carousel canvas is placed inside, in the scrolled content */
   display: flex;
   gap: 12px;
   overflow-x: auto;

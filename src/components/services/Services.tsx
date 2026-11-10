@@ -61,6 +61,7 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
       <div
         ref={scrollerRef}
         data-lenis-prevent-horizontal
+        data-particle-track
         tabIndex={0}
         role="region"
         aria-roledescription="carousel"

@@ -16,10 +16,12 @@ const PEEK_SCALE = 0.06;
 
 // measured across the whole row so per-card pixel rounding can't add up: one neighbour pair reads
 // 992 where the true step is 992.8, which left cards 3–8 "still flying" at rest (faint dust flicker)
+// the cards only — the scroller also holds the particle swarm's own canvas
+const cardsOf = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>(":scope > .scene-card"));
 const cardStep = (el: HTMLElement) => {
-  const c = el.children;
-  const first = c[0] as HTMLElement | undefined;
-  const last = c[c.length - 1] as HTMLElement | undefined;
+  const c = cardsOf(el);
+  const first = c[0];
+  const last = c[c.length - 1];
   return first && last && c.length > 1 ? (last.offsetLeft - first.offsetLeft) / (c.length - 1) : el.clientWidth;
 };
 // the carousel's position 0..8, landing exactly on a card when it rests within 2px of it
@@ -61,7 +63,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     if (reduced) return;
     const el = scrollerRef.current;
     if (!el) return;
-    const cards = Array.from(el.children) as HTMLElement[];
+    const cards = cardsOf(el);
 
     // `offsetLeft` forces layout same as getBoundingClientRect; cards never move relative to the
     // scroller, so this is read once instead of on every scroll event during a swipe

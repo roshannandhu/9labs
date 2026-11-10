@@ -47,19 +47,22 @@ const ASM_MS = 1700;
  * - **Formed**: a crisp picture or "9" drawn *inside* its slot in the page. The card in focus
  *   keeps redrawing with real time so its small details live; every other card shows a faint still
  *   ghost of its object. The swarm draws nothing while a shape is at rest.
- * - **Moving**: ~16,000 particles (~9,000 on phones) on one fixed full-screen canvas, each carrying
- *   its own true pixel colour from both shapes and landing exactly where the crisp version is drawn,
- *   so the hand-over has no jump. A device that can't keep up quietly draws 60% of them.
+ * - **Moving**: ~11,000 particles (~6,000 on phones), drawn on a canvas that scrolls with the page
+ *   (or, card to card, with the carousel), each carrying its own true pixel colour from both shapes
+ *   and landing exactly where the crisp version is drawn, so the hand-over has no jump. A device
+ *   that can't keep up quietly draws 60% of them.
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (reduced) return;
+    const wrap = wrapRef.current;
     const cv = ref.current;
     const ctx = cv?.getContext("2d");
-    if (!cv || !ctx) return;
+    if (!wrap || !cv || !ctx) return;
 
     const phone = window.matchMedia("(max-width: 639px)").matches;
     // fillRect scales linearly with N and profiled as the single largest per-frame cost during an
@@ -104,20 +107,45 @@ export function ParticleStage() {
     let assembling = false;
     let heroT0 = 0;
     let visible = true;
-    let dirty = false;
     let dpr = 1;
     let family = "";
     let lastScrollY = -1;
     let forceGeoms = true; // always read fresh geometry on the very first frame
 
+    /*
+     * Two drawing surfaces, both inside the scrolling content rather than fixed over the screen. The
+     * browser scrolls the page (touch, fling) and a swiped carousel on its compositor thread, a frame
+     * ahead of anything the main thread draws, so dust on a fixed overlay trailed the cards by a whole
+     * scroll step and then jumped to catch up (measured: ~18px every step of a phone scroll). Living
+     * inside the content, the dust is carried along with the cards; only its flight *progress* is a
+     * frame behind, which nobody can see.
+     *  - `page`: inside <main>, re-placed each frame to cover the screen plus a margin above and below
+     *  - `track`: inside the services carousel, for card-to-card flights, so a swipe carries it too
+     */
+    type Surface = { c: HTMLCanvasElement; g: CanvasRenderingContext2D; tx: number; ty: number; box: number[] | null };
+    const page: Surface = { c: cv, g: ctx, tx: NaN, ty: NaN, box: null };
+    const trackEl = document.querySelector<HTMLElement>("[data-particle-track]");
+    const tcv = document.createElement("canvas");
+    const tctx = tcv.getContext("2d");
+    const track: Surface | null = trackEl && tctx ? { c: tcv, g: tctx, tx: NaN, ty: NaN, box: null } : null;
+    if (trackEl && track) {
+      tcv.setAttribute("aria-hidden", "true");
+      tcv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:2";
+      trackEl.appendChild(tcv);
+    }
+    let drawn: Surface | null = null; // the surface the swarm drew on last frame (its patch is in `.box`)
+    let margin = 0; // page surface: extra height above and below the screen
+
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       const W = window.innerWidth;
       const H = window.innerHeight;
+      margin = Math.round(H * 0.3);
       cv.width = Math.round(W * dpr);
-      cv.height = Math.round(H * dpr);
+      cv.height = Math.round((H + 2 * margin) * dpr);
       cv.style.width = `${W}px`;
-      cv.style.height = `${H}px`;
+      cv.style.height = `${H + 2 * margin}px`;
+      page.box = null; // resizing cleared it
       forceGeoms = true; // a resize can change every slot's size/position
     };
     resize();
@@ -143,7 +171,19 @@ export function ParticleStage() {
     // reading all 11 slots back to back before any writes costs one layout instead of ~20+. One `Map`
     // reused every frame (cleared, not reallocated) so this hot path doesn't churn the garbage collector.
     const geoms = new Map<SlotName, Geom | null>();
+    let wrapRect: DOMRect | null = null;
+    const tm = { left: 0, top: 0, scroll: 0, cw: 0, ch: 0, sw: 0 }; // the carousel, for `track`
     const readGeoms = () => {
+      wrapRect = wrap.getBoundingClientRect();
+      if (trackEl) {
+        const tr = trackEl.getBoundingClientRect();
+        tm.left = tr.left;
+        tm.top = tr.top;
+        tm.scroll = trackEl.scrollLeft;
+        tm.cw = trackEl.clientWidth;
+        tm.ch = trackEl.clientHeight;
+        tm.sw = trackEl.scrollWidth;
+      }
       for (const name of SLOTS) {
         const s = rest.get(name);
         if (!s) {
@@ -307,11 +347,14 @@ export function ParticleStage() {
         setOpacity(name, GHOST + (1 - GHOST) * p);
       }
 
-      // the particles: only while flying (or assembling)
-      if (dirty) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, cv.width, cv.height);
-        dirty = false;
+      // the particles: only while flying (or assembling). First wipe just the patch drawn last frame.
+      if (drawn) {
+        if (drawn.box) {
+          drawn.g.setTransform(1, 0, 0, 1, 0, 0);
+          drawn.g.clearRect(drawn.box[0], drawn.box[1], drawn.box[2], drawn.box[3]);
+          drawn.box = null;
+        }
+        drawn = null;
       }
       if (resting) return;
       const dustAlpha = assembling ? 1 - heroFade : 1 - earlyOp(u) - lateOp(u);
@@ -343,9 +386,49 @@ export function ParticleStage() {
       const perpY = lx / len;
       const spread = Math.max(A.h, B.h) * 0.42;
 
+      // where to draw: a card-to-card flight goes on the carousel's own surface, everything else on
+      // the page's. Place that canvas for this frame; (ox, oy) is its origin on screen, so drawing
+      // can stay in screen coordinates.
+      const S = track && from.kind === "pic" && to.kind === "pic" ? track : page;
+      let ox: number;
+      let oy: number;
+      let tx: number;
+      let ty: number;
+      if (S === page) {
+        if (!wrapRect) return;
+        tx = 0;
+        ty = Math.round(-wrapRect.top - margin);
+        ox = wrapRect.left;
+        oy = wrapRect.top + ty;
+      } else {
+        const mx = Math.round(tm.cw * 0.3);
+        const w = tm.cw + 2 * mx;
+        const wpx = Math.round(w * dpr);
+        const hpx = Math.round(tm.ch * dpr);
+        if (S.c.width !== wpx || S.c.height !== hpx) {
+          S.c.width = wpx;
+          S.c.height = hpx;
+          S.c.style.width = `${w}px`;
+          S.c.style.height = `${tm.ch}px`;
+        }
+        // kept within the carousel's own content, so it never widens what can be scrolled
+        tx = Math.round(Math.max(0, Math.min(tm.scroll - mx, tm.sw - w)));
+        ty = 0;
+        ox = tm.left - tm.scroll + tx;
+        oy = tm.top;
+      }
+      if (S.tx !== tx || S.ty !== ty) {
+        S.tx = tx;
+        S.ty = ty;
+        S.c.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+      }
+
       if (asm >= 1 && probe < 40) {
-        if (lastT) {
-          probeSum += now - lastT;
+        // only back-to-back flight frames count: a pause between two flights isn't a slow device
+        // (it used to be counted, which could switch on thinning mid-session for no reason)
+        const dt = now - lastT;
+        if (lastT && dt < 100) {
+          probeSum += dt;
           if (++probe === 40 && probeSum / 40 > 24) thin = true;
         }
         lastT = now;
@@ -354,6 +437,10 @@ export function ParticleStage() {
       const ra = SA.rgb;
       const rb = SB.rgb;
       counts.fill(0);
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
       for (let i = 0; i < N; i++) {
         if (thin && i % 5 > 2) {
           bucket[i] = COLOR_KEYS;
@@ -388,6 +475,10 @@ export function ParticleStage() {
         }
         px[i] = x;
         py[i] = y;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
         const j = i * 3;
         const k = colorKey(ra[j] + (rb[j] - ra[j]) * u, ra[j + 1] + (rb[j + 1] - ra[j + 1]) * u, ra[j + 2] + (rb[j + 2] - ra[j + 2]) * u);
         bucket[i] = k;
@@ -401,21 +492,31 @@ export function ParticleStage() {
       for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
 
       const size = Math.max(1.1, Math.min(phone ? 2.4 : 2.8, (A.h + (B.h - A.h) * u) * (phone ? 0.0085 : 0.005)));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.globalAlpha = dustAlpha;
+      const g = S.g;
+      g.setTransform(dpr, 0, 0, dpr, -ox * dpr, -oy * dpr);
+      g.globalAlpha = dustAlpha;
       const half = size / 2;
       // `start[b]` now marks the end of bucket b, so bucket b runs from end-count to end
       for (let b = 0; b < COLOR_KEYS; b++) {
         const n = counts[b];
         if (!n) continue;
-        ctx.fillStyle = KEY_HEX[b];
+        g.fillStyle = KEY_HEX[b];
         for (let j = start[b] - n; j < start[b]; j++) {
           const i = order[j];
-          ctx.fillRect(px[i] - half, py[i] - half, size, size);
+          g.fillRect(px[i] - half, py[i] - half, size, size);
         }
       }
-      ctx.globalAlpha = 1;
-      dirty = true;
+      g.globalAlpha = 1;
+      // remember the patch drawn (in this canvas's own pixels), so next frame clears only that
+      if (minX <= maxX) {
+        S.box = [
+          Math.floor((minX - half - ox) * dpr) - 2,
+          Math.floor((minY - half - oy) * dpr) - 2,
+          Math.ceil((maxX - minX + size) * dpr) + 4,
+          Math.ceil((maxY - minY + size) * dpr) + 4,
+        ];
+        drawn = S;
+      }
     };
 
     // only run while the hero or the services are near the screen
@@ -426,9 +527,13 @@ export function ParticleStage() {
         for (const e of entries) seen.set(e.target, e.isIntersecting);
         visible = [...seen.values()].some(Boolean);
         if (!visible) {
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.clearRect(0, 0, cv.width, cv.height);
-          dirty = false;
+          for (const s of [page, track]) {
+            if (!s) continue;
+            s.g.setTransform(1, 0, 0, 1, 0, 0);
+            s.g.clearRect(0, 0, s.c.width, s.c.height);
+            s.box = null;
+          }
+          drawn = null;
         }
       },
       { rootMargin: "50% 0px 50% 0px" },
@@ -466,9 +571,15 @@ export function ParticleStage() {
       io.disconnect();
       window.removeEventListener("resize", resize);
       for (const s of rest.values()) s.c.remove();
+      tcv.remove();
     };
   }, [reduced]);
 
   if (reduced) return null;
-  return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-[15]" aria-hidden="true" />;
+  // rendered inside <main> and clipped to it: the dust canvas scrolls with the page (see `page`)
+  return (
+    <div ref={wrapRef} className="pointer-events-none absolute inset-0 z-[15] overflow-clip" aria-hidden="true">
+      <canvas ref={ref} className="absolute left-0 top-0" />
+    </div>
+  );
 }

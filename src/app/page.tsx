@@ -17,9 +17,9 @@ export default function Home() {
         // Static, trusted JSON-LD built from our own content.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()).replace(/</g, "\\u003c") }}
       />
-      <ParticleStage />
       <Nav />
       <main id="main" className="relative z-10 overflow-x-clip">
+        <ParticleStage />
         <Hero />
         <Services />
         <About />
