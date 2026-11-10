@@ -106,12 +106,22 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
               </svg>
             )}
           </button>
-          <button type="button" onClick={() => goTo(active - 1)} disabled={active === 0} aria-label="Previous service" className="svc-ctl">
+          <button
+            type="button"
+            onClick={() => goTo(active === 0 ? services.length - 1 : active - 1)}
+            aria-label="Previous service"
+            className="svc-ctl"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button type="button" onClick={() => goTo(active + 1)} disabled={active === services.length - 1} aria-label="Next service" className="svc-ctl">
+          <button
+            type="button"
+            onClick={() => goTo(active === services.length - 1 ? 0 : active + 1)}
+            aria-label="Next service"
+            className="svc-ctl"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

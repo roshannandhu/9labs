@@ -54,7 +54,30 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     (i: number) => {
       const el = scrollerRef.current;
       if (!el) return;
-      el.scrollTo({ left: Math.max(0, Math.min(N - 1, i)) * cardStep(el), behavior: "smooth" });
+      const target = ((i % N) + N) % N;
+      const step = cardStep(el);
+      const current = activeRef.current;
+
+      // When looping across boundaries (8 -> 0 or 0 -> 8),
+      // perform a graceful 3D depth-slide transition rather than sweeping backwards through all 9 cards:
+      if (Math.abs(current - target) > 1 && (current === 0 || current === N - 1) && (target === 0 || target === N - 1)) {
+        el.style.transition = "opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
+        el.style.opacity = "0.2";
+        el.style.transform = target === 0 ? "scale(0.97) translateX(-24px)" : "scale(0.97) translateX(24px)";
+        window.setTimeout(() => {
+          el.scrollTo({ left: target * step, behavior: "instant" });
+          requestAnimationFrame(() => {
+            el.style.transform = "none";
+            el.style.opacity = "1";
+            window.setTimeout(() => {
+              el.style.transition = "";
+            }, 260);
+          });
+        }, 220);
+        return;
+      }
+
+      el.scrollTo({ left: target * step, behavior: "smooth" });
     },
     [scrollerRef],
   );
@@ -110,11 +133,33 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
 
     const sync = () => {
       const pos = posOf(el, step);
+      const phone = window.innerWidth < 640;
+      const maxRot = phone ? 8.5 : 13.5;
+      const maxZ = phone ? 40 : 75;
+      const maxScale = phone ? 0.05 : 0.075;
+      const peekOpacity = phone ? 0.52 : 0.45;
+
       cards.forEach((c, i) => {
-        const d = Math.min(1, Math.abs(i - pos));
-        c.style.opacity = String(1 - d * (1 - PEEK_OPACITY));
-        c.style.transform = `scale(${1 - d * PEEK_SCALE})`;
+        const offset = i - pos;
+        const absOffset = Math.abs(offset);
+        const clampedOffset = Math.max(-1.5, Math.min(1.5, offset));
+
+        // 3D Orbital curve coordinates:
+        // Center card (offset ~ 0): rotY 0, transZ 0, scale 1.0, opacity 1.0
+        // Left cards (offset < 0): tilt toward center (+rotY), push back in Z
+        // Right cards (offset > 0): tilt toward center (-rotY), push back in Z
+        const rotY = -clampedOffset * maxRot;
+        const transZ = -Math.min(1.2, absOffset) * maxZ;
+        const scale = 1 - Math.min(1.2, absOffset) * maxScale;
+        const opacity = Math.max(0.12, 1 - Math.min(1.2, absOffset) * (1 - peekOpacity));
+        const zIndex = Math.max(1, 12 - Math.round(absOffset * 2));
+
+        c.style.transform = `perspective(1200px) translate3d(0, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+        c.style.opacity = opacity.toFixed(2);
+        c.style.zIndex = String(zIndex);
+        c.setAttribute("data-active", absOffset < 0.28 ? "true" : "false");
       });
+
       const idx = Math.round(pos);
       if (leadP < 1) writeLeadIn(leadP, idx);
       else if (finP > 0) writeFinale(finP, idx);
@@ -233,22 +278,12 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     if (!running) return;
     const el = scrollerRef.current;
     if (!el) return;
-    let back: number | undefined;
     const t = window.setTimeout(() => {
-      const next = activeRef.current + 1;
-      if (next < N) return goTo(next);
-      // past the last card: a quick fade back to the first, rather than sweeping past all nine
-      el.style.transition = "opacity 0.3s ease";
-      el.style.opacity = "0";
-      back = window.setTimeout(() => {
-        el.scrollTo({ left: 0, behavior: "instant" });
-        el.style.opacity = "";
-      }, 320);
+      const next = (activeRef.current + 1) % N;
+      goTo(next);
     }, AUTOPLAY_MS);
     return () => {
       window.clearTimeout(t);
-      window.clearTimeout(back);
-      el.style.opacity = ""; // never left faded out if interrupted mid-fade
     };
   }, [running, active, goTo, scrollerRef]);
 
