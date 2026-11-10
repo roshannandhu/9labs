@@ -68,7 +68,7 @@ export function ParticleStage() {
     // fillRect scales linearly with N and profiled as the single largest per-frame cost during an
     // active flight; the "exact formation" accuracy (true per-pixel colour, exact placement) is
     // independent of density, so this is a pure smoothness win, not a quality trade
-    const N = phone ? 6000 : 11000;
+    const N = phone ? 5000 : 9600;
     const r = rng(9001);
 
     // assembly: each particle streams in from a point just beyond a screen edge (hero forming, once)
@@ -374,13 +374,33 @@ export function ParticleStage() {
         SB = shapeFor(to, dark);
       }
       if (!SA || !SB) return;
-      const A = place(geoms.get(slotFor(from)) ?? null, SA);
-      const B = place(geoms.get(slotFor(to)) ?? null, SB);
+      let A = place(geoms.get(slotFor(from)) ?? null, SA);
+      let B = place(geoms.get(slotFor(to)) ?? null, SB);
       if (!A || !B) return;
+
+      const fromSlot = slotFor(from);
+      const toSlot = slotFor(to);
+      const isLoopWrap =
+        from.kind === "pic" &&
+        to.kind === "pic" &&
+        ((fromSlot === "stage-9" && toSlot === "stage-1") ||
+         (fromSlot === "stage-1" && toSlot === "stage-9"));
+
+      if (isLoopWrap) {
+        const stepDist = Math.min(window.innerWidth * 0.82, (tm.cw || window.innerWidth) * 0.82);
+        if (Math.abs(A.b.left - tm.left) < Math.abs(B.b.left - tm.left)) {
+          // A is the card in focus on screen; project B to adjacent spot
+          B = { ...B, cx: A.cx + dir * stepDist, cy: A.cy, h: A.h };
+        } else {
+          // B is the card in focus on screen; project A to adjacent spot
+          A = { ...A, cx: B.cx - dir * stepDist, cy: B.cy, h: B.h };
+        }
+      }
+
       const H = window.innerHeight;
       const W = window.innerWidth;
       const away = (b: DOMRect) => b.bottom < -H * 0.6 || b.top > H * 1.6 || b.right < -W * 0.6 || b.left > W * 1.6;
-      if (away(A.b) && away(B.b)) return;
+      if (!isLoopWrap && away(A.b) && away(B.b)) return;
 
       const lx = B.cx - A.cx;
       const ly = B.cy - A.cy;

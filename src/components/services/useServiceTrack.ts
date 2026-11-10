@@ -59,21 +59,82 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       const current = activeRef.current;
 
       // When looping across boundaries (8 -> 0 or 0 -> 8),
-      // perform a graceful 3D depth-slide transition rather than sweeping backwards through all 9 cards:
+      // perform a graceful 3D depth-slide transition with animated particle flight:
       if (Math.abs(current - target) > 1 && (current === 0 || current === N - 1) && (target === 0 || target === N - 1)) {
-        el.style.transition = "opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
-        el.style.opacity = "0.2";
-        el.style.transform = target === 0 ? "scale(0.97) translateX(-24px)" : "scale(0.97) translateX(24px)";
-        window.setTimeout(() => {
-          el.scrollTo({ left: target * step, behavior: "instant" });
-          requestAnimationFrame(() => {
-            el.style.transform = "none";
-            el.style.opacity = "1";
-            window.setTimeout(() => {
-              el.style.transition = "";
-            }, 260);
-          });
-        }, 220);
+        const isForward = target === 0 && current === N - 1;
+        const dir = isForward ? 1 : -1;
+        const fromIcon = services[current].icon;
+        const toIcon = services[target].icon;
+        const cards = cardsOf(el);
+        const outCard = cards[current];
+        const inCard = cards[target];
+
+        setActive(target);
+        activeRef.current = target;
+
+        const DURATION = 620;
+        const t0 = performance.now();
+        let jumped = false;
+
+        const tick = () => {
+          const now = performance.now();
+          const rawP = Math.min(1, (now - t0) / DURATION);
+          // Smooth sine easeInOut
+          const ease = 0.5 - 0.5 * Math.cos(rawP * Math.PI);
+
+          particleBus.from = picTarget(fromIcon);
+          particleBus.to = picTarget(toIcon);
+          particleBus.dir = dir;
+          particleBus.u = ease;
+
+          if (rawP < 0.48) {
+            if (outCard) {
+              const outP = ease / 0.48;
+              const rotY = dir * outP * 12;
+              const transZ = -outP * 70;
+              const scale = 1 - outP * 0.07;
+              const opacity = 1 - outP * 0.55;
+              outCard.style.transform = `perspective(1200px) translate3d(${-dir * outP * 36}px, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+              outCard.style.opacity = opacity.toFixed(2);
+              outCard.style.zIndex = "5";
+            }
+          } else {
+            if (!jumped) {
+              jumped = true;
+              el.scrollTo({ left: target * step, behavior: "instant" });
+            }
+            if (inCard) {
+              const inRemaining = (1 - ease) / 0.52;
+              const rotY = -dir * inRemaining * 12;
+              const transZ = -inRemaining * 70;
+              const scale = 1 - inRemaining * 0.07;
+              const opacity = 1 - inRemaining * 0.55;
+              inCard.style.transform = `perspective(1200px) translate3d(${dir * inRemaining * 36}px, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+              inCard.style.opacity = opacity.toFixed(2);
+              inCard.style.zIndex = "6";
+            }
+          }
+
+          if (rawP < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            particleBus.from = picTarget(toIcon);
+            particleBus.to = picTarget(toIcon);
+            particleBus.u = 0;
+            if (outCard) {
+              outCard.style.transform = "";
+              outCard.style.opacity = "";
+              outCard.style.zIndex = "";
+            }
+            if (inCard) {
+              inCard.style.transform = "";
+              inCard.style.opacity = "";
+              inCard.style.zIndex = "";
+            }
+            el.dispatchEvent(new Event("scroll"));
+          }
+        };
+        requestAnimationFrame(tick);
         return;
       }
 
@@ -142,6 +203,12 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       cards.forEach((c, i) => {
         const offset = i - pos;
         const absOffset = Math.abs(offset);
+        if (absOffset > 2.2) {
+          c.style.opacity = "0";
+          c.style.pointerEvents = "none";
+          return;
+        }
+        c.style.pointerEvents = "";
         const clampedOffset = Math.max(-1.5, Math.min(1.5, offset));
 
         // 3D Orbital curve coordinates:
@@ -157,7 +224,10 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         c.style.transform = `perspective(1200px) translate3d(0, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
         c.style.opacity = opacity.toFixed(2);
         c.style.zIndex = String(zIndex);
-        c.setAttribute("data-active", absOffset < 0.28 ? "true" : "false");
+        const isActive = absOffset < 0.28;
+        if (c.getAttribute("data-active") !== (isActive ? "true" : "false")) {
+          c.setAttribute("data-active", isActive ? "true" : "false");
+        }
       });
 
       const idx = Math.round(pos);

@@ -1007,15 +1007,15 @@ html[data-intro="playing"] [data-logo-9] {
   height: var(--card-h);
   padding: 1.5rem 1.25rem;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--nl-purple) 14%, rgba(255, 255, 255, 0.08));
+  border: none;
   border-radius: 28px;
   background: var(--surface-1);
   scroll-snap-align: center;
   transform-style: preserve-3d;
   backface-visibility: hidden;
   will-change: transform, opacity;
-  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 1px 0 rgba(255, 255, 255, 0.12);
-  transition: box-shadow 0.35s ease, border-color 0.35s ease;
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.12);
+  transition: box-shadow 0.35s ease;
 }
 @media (min-width: 640px) {
   .scene-card {
@@ -1024,11 +1024,10 @@ html[data-intro="playing"] [data-logo-9] {
   }
 }
 .scene-card[data-active="true"] {
-  border-color: color-mix(in srgb, var(--nl-purple) 35%, rgba(255, 255, 255, 0.2));
+  border: none;
   box-shadow: 
     0 28px 64px -16px color-mix(in srgb, var(--nl-purple) 24%, rgba(0, 0, 0, 0.45)),
     0 12px 28px -8px color-mix(in srgb, var(--nl-blue) 16%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--nl-purple) 30%, rgba(255, 255, 255, 0.22)),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.28);
 }
 /* dots: the active one stretches into a pill that fills over the autoplay interval */
