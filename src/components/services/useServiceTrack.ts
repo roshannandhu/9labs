@@ -23,8 +23,7 @@ const cardStep = (el: HTMLElement) => {
   return first && last && c.length > 1 ? (last.offsetLeft - first.offsetLeft) / (c.length - 1) : el.clientWidth;
 };
 // the carousel's position 0..8, landing exactly on a card when it rests within 2px of it
-const posOf = (el: HTMLElement) => {
-  const step = cardStep(el);
+const posOf = (el: HTMLElement, step: number) => {
   const pos = Math.min(N - 1, Math.max(0, el.scrollLeft / step));
   const near = Math.round(pos);
   return Math.abs(pos - near) * step < 2 ? near : pos;
@@ -64,6 +63,14 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     if (!el) return;
     const cards = Array.from(el.children) as HTMLElement[];
 
+    // `offsetLeft` forces layout same as getBoundingClientRect; cards never move relative to the
+    // scroller, so this is read once instead of on every scroll event during a swipe
+    let step = cardStep(el);
+    const onResize = () => {
+      step = cardStep(el);
+    };
+    window.addEventListener("resize", onResize);
+
     let leadP = 0;
     let finP = 0;
     let lastPos = 0;
@@ -100,7 +107,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     };
 
     const sync = () => {
-      const pos = posOf(el);
+      const pos = posOf(el, step);
       cards.forEach((c, i) => {
         const d = Math.min(1, Math.abs(i - pos));
         c.style.opacity = String(1 - d * (1 - PEEK_OPACITY));
@@ -161,6 +168,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       leadIn.kill();
       fin.kill();
       el.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", onResize);
       unregisterAnchor();
     };
   }, [reduced]);

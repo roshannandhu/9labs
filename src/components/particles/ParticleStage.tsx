@@ -29,8 +29,6 @@ const smooth = (v: number) => {
 const EDGE = 0.09;
 const earlyOp = (u: number) => (u < EDGE ? 1 - u / EDGE : 0);
 const lateOp = (u: number) => (u > 1 - EDGE ? (u - (1 - EDGE)) / EDGE : 0);
-// a particle decelerates smoothly into its landing spot — no overshoot, nothing flung past target
-const easeOut = (x: number) => 1 - (1 - x) ** 3;
 // particles whose landing spot sits near the target's own centre arrive first — the shape visibly
 // builds from the inside out, rather than every particle moving in lockstep.
 const STAGGER = 0.16;
@@ -64,7 +62,10 @@ export function ParticleStage() {
     if (!cv || !ctx) return;
 
     const phone = window.matchMedia("(max-width: 639px)").matches;
-    const N = phone ? 9000 : 16000;
+    // fillRect scales linearly with N and profiled as the single largest per-frame cost during an
+    // active flight; the "exact formation" accuracy (true per-pixel colour, exact placement) is
+    // independent of density, so this is a pure smoothness win, not a quality trade
+    const N = phone ? 6000 : 11000;
     const r = rng(9001);
 
     // assembly: each particle streams in from a point just beyond a screen edge (hero forming, once)
@@ -106,6 +107,8 @@ export function ParticleStage() {
     let dirty = false;
     let dpr = 1;
     let family = "";
+    let lastScrollY = -1;
+    let forceGeoms = true; // always read fresh geometry on the very first frame
 
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -115,12 +118,13 @@ export function ParticleStage() {
       cv.height = Math.round(H * dpr);
       cv.style.width = `${W}px`;
       cv.style.height = `${H}px`;
+      forceGeoms = true; // a resize can change every slot's size/position
     };
     resize();
     window.addEventListener("resize", resize);
 
     // the crisp "formed" layer: one small canvas inside each slot
-    const rest = new Map<SlotName, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number }>();
+    const rest = new Map<SlotName, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number; fitPx: number }>();
     for (const name of SLOTS) {
       const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
       const c = document.createElement("canvas");
@@ -130,42 +134,57 @@ export function ParticleStage() {
       c.className = `particle-rest particle-rest--${name}`;
       c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0";
       el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN }); // NaN: centring transform not applied yet
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN, fitPx: -1 }); // NaN/-1: not sized yet
     }
 
-    // a slot's on-screen rect, its layout size (unaffected by a card's scale), and that scale
-    const geom = (name: SlotName) => {
-      const s = rest.get(name);
-      if (!s) return null;
-      const b = s.el.getBoundingClientRect();
-      const lw = s.el.offsetWidth;
-      const lh = s.el.offsetHeight;
-      if (!lw || !lh) return null;
-      return { b, k: b.width / lw, side: Math.min(lh * 0.9, lw * 0.94), drift: Number.isNaN(s.drift) ? 0 : s.drift };
+    type Geom = { b: DOMRect; k: number; side: number; drift: number };
+    // every slot's on-screen rect, read in one pass at the top of each frame — `getBoundingClientRect`
+    // forces a synchronous layout if anything was written (style/canvas size) since the last read, so
+    // reading all 11 slots back to back before any writes costs one layout instead of ~20+. One `Map`
+    // reused every frame (cleared, not reallocated) so this hot path doesn't churn the garbage collector.
+    const geoms = new Map<SlotName, Geom | null>();
+    const readGeoms = () => {
+      for (const name of SLOTS) {
+        const s = rest.get(name);
+        if (!s) {
+          geoms.set(name, null);
+          continue;
+        }
+        const b = s.el.getBoundingClientRect();
+        const lw = s.el.offsetWidth;
+        const lh = s.el.offsetHeight;
+        geoms.set(name, lw && lh ? { b, k: b.width / lw, side: Math.min(lh * 0.9, lw * 0.94), drift: Number.isNaN(s.drift) ? 0 : s.drift } : null);
+      }
     };
 
     // a soft parallax while a picture rests: it drifts a few px against the scroll, as if it sat a
     // little in front of the page rather than glued flat to it
-    const updateDrift = (name: SlotName) => {
+    const updateDrift = (name: SlotName, gm: Geom | null) => {
       const s = rest.get(name);
       if (!s) return;
-      const b = name === "hero" ? undefined : s.el.getBoundingClientRect();
-      const off = b ? Math.round(Math.max(-14, Math.min(14, (window.innerHeight / 2 - (b.top + b.height / 2)) * 0.045)) * 10) / 10 : 0;
+      const off = name !== "hero" && gm ? Math.round(Math.max(-14, Math.min(14, (window.innerHeight / 2 - (gm.b.top + gm.b.height / 2)) * 0.045)) * 10) / 10 : 0;
       if (off === s.drift) return;
       s.drift = off;
       s.c.style.transform = `translate(-50%, calc(-50% + ${off}px))`;
     };
 
-    const fit = (s: { c: HTMLCanvasElement }, side: number, px2: number) => {
-      s.c.width = px2;
-      s.c.height = px2;
-      s.c.style.width = `${side}px`;
-      s.c.style.height = `${side}px`;
+    // setting canvas.width/height (even to the same value) clears it, but — unlike clearRect — also
+    // forces a layout recalc, which the live picture would otherwise pay every single frame for no
+    // reason (its size is only ever actually different after a resize or a breakpoint change)
+    const fit = (s: { c: HTMLCanvasElement; g: CanvasRenderingContext2D; fitPx: number }, side: number, px2: number) => {
+      if (s.fitPx !== px2) {
+        s.c.width = px2;
+        s.c.height = px2;
+        s.c.style.width = `${side}px`;
+        s.c.style.height = `${side}px`;
+        s.fitPx = px2;
+      } else {
+        s.g.clearRect(0, 0, px2, px2);
+      }
     };
     /** draws a slot's crisp layer; `still` = the faint ghost of a card that isn't in focus */
-    const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>, still = false) => {
+    const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>, gm: Geom | null, still = false) => {
       const s = rest.get(name);
-      const gm = geom(name);
       if (!s || !gm) return;
       const px2 = Math.max(2, Math.round(gm.side * dpr));
       if (target.kind === "pic") {
@@ -216,8 +235,7 @@ export function ParticleStage() {
     };
 
     // where a shape's particles land on screen: exactly where drawFormed paints its crisp canvas
-    const place = (name: SlotName, s: Shape) => {
-      const gm = geom(name);
+    const place = (gm: Geom | null, s: Shape) => {
       if (!gm) return null;
       const { b, k, side, drift } = gm;
       return { b, cx: b.left + b.width / 2 + k * side * s.ox, cy: b.top + b.height / 2 + k * (drift + side * s.oy), h: k * side * s.hr };
@@ -244,7 +262,6 @@ export function ParticleStage() {
       const pal = palette(dark);
       let { from, to, u } = particleBus;
       const { dir } = particleBus;
-      for (const name of SLOTS) updateDrift(name);
 
       // the intro: the swarm streams in from the screen edges into the hero 9, until it lands or
       // the page starts scrolling (the normal flight then takes over, still blending in from the edges)
@@ -257,23 +274,36 @@ export function ParticleStage() {
         u = 0;
       }
       const resting = !assembling && sameTarget(from, to);
+
+      // skip the (layout-forcing) geometry read entirely when nothing could have moved: at rest,
+      // with the page not scrolled since last frame and no resize pending — reusing last frame's
+      // geoms is exactly correct then, and this is what makes "just sitting there" cost ~0
+      const scrollY = window.scrollY;
+      if (forceGeoms || !resting || scrollY !== lastScrollY) {
+        readGeoms();
+        lastScrollY = scrollY;
+        forceGeoms = false;
+      }
+      for (const name of SLOTS) updateDrift(name, geoms.get(name) ?? null);
+
       // how much of a target's crisp layer shows: fully at rest, fading out/in at a flight's two ends
       const shown = (match: (t: ParticleTarget) => boolean) =>
         resting ? (match(to) ? 1 : 0) : (match(from) ? earlyOp(u) : 0) + (match(to) ? lateOp(u) : 0);
 
-      drawFormed("hero", heroTarget, pal);
+      drawFormed("hero", heroTarget, pal, geoms.get("hero") ?? null);
       setOpacity("hero", assembling ? heroFade : from.kind === "hero" || to.kind === "hero" ? shown((t) => t.kind === "hero") : 1);
 
       const fin = shown((t) => t.kind === "all9");
-      if (fin > 0) drawFormed("finale", allNineTarget, pal);
+      if (fin > 0) drawFormed("finale", allNineTarget, pal, geoms.get("finale") ?? null);
       setOpacity("finale", fin);
 
       // each card: its live picture while the swarm is resting on (or just leaving/arriving at) it,
       // otherwise a faint still ghost
       for (const { name, pic } of STAGES) {
+        const gm = geoms.get(name) ?? null;
         const p = shown((t) => sameTarget(t, pic));
-        if (p > 0) drawFormed(name, pic, pal);
-        else if (!assembling) drawFormed(name, pic, pal, true);
+        if (p > 0) drawFormed(name, pic, pal, gm);
+        else if (!assembling) drawFormed(name, pic, pal, gm, true);
         setOpacity(name, GHOST + (1 - GHOST) * p);
       }
 
@@ -298,8 +328,8 @@ export function ParticleStage() {
         SB = shapeFor(to, dark);
       }
       if (!SA || !SB) return;
-      const A = place(slotFor(from), SA);
-      const B = place(slotFor(to), SB);
+      const A = place(geoms.get(slotFor(from)) ?? null, SA);
+      const B = place(geoms.get(slotFor(to)) ?? null, SB);
       if (!A || !B) return;
       const H = window.innerHeight;
       const W = window.innerWidth;
@@ -342,7 +372,11 @@ export function ParticleStage() {
         // target's edge (STAGGER), then eases smoothly in — position only, so the crossfade/colour
         // timing stays driven by the plain, predictable global `u`.
         const d = Math.min(STAGGER, Math.hypot(SB.x[i], SB.y[i]) * 1.8 * STAGGER);
-        const ue = easeOut(clamp01((u - d) / (1 - d)));
+        // inlined easeOut(clamp01(...)) — called once per particle per frame, a hot enough path
+        // (profiled) that the extra call frame was worth cutting
+        const p0 = (u - d) / (1 - d);
+        const t0 = p0 < 0 ? 0 : p0 > 1 ? 1 : p0;
+        const ue = 1 - (1 - t0) * (1 - t0) * (1 - t0);
         const ve = 1 - ue;
         let x = ve * ve * ax + 2 * ve * ue * mx + ue * ue * bx;
         let y = ve * ve * ay + 2 * ve * ue * my + ue * ue * by;
