@@ -3,7 +3,7 @@
 import { useRef, useState, type RefObject } from "react";
 import { ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
-import { getLenis } from "@/lib/scroll";
+import { getLenis, registerAnchorPrefix } from "@/lib/scroll";
 import { site } from "@/content/site";
 import { particleBus, heroTarget, digitTarget, picTarget, allNineTarget } from "@/components/particles/bus";
 
@@ -26,8 +26,17 @@ const SNAP_DURATION = 0.5;
  *
  * Returns the current (rounded) active scene index 0..8, updated only when it changes — scenes
  * use it for their own light "once settled" flourish, never for anything continuous.
+ *
+ * `stripRef` is the horizontal row holding all nine scenes (each `w-screen`, pinned behind a
+ * `position: sticky` viewport) — the same `pos` that drives the particle swarm also drives its
+ * `translateX`, written directly each frame so the current scene slides out left / the next one
+ * slides in right on the way down, and reverses on the way up, for free.
  */
-export function useServiceTrack(trackRef: RefObject<HTMLElement | null>, finaleRef: RefObject<HTMLElement | null>): number {
+export function useServiceTrack(
+  trackRef: RefObject<HTMLElement | null>,
+  stripRef: RefObject<HTMLElement | null>,
+  finaleRef: RefObject<HTMLElement | null>,
+): number {
   const { reduced } = useDemo();
   const [activeIndex, setActiveIndex] = useState(0);
   const activeRef = useRef(0);
@@ -53,6 +62,7 @@ export function useServiceTrack(trackRef: RefObject<HTMLElement | null>, finaleR
     };
     const writeTrack = (progress: number) => {
       const pos = Math.min(N - 1, Math.max(0, progress * (N - 1)));
+      if (stripRef.current) stripRef.current.style.transform = `translateX(${-pos * 100}vw)`;
       const dir = pos >= lastPos ? 1 : -1;
       lastPos = pos;
       const index = Math.min(N - 1, Math.floor(pos));
@@ -98,6 +108,15 @@ export function useServiceTrack(trackRef: RefObject<HTMLElement | null>, finaleR
       onUpdate: (s) => writeTrack(s.progress),
       onRefresh: (s) => writeTrack(s.progress),
     });
+
+    // the nine scenes now share one vertical scroll range (revealed by horizontal slide), so
+    // `#service-<slug>` links need their own resolver instead of the default getBoundingClientRect
+    const unregisterAnchor = registerAnchorPrefix("service-", (id) => {
+      const slug = id.slice("service-".length);
+      const svc = services.find((s) => s.slug === slug);
+      if (!svc) return null;
+      return main.start + ((svc.n - 1) / (N - 1)) * (main.end - main.start);
+    });
     const fin = ScrollTrigger.create({
       trigger: finale,
       start: "top bottom",
@@ -129,6 +148,7 @@ export function useServiceTrack(trackRef: RefObject<HTMLElement | null>, finaleR
       leadIn.kill();
       main.kill();
       fin.kill();
+      unregisterAnchor();
       window.removeEventListener("scroll", onScroll);
       if (idle != null) window.clearTimeout(idle);
     };

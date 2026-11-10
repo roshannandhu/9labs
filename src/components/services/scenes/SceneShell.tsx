@@ -12,7 +12,7 @@ import { SceneCaption } from "./SceneCaption";
  */
 export function SceneShell({ s, flourish, captionClassName = "" }: { s: Service; flourish?: ReactNode; captionClassName?: string }) {
   return (
-    <section id={`service-${s.slug}`} className="scene-section relative flex h-[100svh] flex-col items-center justify-center overflow-hidden px-4 py-16 sm:px-8">
+    <section id={`service-${s.slug}`} className="scene-section relative flex h-full w-screen shrink-0 flex-col items-center justify-center overflow-hidden px-4 py-16 sm:px-8">
       <div className="relative mx-auto aspect-square w-full max-w-[440px]">
         {flourish}
         <div data-particle-slot={`stage-${s.n}`} className="absolute inset-[4%]" aria-hidden="true" />

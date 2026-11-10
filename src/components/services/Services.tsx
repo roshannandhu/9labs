@@ -53,23 +53,29 @@ export function Services() {
 
 function ServicesTrack({ heading }: { heading: React.ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const finaleRef = useRef<HTMLDivElement>(null);
-  const active = useServiceTrack(trackRef, finaleRef);
+  const active = useServiceTrack(trackRef, stripRef, finaleRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
 
   return (
     <section id="services" aria-labelledby="services-title" className="relative py-16 sm:py-24">
       <div className="pb-8 sm:pb-12">{heading}</div>
-      <div ref={trackRef}>
-        <Scene1Social s={s1} />
-        <Scene2Advertising s={s2} active={active === 1} />
-        <Scene3Content s={s3} active={active === 2} />
-        <Scene4Photo s={s4} />
-        <Scene5Events s={s5} active={active === 4} />
-        <Scene6PR s={s6} />
-        <Scene7Strategy s={s7} />
-        <Scene8AI s={s8} active={active === 7} />
-        <Scene9IT s={s9} />
+      {/* 9 scenes x 100svh: the scroll-range `useServiceTrack` reads; unchanged by the slide below */}
+      <div ref={trackRef} className="relative h-[900svh]">
+        <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
+          <div ref={stripRef} className="flex h-full" style={{ width: "900vw" }}>
+            <Scene1Social s={s1} />
+            <Scene2Advertising s={s2} active={active === 1} />
+            <Scene3Content s={s3} active={active === 2} />
+            <Scene4Photo s={s4} />
+            <Scene5Events s={s5} active={active === 4} />
+            <Scene6PR s={s6} />
+            <Scene7Strategy s={s7} />
+            <Scene8AI s={s8} active={active === 7} />
+            <Scene9IT s={s9} />
+          </div>
+        </div>
       </div>
       <div ref={finaleRef} className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
