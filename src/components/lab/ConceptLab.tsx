@@ -82,7 +82,6 @@ export function ConceptLab() {
 
             <fieldset className="mb-5 space-y-2">
               <legend className="label-mono mb-2">Elements</legend>
-              <Toggle label="Custom cursor (desktop)" checked={settings.cursor} onChange={(v) => set({ cursor: v })} />
               <Toggle label="Floating WhatsApp button" checked={settings.whatsapp} onChange={(v) => set({ whatsapp: v })} />
             </fieldset>
 

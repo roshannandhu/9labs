@@ -22,14 +22,12 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const EDGE = 0.09;
 const earlyOp = (u: number) => (u < EDGE ? 1 - u / EDGE : 0);
 const lateOp = (u: number) => (u > 1 - EDGE ? (u - (1 - EDGE)) / EDGE : 0);
-// a particle's landing snaps into place with a touch of overshoot, then settles — not a hard stop
-const BACK_C1 = 1.70158;
-const BACK_C3 = BACK_C1 + 1;
-const backOut = (x: number) => 1 + BACK_C3 * (x - 1) ** 3 + BACK_C1 * (x - 1) ** 2;
+// a particle decelerates smoothly into its landing spot — no overshoot, nothing flung past target
+const easeOut = (x: number) => 1 - (1 - x) ** 3;
 // particles whose landing spot sits near the target's own centre arrive first — the shape visibly
-// builds from the inside out, like metal filings snapping to a magnet, rather than every particle
-// moving in lockstep. STAGGER is how much of the flight that spread can eat into (0–1).
-const STAGGER = 0.32;
+// builds from the inside out, rather than every particle moving in lockstep. STAGGER is how much
+// of the flight that spread can eat into (0–1); kept gentle so it reads as smooth, not busy.
+const STAGGER = 0.16;
 
 /**
  * The one particle swarm. It assembles the hero 9 (after the landing animation), flies down into
@@ -304,11 +302,11 @@ export function ParticleStage() {
         const bowAmt = dir * spread * bow[i] * depth;
         const mx = (ax + bx) / 2 + perpX * bowAmt + jitX[i] * spread * 0.16;
         const my = (ay + by) / 2 + perpY * bowAmt + jitY[i] * spread * 0.16;
-        // this particle's own progress: it starts late if its landing spot sits near the target's
-        // edge (STAGGER), then snaps in with a touch of overshoot (backOut) — position only, so the
-        // crossfade/colour timing below stays driven by the plain, predictable global `u`.
+        // this particle's own progress: it starts a little late if its landing spot sits near the
+        // target's edge (STAGGER), then eases smoothly in — position only, so the crossfade/colour
+        // timing below stays driven by the plain, predictable global `u`.
         const d = Math.min(STAGGER, Math.hypot(SB.x[i], SB.y[i]) * 1.8 * STAGGER);
-        const ue = backOut(d >= 1 ? 1 : clamp01((u - d) / (1 - d)));
+        const ue = easeOut(d >= 1 ? 1 : clamp01((u - d) / (1 - d)));
         const ve = 1 - ue;
         let x = ve * ve * ax + 2 * ve * ue * mx + ue * ue * bx;
         let y = ve * ve * ay + 2 * ve * ue * my + ue * ue * by;

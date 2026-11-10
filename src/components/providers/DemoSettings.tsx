@@ -11,7 +11,6 @@ export type DemoSettings = {
   purple: string;
   grid: number;
   motion: MotionPref;
-  cursor: boolean;
   whatsapp: boolean;
 };
 
@@ -20,7 +19,6 @@ export const DEFAULT_SETTINGS: DemoSettings = {
   purple: "#6f55e8",
   grid: 0.06,
   motion: "system",
-  cursor: true,
   whatsapp: true,
 };
 
@@ -80,7 +78,6 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
     if (settings.motion === "system") delete root.dataset.motion;
     else root.dataset.motion = settings.motion;
     root.dataset.motionResolved = reduced ? "reduce" : "full";
-    root.dataset.cursor = settings.cursor ? "on" : "off";
   }, [settings, reduced]);
 
   // Persist (best effort).

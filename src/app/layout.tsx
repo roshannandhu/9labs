@@ -5,7 +5,6 @@ import { site } from "@/content/site";
 import { DemoSettingsProvider } from "@/components/providers/DemoSettings";
 import { QuizProvider } from "@/components/providers/QuizProvider";
 import { SmoothScroll } from "@/components/providers/SmoothScroll";
-import { CustomCursor } from "@/components/layout/CustomCursor";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { ConceptLab } from "@/components/lab/ConceptLab";
 import { LogoIntro } from "@/components/intro/LogoIntro";
@@ -77,7 +76,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               {children}
               <WhatsAppFab />
               <ConceptLab />
-              <CustomCursor />
             </EnquiryProvider>
           </QuizProvider>
         </DemoSettingsProvider>
