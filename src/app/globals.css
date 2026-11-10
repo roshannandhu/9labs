@@ -973,6 +973,7 @@ html[data-intro="playing"] [data-logo-9] {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
   padding-inline: calc((100% - var(--card-w)) / 2);
   scrollbar-width: none;
@@ -980,6 +981,10 @@ html[data-intro="playing"] [data-logo-9] {
   perspective-origin: center center;
   mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  cursor: grab;
+}
+.svc-scroller:active {
+  cursor: grabbing;
 }
 .svc-scroller::-webkit-scrollbar {
   display: none;
@@ -1011,9 +1016,12 @@ html[data-intro="playing"] [data-logo-9] {
   border-radius: 28px;
   background: var(--surface-1);
   scroll-snap-align: center;
+  scroll-snap-stop: always;
   transform-style: preserve-3d;
   backface-visibility: hidden;
   will-change: transform, opacity;
+  user-select: none;
+  -webkit-user-select: none;
   box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.12);
   transition: box-shadow 0.35s ease;
 }

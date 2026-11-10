@@ -137,6 +137,41 @@ export function ParticleStage() {
     let drawn: Surface | null = null; // the surface the swarm drew on last frame (its patch is in `.box`)
     let margin = 0; // page surface: extra height above and below the screen
 
+    // the crisp "formed" layer: one small canvas inside each slot
+    type SlotItem = {
+      el: HTMLElement;
+      c: HTMLCanvasElement;
+      g: CanvasRenderingContext2D;
+      key: string;
+      op: number;
+      liveT0: number;
+      drift: number;
+      fitPx: number;
+      lw: number;
+      lh: number;
+      side: number;
+    };
+    const rest = new Map<SlotName, SlotItem>();
+    for (const name of SLOTS) {
+      const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
+      const c = document.createElement("canvas");
+      const g = c.getContext("2d");
+      if (!el || !g) continue;
+      c.setAttribute("aria-hidden", "true");
+      c.className = `particle-rest particle-rest--${name}`;
+      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;z-index:10";
+      el.appendChild(c);
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN, fitPx: -1, lw: 0, lh: 0, side: 0 }); // NaN/-1: not sized yet
+    }
+
+    const measureSlots = () => {
+      for (const s of rest.values()) {
+        s.lw = s.el.offsetWidth || 1;
+        s.lh = s.el.offsetHeight || 1;
+        s.side = Math.min(s.lh * 0.9, s.lw * 0.94);
+      }
+    };
+
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       const W = window.innerWidth;
@@ -147,24 +182,11 @@ export function ParticleStage() {
       cv.style.width = `${W}px`;
       cv.style.height = `${H + 2 * margin}px`;
       page.box = null; // resizing cleared it
+      measureSlots();
       forceGeoms = true; // a resize can change every slot's size/position
     };
     resize();
     window.addEventListener("resize", resize);
-
-    // the crisp "formed" layer: one small canvas inside each slot
-    const rest = new Map<SlotName, { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number; fitPx: number }>();
-    for (const name of SLOTS) {
-      const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
-      const c = document.createElement("canvas");
-      const g = c.getContext("2d");
-      if (!el || !g) continue;
-      c.setAttribute("aria-hidden", "true");
-      c.className = `particle-rest particle-rest--${name}`;
-      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;z-index:10";
-      el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN, fitPx: -1 }); // NaN/-1: not sized yet
-    }
 
     type Geom = { b: DOMRect; k: number; side: number; drift: number };
     // every slot's on-screen rect, read in one pass at the top of each frame — `getBoundingClientRect`
@@ -192,9 +214,8 @@ export function ParticleStage() {
           continue;
         }
         const b = s.el.getBoundingClientRect();
-        const lw = s.el.offsetWidth;
-        const lh = s.el.offsetHeight;
-        geoms.set(name, lw && lh ? { b, k: b.width / lw, side: Math.min(lh * 0.9, lw * 0.94), drift: Number.isNaN(s.drift) ? 0 : s.drift } : null);
+        // Uses pre-measured s.lw, s.lh, s.side to avoid forced synchronous layout reflows during scroll
+        geoms.set(name, s.lw && s.lh ? { b, k: b.width / s.lw, side: s.side, drift: Number.isNaN(s.drift) ? 0 : s.drift } : null);
       }
     };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { navOffset, registerAnchorPrefix } from "@/lib/scroll";
 import { site } from "@/content/site";
@@ -14,9 +14,7 @@ const HOLD_MS = 6000; // autoplay waits this long after a swipe, tap or click
 const PEEK_OPACITY = 0.45; // a card one step away from centre
 const PEEK_SCALE = 0.06;
 
-// measured across the whole row so per-card pixel rounding can't add up: one neighbour pair reads
-// 992 where the true step is 992.8, which left cards 3–8 "still flying" at rest (faint dust flicker)
-// the cards only — the scroller also holds the particle swarm's own canvas
+// measured across the whole row so per-card pixel rounding can't add up
 const cardsOf = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>(":scope > .scene-card"));
 const cardStep = (el: HTMLElement) => {
   const c = cardsOf(el);
@@ -24,11 +22,9 @@ const cardStep = (el: HTMLElement) => {
   const last = c[c.length - 1];
   return first && last && c.length > 1 ? (last.offsetLeft - first.offsetLeft) / (c.length - 1) : el.clientWidth;
 };
-// the carousel's position 0..8, landing exactly on a card when it rests within 2px of it
+// the carousel's position 0..8, continuously interpolated for silky smooth particle coordination
 const posOf = (el: HTMLElement, step: number) => {
-  const pos = Math.min(N - 1, Math.max(0, el.scrollLeft / step));
-  const near = Math.round(pos);
-  return Math.abs(pos - near) * step < 2 ? near : pos;
+  return Math.min(N - 1, Math.max(0, el.scrollLeft / step));
 };
 
 /**
@@ -138,7 +134,30 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         return;
       }
 
-      el.scrollTo({ left: target * step, behavior: "smooth" });
+      // For standard card-to-card navigation (0->1, 1->2, 2->3, etc., or backward):
+      // Temporarily disable CSS snap to eliminate browser engine collision/stutter,
+      // and animate scrollLeft smoothly using GSAP:
+      gsap.killTweensOf(el);
+      const prevSnap = el.style.scrollSnapType;
+      el.style.scrollSnapType = "none";
+      const targetScroll = Math.round(target * step);
+      const currentScroll = el.scrollLeft;
+      const dist = Math.abs(targetScroll - currentScroll);
+      const duration = Math.min(0.85, Math.max(0.62, 0.62 + (dist / step - 1) * 0.08));
+
+      gsap.to(el, {
+        scrollLeft: targetScroll,
+        duration,
+        ease: "power2.out",
+        overwrite: "auto",
+        onUpdate: () => {
+          el.dispatchEvent(new Event("scroll"));
+        },
+        onComplete: () => {
+          el.style.scrollSnapType = prevSnap || "";
+          el.dispatchEvent(new Event("scroll"));
+        },
+      });
     },
     [scrollerRef],
   );
@@ -173,8 +192,8 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       const index = Math.min(N - 1, Math.floor(pos));
       const frac = pos - index;
       const toIndex = Math.min(N - 1, index + 1);
-      if (frac <= 0.001 || frac >= 0.999) {
-        const at = picTarget(services[frac >= 0.999 ? toIndex : index].icon);
+      if (frac <= 0.002 || frac >= 0.998) {
+        const at = picTarget(services[frac >= 0.998 ? toIndex : index].icon);
         particleBus.from = at;
         particleBus.to = at;
         particleBus.u = 0;
@@ -182,7 +201,8 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         particleBus.from = picTarget(services[index].icon);
         particleBus.to = picTarget(services[toIndex].icon);
         particleBus.dir = dir;
-        particleBus.u = frac;
+        // Continuous linear normalization between rest deadbands to eliminate pop
+        particleBus.u = (frac - 0.002) / (0.998 - 0.002);
       }
     };
     const writeFinale = (p: number, idx: number) => {
@@ -204,26 +224,29 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         const offset = i - pos;
         const absOffset = Math.abs(offset);
         if (absOffset > 2.2) {
-          c.style.opacity = "0";
-          c.style.pointerEvents = "none";
+          if (c.style.opacity !== "0") {
+            c.style.opacity = "0";
+            c.style.pointerEvents = "none";
+          }
           return;
         }
-        c.style.pointerEvents = "";
+        if (c.style.pointerEvents !== "") c.style.pointerEvents = "";
         const clampedOffset = Math.max(-1.5, Math.min(1.5, offset));
 
         // 3D Orbital curve coordinates:
-        // Center card (offset ~ 0): rotY 0, transZ 0, scale 1.0, opacity 1.0
-        // Left cards (offset < 0): tilt toward center (+rotY), push back in Z
-        // Right cards (offset > 0): tilt toward center (-rotY), push back in Z
         const rotY = -clampedOffset * maxRot;
         const transZ = -Math.min(1.2, absOffset) * maxZ;
         const scale = 1 - Math.min(1.2, absOffset) * maxScale;
         const opacity = Math.max(0.12, 1 - Math.min(1.2, absOffset) * (1 - peekOpacity));
         const zIndex = Math.max(1, 6 - Math.round(absOffset * 2));
 
-        c.style.transform = `perspective(1200px) translate3d(0, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
-        c.style.opacity = opacity.toFixed(2);
-        c.style.zIndex = String(zIndex);
+        const transformStr = `perspective(1200px) translate3d(0, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+        const opacityStr = opacity.toFixed(2);
+        const zIndexStr = String(zIndex);
+
+        if (c.style.transform !== transformStr) c.style.transform = transformStr;
+        if (c.style.opacity !== opacityStr) c.style.opacity = opacityStr;
+        if (c.style.zIndex !== zIndexStr) c.style.zIndex = zIndexStr;
         const isActive = absOffset < 0.28;
         if (c.getAttribute("data-active") !== (isActive ? "true" : "false")) {
           c.setAttribute("data-active", isActive ? "true" : "false");
@@ -240,6 +263,15 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       }
     };
 
+    let syncRaf: number | null = null;
+    const scheduleSync = () => {
+      if (syncRaf !== null) return;
+      syncRaf = requestAnimationFrame(() => {
+        sync();
+        syncRaf = null;
+      });
+    };
+
     const leadIn = ScrollTrigger.create({
       trigger: el,
       start: "top bottom",
@@ -247,11 +279,11 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       scrub: true,
       onUpdate: (s) => {
         leadP = s.progress;
-        sync();
+        scheduleSync();
       },
       onRefresh: (s) => {
         leadP = s.progress;
-        sync();
+        scheduleSync();
       },
     });
     // the finale sits right under the carousel: flight starts as the cards are genuinely
@@ -263,15 +295,93 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       scrub: true,
       onUpdate: (s) => {
         finP = s.progress;
-        sync();
+        scheduleSync();
       },
       onRefresh: (s) => {
         finP = s.progress;
-        sync();
+        scheduleSync();
       },
     });
-    el.addEventListener("scroll", sync, { passive: true });
+    el.addEventListener("scroll", scheduleSync, { passive: true });
     sync();
+
+    // Mouse drag support with inertial snap for desktop & laptop
+    let isMouseDown = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let hasDragged = false;
+    let lastDragX = 0;
+    let dragVelocity = 0;
+    let lastDragTime = 0;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button") || target?.closest("a") || target?.closest("input")) return;
+
+      isMouseDown = true;
+      hasDragged = false;
+      startX = e.clientX;
+      startScrollLeft = el.scrollLeft;
+      lastDragX = e.clientX;
+      lastDragTime = performance.now();
+      dragVelocity = 0;
+      gsap.killTweensOf(el);
+      el.style.scrollSnapType = "none";
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isMouseDown) return;
+      const dx = e.clientX - startX;
+      if (!hasDragged && Math.abs(dx) > 6) {
+        hasDragged = true;
+      }
+      if (hasDragged) {
+        el.scrollLeft = startScrollLeft - dx;
+        const now = performance.now();
+        const dt = now - lastDragTime;
+        if (dt > 10) {
+          dragVelocity = (e.clientX - lastDragX) / dt;
+          lastDragX = e.clientX;
+          lastDragTime = now;
+        }
+        sync();
+      }
+    };
+
+    const onMouseUp = () => {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      if (hasDragged) {
+        const currentPos = el.scrollLeft / step;
+        let targetIdx: number;
+        if (dragVelocity < -0.35) {
+          targetIdx = Math.ceil(currentPos);
+        } else if (dragVelocity > 0.35) {
+          targetIdx = Math.floor(currentPos);
+        } else {
+          targetIdx = Math.round(currentPos);
+        }
+        targetIdx = Math.max(0, Math.min(N - 1, targetIdx));
+
+        gsap.to(el, {
+          scrollLeft: targetIdx * step,
+          duration: 0.55,
+          ease: "power2.out",
+          onUpdate: () => sync(),
+          onComplete: () => {
+            el.style.scrollSnapType = "";
+            sync();
+          },
+        });
+      } else {
+        el.style.scrollSnapType = "";
+      }
+    };
+
+    el.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 
     // every card shares the carousel's place on the page: land there, and slide to the card
     const unregisterAnchor = registerAnchorPrefix("service-", (id) => {
@@ -284,7 +394,11 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     return () => {
       leadIn.kill();
       fin.kill();
-      el.removeEventListener("scroll", sync);
+      if (syncRaf !== null) cancelAnimationFrame(syncRaf);
+      el.removeEventListener("scroll", scheduleSync);
+      el.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("resize", onResize);
       unregisterAnchor();
     };
@@ -310,6 +424,8 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     );
     io.observe(el);
     const onTouch = () => {
+      gsap.killTweensOf(el);
+      el.style.scrollSnapType = "";
       touchedUntil = Date.now() + HOLD_MS;
       updateHold();
       window.clearTimeout(release);
