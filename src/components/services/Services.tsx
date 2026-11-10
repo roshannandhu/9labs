@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { site } from "@/content/site";
+import { ScrollTrigger } from "@/lib/gsap";
 import { registerAnchorPrefix } from "@/lib/scroll";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { SectionLabel } from "@/components/layout/SectionLabel";
@@ -9,7 +10,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
 import { StaticDigit } from "@/components/particles/StaticDigit";
-import { goto, digitTarget, picTarget, allNineTarget, onStageReached } from "@/components/particles/bus";
+import { particleBus, goto, digitTarget, picTarget, allNineTarget, onStageReached } from "@/components/particles/bus";
 import { ServiceCard } from "./ServiceCard";
 
 const services = site.services;
@@ -48,6 +49,7 @@ export function Services() {
 function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
   const enquiry = useEnquiry();
   const sectionRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const touchRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -143,6 +145,7 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only autoTick should re-fire this; advance reads refs + stable callbacks
   }, [autoTick]);
 
+  // deep link (an anchor jump to a *specific* service): hold, then a plain time-based reveal
   const start = useCallback(async () => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -162,7 +165,58 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
     scheduleNext(LIVE_MS);
   }, [scheduleNext]);
 
-  useEffect(() => onStageReached(() => void start()), [start]);
+  // the ordinary first visit: scrubbed by scroll, like Apple's product pages — the particles
+  // bloom from "1" into the first picture exactly as far as you've scrolled, not on a timer.
+  // Keeps writing particleBus directly (no tween) until it reaches the end, then hands off to
+  // the ordinary tap/auto-play director and never touches the bus again.
+  const entryTriggerRef = useRef<ScrollTrigger | null>(null);
+  const startScrubbedEntry = useCallback(() => {
+    const stageEl = stageRef.current;
+    const panelEl = panelRef.current;
+    if (!stageEl || !panelEl || entryTriggerRef.current) return;
+    let done = false;
+    const write = (p: number) => {
+      if (done) return;
+      particleBus.from = digitTarget(1);
+      particleBus.to = picTarget(services[0].icon);
+      particleBus.dir = 1;
+      particleBus.u = p;
+      if (p >= 0.999) {
+        done = true;
+        particleBus.from = picTarget(services[0].icon);
+        setActive(0);
+        setCycleKey((k) => k + 1);
+        readyRef.current = true;
+        setReady(true);
+        scheduleNext(LIVE_MS);
+        entryTriggerRef.current?.kill();
+        entryTriggerRef.current = null;
+      }
+    };
+    // a brief pin (under one screen) while "1" blooms into the picture — the stage stays put long
+    // enough to actually watch it happen, the way a product page holds still for one reveal, then
+    // lets go. Timed off the stage (matches the hero hand-off's own endpoint); the whole panel pins.
+    entryTriggerRef.current = ScrollTrigger.create({
+      trigger: stageEl,
+      start: "top top",
+      end: () => `+=${Math.round(window.innerHeight * 0.85)}`,
+      pin: panelEl,
+      pinSpacing: true,
+      scrub: 0.25,
+      onUpdate: (s) => write(s.progress),
+      onRefresh: (s) => write(s.progress),
+    });
+  }, [scheduleNext]);
+  useEffect(() => () => entryTriggerRef.current?.kill(), []);
+
+  useEffect(
+    () =>
+      onStageReached(() => {
+        if (pendingRef.current != null) void start();
+        else startScrubbedEntry();
+      }),
+    [start, startScrubbedEntry],
+  );
 
   // "#service-<slug>" jumps the Showcase to that service (and lands the page on the stage).
   useEffect(
@@ -225,6 +279,16 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- advance only reads refs + stable callbacks (see scheduleNext)
   }, []);
 
+  // a soft "thud" settle (scale past 1, then back) every time a new picture/digit lands — classList
+  // toggling (not a remount) so ParticleStage's canvas, appended as stageRef's child, is undisturbed
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || cycleKey === 0) return;
+    el.classList.remove("stage-settle-play");
+    void el.offsetWidth; // force a reflow so the animation restarts
+    el.classList.add("stage-settle-play");
+  }, [cycleKey]);
+
   const togglePause = () => {
     setPaused((p) => {
       const next = !p;
@@ -258,6 +322,7 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
 
       <div className="container-x mt-8 sm:mt-12">
         <div
+          ref={panelRef}
           data-ready={ready}
           className="showcase-panel relative isolate overflow-hidden rounded-[32px] border border-white/[0.09] bg-[linear-gradient(160deg,var(--surface-1)_0%,var(--surface-2)_60%)] p-4 sm:rounded-[40px] sm:p-7 lg:p-9"
         >
@@ -275,7 +340,9 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
           <div className="grid gap-5 lg:grid-cols-[55%_1fr] lg:items-center lg:gap-10">
             {/* the stage: the swarm lands here as a picture, scroll-native, zero particles at rest */}
             <div ref={touchRef} className="relative mx-auto aspect-square w-full max-w-[460px] touch-pan-y select-none">
+              <span className="showcase-glow pointer-events-none absolute inset-[-20%] -z-10" aria-hidden="true" />
               <div ref={stageRef} data-particle-slot="stage" className="absolute inset-[6%]" aria-hidden="true" />
+              <span key={cycleKey} className="stage-sheen pointer-events-none absolute inset-[6%] overflow-hidden rounded-[20%]" aria-hidden="true" />
               <p className="showcase-caption absolute inset-x-0 bottom-1 text-center text-[13px] font-semibold text-white/70 sm:text-sm">{atFinale ? "" : svc.short}</p>
             </div>
 
@@ -343,7 +410,7 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
                 className="dock-btn group relative flex shrink-0 flex-col items-center gap-1 rounded-2xl px-2.5 py-2 text-white/55 transition-colors data-[on=true]:text-white"
                 data-on={i === active && !atFinale}
               >
-                <span className="relative grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.03] transition-colors group-data-[on=true]:border-nl-purple/60 group-data-[on=true]:bg-nl-purple/15 sm:h-10 sm:w-10">
+                <span className="relative grid h-9 w-9 place-items-center rounded-full border border-transparent bg-transparent transition-colors group-hover:border-white/10 group-hover:bg-white/[0.03] group-data-[on=true]:border-nl-purple/60 group-data-[on=true]:bg-nl-purple/15 sm:h-10 sm:w-10">
                   <ActivityIcon icon={s.icon} size={18} play={i === active} />
                   {i === active && !atFinale && (
                     <svg className="dock-ring absolute -inset-[3px]" viewBox="0 0 40 40" aria-hidden="true">
@@ -367,6 +434,11 @@ function ServicesShowcase({ heading }: { heading: React.ReactNode }) {
             ))}
           </div>
         </div>
+        {!ready && (
+          <p className="scroll-hint mt-4 flex items-center justify-center gap-1.5 text-center" aria-hidden="true">
+            Keep scrolling <span className="scroll-hint-chevron inline-block">⌄</span>
+          </p>
+        )}
       </div>
     </section>
   );

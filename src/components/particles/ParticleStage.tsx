@@ -22,6 +22,14 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const EDGE = 0.09;
 const earlyOp = (u: number) => (u < EDGE ? 1 - u / EDGE : 0);
 const lateOp = (u: number) => (u > 1 - EDGE ? (u - (1 - EDGE)) / EDGE : 0);
+// a particle's landing snaps into place with a touch of overshoot, then settles — not a hard stop
+const BACK_C1 = 1.70158;
+const BACK_C3 = BACK_C1 + 1;
+const backOut = (x: number) => 1 + BACK_C3 * (x - 1) ** 3 + BACK_C1 * (x - 1) ** 2;
+// particles whose landing spot sits near the target's own centre arrive first — the shape visibly
+// builds from the inside out, like metal filings snapping to a magnet, rather than every particle
+// moving in lockstep. STAGGER is how much of the flight that spread can eat into (0–1).
+const STAGGER = 0.32;
 
 /**
  * The one particle swarm. It assembles the hero 9 (after the landing animation), flies down into
@@ -107,7 +115,7 @@ export function ParticleStage() {
     // the two crisp "formed" layers: one small canvas inside each slot
     const rest = new Map<
       SlotName,
-      { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number }
+      { el: HTMLElement; c: HTMLCanvasElement; g: CanvasRenderingContext2D; key: string; op: number; liveT0: number; drift: number }
     >();
     for (const name of SLOTS) {
       const el = document.querySelector<HTMLElement>(`[data-particle-slot="${name}"]`);
@@ -115,10 +123,22 @@ export function ParticleStage() {
       const g = c.getContext("2d");
       if (!el || !g) continue;
       c.setAttribute("aria-hidden", "true");
-      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%)";
+      c.className = `particle-rest particle-rest--${name}`;
+      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0";
       el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now() });
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN });
     }
+    // a soft parallax while the stage picture rests: it drifts a few px against the scroll, as if
+    // it sat a little in front of the page rather than glued flat to it
+    const updateDrift = (name: SlotName) => {
+      const s = rest.get(name);
+      const b = name === "stage" ? slotRect(name) : undefined;
+      if (!s) return;
+      const off = b ? Math.max(-14, Math.min(14, (window.innerHeight / 2 - (b.top + b.height / 2)) * 0.045)) : 0;
+      if (off === s.drift) return;
+      s.drift = off;
+      s.c.style.transform = `translate(-50%, calc(-50% + ${off.toFixed(1)}px))`;
+    };
     const slotRect = (name: SlotName) => rest.get(name)?.el.getBoundingClientRect();
 
     const drawFormed = (name: SlotName, target: ParticleTarget, pal: ReturnType<typeof palette>) => {
@@ -199,6 +219,7 @@ export function ParticleStage() {
       const pal = palette(dark);
       const { from, to, u, dir } = particleBus;
       const resting = sameTarget(from, to);
+      for (const name of SLOTS) updateDrift(name);
 
       // the formed layers (always on: hero is static, the stage keeps living while resting)
       if (resting) {
@@ -256,7 +277,6 @@ export function ParticleStage() {
       const perpX = -ly / len;
       const perpY = lx / len;
       const spread = Math.max(A.h, B.h) * 0.42;
-      const v = 1 - u;
       const asm = clamp01((now - heroT0) / 1700);
 
       if (asm >= 1 && probe < 40) {
@@ -284,8 +304,14 @@ export function ParticleStage() {
         const bowAmt = dir * spread * bow[i] * depth;
         const mx = (ax + bx) / 2 + perpX * bowAmt + jitX[i] * spread * 0.16;
         const my = (ay + by) / 2 + perpY * bowAmt + jitY[i] * spread * 0.16;
-        let x = v * v * ax + 2 * v * u * mx + u * u * bx;
-        let y = v * v * ay + 2 * v * u * my + u * u * by;
+        // this particle's own progress: it starts late if its landing spot sits near the target's
+        // edge (STAGGER), then snaps in with a touch of overshoot (backOut) — position only, so the
+        // crossfade/colour timing below stays driven by the plain, predictable global `u`.
+        const d = Math.min(STAGGER, Math.hypot(SB.x[i], SB.y[i]) * 1.8 * STAGGER);
+        const ue = backOut(d >= 1 ? 1 : clamp01((u - d) / (1 - d)));
+        const ve = 1 - ue;
+        let x = ve * ve * ax + 2 * ve * ue * mx + ue * ue * bx;
+        let y = ve * ve * ay + 2 * ve * ue * my + ue * ue * by;
         if (asm < 1) {
           const p = clamp01(asm * 1.5 - delay[i]);
           const e = 1 - (1 - p) * (1 - p) * (1 - p);

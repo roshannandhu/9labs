@@ -1115,6 +1115,62 @@ html[data-motion-resolved="reduce"] .dock-ring-fill {
   pointer-events: none;
   opacity: 0.55;
 }
+
+/* the picture itself grounded in a little light, not flat on the page */
+.particle-rest--stage {
+  filter: drop-shadow(0 22px 26px color-mix(in srgb, var(--nl-purple) 30%, transparent)) drop-shadow(0 4px 8px rgb(0 0 0 / 0.1));
+}
+.showcase-glow {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-purple) 16%, transparent), transparent 72%);
+}
+html[data-theme="dark"] .showcase-glow {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-blue) 20%, transparent), transparent 72%);
+}
+
+/* a thin light sweeps across a picture once, right as it finishes forming */
+.stage-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -20% -60%;
+  background: linear-gradient(100deg, transparent 44%, rgb(255 255 255 / 0.55) 50%, transparent 56%);
+  transform: translateX(-120%) rotate(6deg);
+  animation: stage-sheen 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+@keyframes stage-sheen {
+  0%, 18% { transform: translateX(-120%) rotate(6deg); opacity: 0; }
+  28% { opacity: 1; }
+  70%, 100% { transform: translateX(120%) rotate(6deg); opacity: 0; }
+}
+
+/* the landing "thud": a touch of overshoot, then settle — toggled by Services.tsx on every new picture */
+.stage-settle-play {
+  animation: stage-settle 0.5s cubic-bezier(0.17, 0.89, 0.32, 1.28) both;
+}
+@keyframes stage-settle {
+  from { transform: scale(0.93); }
+}
+
+html[data-motion-resolved="reduce"] .stage-sheen::after,
+html[data-motion-resolved="reduce"] .stage-settle-play {
+  animation: none;
+}
+
+/* "keep scrolling" hint, shown only before the first picture has landed */
+.scroll-hint {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgb(var(--fg-rgb) / 0.4);
+}
+.scroll-hint-chevron {
+  animation: scroll-hint-bounce 1.6s ease-in-out infinite;
+}
+@keyframes scroll-hint-bounce {
+  50% { transform: translateY(4px); }
+}
+html[data-motion-resolved="reduce"] .scroll-hint-chevron {
+  animation: none;
+}
 .finale-tile svg {
   color: var(--nl-blue-soft);
 }
