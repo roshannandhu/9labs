@@ -152,7 +152,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         const transZ = -Math.min(1.2, absOffset) * maxZ;
         const scale = 1 - Math.min(1.2, absOffset) * maxScale;
         const opacity = Math.max(0.12, 1 - Math.min(1.2, absOffset) * (1 - peekOpacity));
-        const zIndex = Math.max(1, 12 - Math.round(absOffset * 2));
+        const zIndex = Math.max(1, 6 - Math.round(absOffset * 2));
 
         c.style.transform = `perspective(1200px) translate3d(0, 0, ${transZ.toFixed(1)}px) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
         c.style.opacity = opacity.toFixed(2);
@@ -173,7 +173,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     const leadIn = ScrollTrigger.create({
       trigger: el,
       start: "top bottom",
-      end: "top 25%",
+      end: "top 35%",
       scrub: true,
       onUpdate: (s) => {
         leadP = s.progress;
@@ -184,12 +184,12 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         sync();
       },
     });
-    // the finale sits right under the carousel, so its flight waits until the card itself starts
-    // leaving the screen, and lands as the finale "9" comes up into view
+    // the finale sits right under the carousel: flight starts as the cards are genuinely
+    // leaving the screen (bottom reaches 55%), landing on the finale "9" as the bottom leaves (10%)
     const fin = ScrollTrigger.create({
       trigger: el,
-      start: "center 35%",
-      end: "bottom 15%",
+      start: "bottom 55%",
+      end: "bottom 10%",
       scrub: true,
       onUpdate: (s) => {
         finP = s.progress;

@@ -110,6 +110,7 @@ export function ParticleStage() {
     let dpr = 1;
     let family = "";
     let lastScrollY = -1;
+    let lastTrackScroll = -1;
     let forceGeoms = true; // always read fresh geometry on the very first frame
 
     /*
@@ -130,7 +131,7 @@ export function ParticleStage() {
     const track: Surface | null = trackEl && tctx ? { c: tcv, g: tctx, tx: NaN, ty: NaN, box: null } : null;
     if (trackEl && track) {
       tcv.setAttribute("aria-hidden", "true");
-      tcv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:2";
+      tcv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;z-index:50";
       trackEl.appendChild(tcv);
     }
     let drawn: Surface | null = null; // the surface the swarm drew on last frame (its patch is in `.box`)
@@ -160,7 +161,7 @@ export function ParticleStage() {
       if (!el || !g) continue;
       c.setAttribute("aria-hidden", "true");
       c.className = `particle-rest particle-rest--${name}`;
-      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0";
+      c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;z-index:10";
       el.appendChild(c);
       rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN, fitPx: -1 }); // NaN/-1: not sized yet
     }
@@ -319,9 +320,11 @@ export function ParticleStage() {
       // with the page not scrolled since last frame and no resize pending — reusing last frame's
       // geoms is exactly correct then, and this is what makes "just sitting there" cost ~0
       const scrollY = window.scrollY;
-      if (forceGeoms || !resting || scrollY !== lastScrollY) {
+      const trackScroll = trackEl?.scrollLeft ?? 0;
+      if (forceGeoms || !resting || scrollY !== lastScrollY || trackScroll !== lastTrackScroll) {
         readGeoms();
         lastScrollY = scrollY;
+        lastTrackScroll = trackScroll;
         forceGeoms = false;
       }
       for (const name of SLOTS) updateDrift(name, geoms.get(name) ?? null);
@@ -420,7 +423,7 @@ export function ParticleStage() {
       if (S.tx !== tx || S.ty !== ty) {
         S.tx = tx;
         S.ty = ty;
-        S.c.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+        S.c.style.transform = `translate3d(${tx}px, ${ty}px, 60px)`;
       }
 
       if (asm >= 1 && probe < 40) {

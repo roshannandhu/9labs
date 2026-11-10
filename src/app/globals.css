@@ -978,6 +978,8 @@ html[data-intro="playing"] [data-logo-9] {
   scrollbar-width: none;
   perspective: 1100px;
   perspective-origin: center center;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
 }
 .svc-scroller::-webkit-scrollbar {
   display: none;
@@ -988,6 +990,8 @@ html[data-intro="playing"] [data-logo-9] {
     --card-h: clamp(540px, calc(100svh - 230px), 760px);
     gap: 28px;
     perspective: 1400px;
+    mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   }
 }
 .scene-section {
