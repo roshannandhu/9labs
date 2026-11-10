@@ -51,6 +51,8 @@ interface DragState {
 interface Geometry {
   d: string;
   viewBox: string;
+  /** viewBox height, so the box's aspect ratio matches what it holds */
+  height: number;
   radius: number;
   repeats: number;
   span: number;
@@ -112,16 +114,21 @@ const getGeometry = (shape: CurvedLoopShape, curveAmount: number, fontSize: numb
     return {
       d: `M${-radius},0 A${radius},${radius} 0 1,1 ${radius},0 A${radius},${radius} 0 1,1 ${-radius},0`,
       viewBox: `${-half} ${-half} ${half * 2} ${half * 2}`,
+      height: half * 2,
       radius,
       repeats,
       span: Math.min(1, (fontSize * (RING_RADIUS + 1) * 2) / VIEW_WIDTH)
     };
   }
-  const flat = { viewBox: `0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`, radius: 0, repeats: 0, span: 1 };
+  const flat = { viewBox: `0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`, height: VIEW_HEIGHT, radius: 0, repeats: 0, span: 1 };
   const baseline = VIEW_HEIGHT / 2 + fontSize * 0.36;
   if (shape === 'line') return { ...flat, d: `M-100,${baseline} L${VIEW_WIDTH + 100},${baseline}` };
   if (shape === 'wave') return { ...flat, d: wavePath(curveAmount * 0.25, baseline) };
-  return { ...flat, d: `M-100,40 Q500,${40 + curveAmount} 1540,40` };
+  // the arc's baseline reaches 40 + curveAmount/2 at its middle: the box must hold the whole line of
+  // text, or the edge-fade mask (which only paints inside the box) cuts it off
+  const top = Math.min(0, 40 + Math.min(0, curveAmount) / 2 - fontSize * 0.8);
+  const bottom = Math.max(VIEW_HEIGHT, 40 + Math.max(0, curveAmount) / 2 + fontSize * 0.3);
+  return { ...flat, viewBox: `0 ${top} ${VIEW_WIDTH} ${bottom - top}`, height: bottom - top, d: `M-100,40 Q500,${40 + curveAmount} 1540,40` };
 };
 
 const CurvedLoop: FC<CurvedLoopProps> = ({
@@ -389,12 +396,13 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     >
       <svg
         ref={svgRef}
-        className="select-none w-full overflow-visible block aspect-[100/12] uppercase leading-none fill-current"
+        className="select-none w-full overflow-visible block uppercase leading-none fill-current"
         viewBox={geometry.viewBox}
         style={{
           fontSize,
           fontWeight,
           letterSpacing,
+          aspectRatio: `${VIEW_WIDTH} / ${geometry.height}`,
           ...(ring ? { width: `${(geometry.span * 100).toFixed(3)}%`, aspectRatio: '1' } : null)
         }}
         role="img"

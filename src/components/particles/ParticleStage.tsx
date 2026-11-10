@@ -8,20 +8,15 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { palette, colorKey, KEY_HEX, COLOR_KEYS } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
-import { particleBus, heroTarget, allNineTarget, digitTarget, picTarget, sameTarget, type ParticleTarget } from "./bus";
+import { particleBus, heroTarget, allNineTarget, picTarget, sameTarget, targetKey, type ParticleTarget } from "./bus";
 import { site, type IconKey } from "@/content/site";
 
 const SLOTS = ["hero", "stage-1", "stage-2", "stage-3", "stage-4", "stage-5", "stage-6", "stage-7", "stage-8", "stage-9", "finale"] as const;
 type SlotName = (typeof SLOTS)[number];
-/** each service card has its own slot (`stage-<n>`); its lead-in digit lives in the same slot */
+/** each service card has its own slot (`stage-<n>`) */
 const STAGES = site.services.map((s) => ({ name: `stage-${s.n}` as SlotName, pic: picTarget(s.icon) }));
 const ICON_SLOT = new Map<IconKey, SlotName>(site.services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
-const slotFor = (t: ParticleTarget): SlotName => {
-  if (t.kind === "hero") return "hero";
-  if (t.kind === "all9") return "finale";
-  if (t.kind === "pic") return ICON_SLOT.get(t.icon) ?? "stage-1";
-  return `stage-${t.ch}` as SlotName;
-};
+const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : t.kind === "all9" ? "finale" : (ICON_SLOT.get(t.icon) ?? "stage-1"));
 const isDark = () => document.documentElement.dataset.theme === "dark";
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smooth = (v: number) => {
@@ -46,12 +41,12 @@ const ASM_MS = 1700;
 
 /**
  * The one particle swarm. `useServiceTrack` writes `particleBus`: the hero 9 assembles from the
- * screen edges after the intro, flies through the current card's digit into its object as the
- * services carousel scrolls into view, then from object to object as the carousel is swiped (or
+ * screen edges after the intro, flies straight into the current card's object as the services
+ * carousel scrolls into view, then from object to object as the carousel is swiped (or
  * auto-advances), and finally into the finale "9" — reversible the whole way.
  *
  * Two layers, so nothing ever looks like dust once it has landed:
- * - **Formed**: a crisp picture or digit drawn *inside* its slot in the page. The card in focus
+ * - **Formed**: a crisp picture or "9" drawn *inside* its slot in the page. The card in focus
  *   keeps redrawing with real time so its small details live; every other card shows a faint still
  *   ghost of its object. The swarm draws nothing while a shape is at rest.
  * - **Moving**: ~16,000 particles (~9,000 on phones) on one fixed full-screen canvas, each carrying
@@ -195,8 +190,8 @@ export function ParticleStage() {
         PICTURES[target.icon](s.g, px2, pal, (performance.now() - s.liveT0) / 1000);
         return;
       }
-      const ch = target.kind === "digit" ? target.ch : "9";
-      const key = `d|${ch}|${px2}|${pal.textFrom}`;
+      const ch = "9"; // the hero and the finale
+      const key = `d|${px2}|${pal.textFrom}`;
       if (s.key === key) return;
       s.key = key;
       fit(s, gm.side, px2);
@@ -228,11 +223,8 @@ export function ParticleStage() {
       return { b, cx: b.left + b.width / 2 + k * side * s.ox, cy: b.top + b.height / 2 + k * (drift + side * s.oy), h: k * side * s.hr };
     };
 
-    const shapeFor = (t: ParticleTarget, dark: boolean): Shape => {
-      if (t.kind === "digit") return digitShape(t.ch, N, family, dark);
-      if (t.kind === "pic") return pictureShape(t.icon, N, PICTURES[t.icon as IconKey], dark);
-      return digitShape("9", N, family, dark); // hero + all9 are both just "9"
-    };
+    const shapeFor = (t: ParticleTarget, dark: boolean): Shape =>
+      t.kind === "pic" ? pictureShape(t.icon, N, PICTURES[t.icon], dark) : digitShape("9", N, family, dark); // hero + all9 are both "9"
 
     let curFromKey = "";
     let curToKey = "";
@@ -276,25 +268,13 @@ export function ParticleStage() {
       if (fin > 0) drawFormed("finale", allNineTarget, pal);
       setOpacity("finale", fin);
 
+      // each card: its live picture while the swarm is resting on (or just leaving/arriving at) it,
+      // otherwise a faint still ghost
       for (const { name, pic } of STAGES) {
-        const digitHere = (t: ParticleTarget) => t.kind === "digit" && slotFor(t) === name;
-        const picHere = (t: ParticleTarget) => sameTarget(t, pic);
-        const d = shown(digitHere);
-        const p = shown(picHere);
-        // while this card's digit is part of the flight, its ghost stays out of the way
-        const ghost = !digitHere(from) && !digitHere(to);
-        if (d > 0) {
-          drawFormed(name, digitHere(from) ? from : to, pal);
-          setOpacity(name, d);
-        } else if (p > 0) {
-          drawFormed(name, pic, pal);
-          setOpacity(name, ghost ? GHOST + (1 - GHOST) * p : p);
-        } else if (ghost) {
-          if (!assembling) drawFormed(name, pic, pal, true);
-          setOpacity(name, GHOST);
-        } else {
-          setOpacity(name, 0);
-        }
+        const p = shown((t) => sameTarget(t, pic));
+        if (p > 0) drawFormed(name, pic, pal);
+        else if (!assembling) drawFormed(name, pic, pal, true);
+        setOpacity(name, GHOST + (1 - GHOST) * p);
       }
 
       // the particles: only while flying (or assembling)
@@ -307,8 +287,8 @@ export function ParticleStage() {
       const dustAlpha = assembling ? 1 - heroFade : 1 - earlyOp(u) - lateOp(u);
       if (dustAlpha < 0.015) return;
 
-      const fromKey = `${from.kind}${"ch" in from ? from.ch : ""}${"icon" in from ? from.icon : ""}`;
-      const toKey = `${to.kind}${"ch" in to ? to.ch : ""}${"icon" in to ? to.icon : ""}`;
+      const fromKey = targetKey(from);
+      const toKey = targetKey(to);
       if (fromKey !== curFromKey) {
         curFromKey = fromKey;
         SA = shapeFor(from, dark);
@@ -436,11 +416,8 @@ export function ParticleStage() {
       assembling = !!hero && hero.bottom > 0 && hero.top < window.innerHeight && window.scrollY < 40;
       started = true;
       heroT0 = performance.now();
-      // the rest, in the order a visitor meets them: card 1's digit and object first
-      const steps: ParticleTarget[] = [digitTarget(1)];
-      for (const s of site.services) steps.push(picTarget(s.icon));
-      for (const s of site.services.slice(1)) steps.push(digitTarget(s.n));
-      for (const step of steps) {
+      // the nine pictures, in the order a visitor meets them
+      for (const { pic: step } of STAGES) {
         await new Promise((res) => setTimeout(res, 0));
         if (cancelled) return;
         shapeFor(step, dark);

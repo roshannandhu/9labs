@@ -5,7 +5,7 @@ import { ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { navOffset, registerAnchorPrefix } from "@/lib/scroll";
 import { site } from "@/content/site";
-import { particleBus, heroTarget, digitTarget, picTarget, allNineTarget } from "@/components/particles/bus";
+import { particleBus, heroTarget, picTarget, allNineTarget } from "@/components/particles/bus";
 
 const services = site.services;
 const N = services.length; // 9
@@ -14,16 +14,27 @@ const HOLD_MS = 6000; // autoplay waits this long after a swipe, tap or click
 const PEEK_OPACITY = 0.45; // a card one step away from centre
 const PEEK_SCALE = 0.06;
 
+// measured across the whole row so per-card pixel rounding can't add up: one neighbour pair reads
+// 992 where the true step is 992.8, which left cards 3–8 "still flying" at rest (faint dust flicker)
 const cardStep = (el: HTMLElement) => {
-  const [a, b] = el.children as unknown as HTMLElement[];
-  return a && b ? b.offsetLeft - a.offsetLeft : el.clientWidth;
+  const c = el.children;
+  const first = c[0] as HTMLElement | undefined;
+  const last = c[c.length - 1] as HTMLElement | undefined;
+  return first && last && c.length > 1 ? (last.offsetLeft - first.offsetLeft) / (c.length - 1) : el.clientWidth;
+};
+// the carousel's position 0..8, landing exactly on a card when it rests within 2px of it
+const posOf = (el: HTMLElement) => {
+  const step = cardStep(el);
+  const pos = Math.min(N - 1, Math.max(0, el.scrollLeft / step));
+  const near = Math.round(pos);
+  return Math.abs(pos - near) * step < 2 ? near : pos;
 };
 
 /**
  * The services carousel: a native sideways scroller (CSS snap, free swipe on phones and trackpads,
  * no scroll lock — the page itself scrolls straight past it). Its scroll position `pos` (0..8) is
  * read continuously, and one `sync()` decides what the particle swarm is doing:
- *   - **lead-in** (page scrolling the carousel into view): hero 9 → the current card's digit → its object
+ *   - **lead-in** (page scrolling the carousel into view): hero 9 → the current card's object
  *   - **carousel**: object → object, following the swipe frame by frame, reversible
  *   - **finale** (page scrolling on past it): the current object → the "all nine" 9
  * It also dims and shrinks the cards either side of the one in focus (the peek), auto-advances
@@ -59,15 +70,9 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
 
     const writeLeadIn = (p: number, idx: number) => {
       particleBus.dir = 1;
-      if (p < 0.5) {
-        particleBus.from = heroTarget;
-        particleBus.to = digitTarget(idx + 1);
-        particleBus.u = p / 0.5;
-      } else {
-        particleBus.from = digitTarget(idx + 1);
-        particleBus.to = picTarget(services[idx].icon);
-        particleBus.u = (p - 0.5) / 0.5;
-      }
+      particleBus.from = heroTarget;
+      particleBus.to = picTarget(services[idx].icon);
+      particleBus.u = p;
     };
     const writeTrack = (pos: number) => {
       const dir = pos >= lastPos ? 1 : -1;
@@ -95,7 +100,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     };
 
     const sync = () => {
-      const pos = Math.min(N - 1, Math.max(0, el.scrollLeft / cardStep(el)));
+      const pos = posOf(el);
       cards.forEach((c, i) => {
         const d = Math.min(1, Math.abs(i - pos));
         c.style.opacity = String(1 - d * (1 - PEEK_OPACITY));

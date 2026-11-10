@@ -48,19 +48,25 @@ export function SpringHeading({ text, accent, id, className = "", as = "h2" }: P
   );
 
   const words = text.split(" ").filter(Boolean);
+  // each word reveals through its own mask. The word's box is padded below and right so the italic
+  // accent's descenders and overhang (the "g" and "?" in "the bridge?") stay inside both the mask
+  // and the gradient, which `background-clip: text` only paints within that box; the mask's negative
+  // margins cancel the padding so line spacing and word spacing are unchanged.
+  const mask = "inline-block overflow-hidden align-bottom -mb-[0.15em] -mr-[0.1em]";
+  const word = "inline-block will-change-transform pb-[0.25em] pr-[0.1em]";
   return (
     <Tag ref={ref} id={id} className={`[perspective:800px] ${className}`}>
       {words.map((w, i) => (
-        <span key={`${w}-${i}`} className="inline-block overflow-hidden pb-[0.1em] align-bottom">
-          <span data-spring className="inline-block will-change-transform">
+        <span key={`${w}-${i}`} className={mask}>
+          <span data-spring className={word}>
             {w}
             {i < words.length - 1 || accent ? " " : ""}
           </span>
         </span>
       ))}
       {accent && (
-        <span className="inline-block overflow-hidden pb-[0.1em] align-bottom">
-          <span data-spring className="font-accent text-gradient inline-block will-change-transform">
+        <span className={mask}>
+          <span data-spring className={`font-accent text-gradient ${word}`}>
             {accent}
           </span>
         </span>
