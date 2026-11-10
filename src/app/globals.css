@@ -965,30 +965,76 @@ html[data-intro="playing"] [data-logo-9] {
 .scene-section {
   container-type: inline-size;
 }
-/* the social-media picture (the only scene the particle swarm still forms) grounded in a little light */
-.particle-rest--stage {
+/* every scene's particle-formed picture grounded in a little light */
+.particle-rest:not(.particle-rest--hero) {
   filter: drop-shadow(0 22px 26px color-mix(in srgb, var(--nl-purple) 30%, transparent)) drop-shadow(0 4px 8px rgb(0 0 0 / 0.1));
 }
-/* echo pieces (scene 2's phones, scene 9's cloud/server/laptop/shield) */
+/* echo pieces (scene 2's phones, scene 3's frames) — fade/scale in once their scene settles */
 .scene-echo {
   will-change: transform, opacity;
+  transition: transform 0.6s var(--ease-out-expo), opacity 0.5s ease;
 }
 /* scene 3's non-hero frames: a quiet gradient fill standing in for a thumbnail */
 .scene-frame-fill {
   background: linear-gradient(155deg, var(--surface-1), var(--surface-2));
 }
-.scene-strip-mask {
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
 /* scene 5 and 8's soft backdrop glow */
 .scene-events-glow,
 .scene-ai-glow {
   background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-purple) 14%, transparent), transparent 72%);
+  transition: opacity 0.6s ease;
 }
 html[data-theme="dark"] .scene-events-glow,
 html[data-theme="dark"] .scene-ai-glow {
   background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-blue) 20%, transparent), transparent 72%);
+}
+/* scene 5's drifting confetti flecks */
+.scene-confetti {
+  position: absolute;
+  top: 6%;
+  width: 4px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--nl-purple);
+  opacity: 0.8;
+  animation: scene-confetti-fall 3.2s linear infinite;
+}
+.scene-confetti-1 {
+  background: var(--nl-blue);
+  animation-duration: 3.8s;
+}
+.scene-confetti-2 {
+  background: var(--nl-indigo);
+  animation-duration: 2.7s;
+}
+@keyframes scene-confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  90% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(260px) rotate(200deg);
+    opacity: 0;
+  }
+}
+/* scene 8's chip: a slow, autonomous tilt once it's formed and resting */
+[data-particle-slot="stage-8"] .particle-rest {
+  animation: scene-chip-tilt 7s ease-in-out infinite;
+  transform-origin: 50% 65%;
+}
+@keyframes scene-chip-tilt {
+  0%, 100% { rotate: -2deg; }
+  50% { rotate: 2deg; }
+}
+html[data-motion-resolved="reduce"] .scene-confetti,
+html[data-motion-resolved="reduce"] [data-particle-slot="stage-8"] .particle-rest {
+  animation: none;
 }
 .finale-tile svg {
   color: var(--nl-blue-soft);

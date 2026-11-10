@@ -81,7 +81,32 @@ function space(ctx: CanvasRenderingContext2D, S: number, draw: () => void) {
   ctx.save();
   ctx.translate(S / 2, S / 2);
   ctx.scale(S / 100, S / 100);
+  // a consistent few-degree tilt on every picture, so each reads as a photographed object sitting
+  // at a slight 3/4 angle rather than a flat, dead-on diagram
+  ctx.rotate(-0.05);
   draw();
+  ctx.restore();
+}
+/** a soft drop shadow under the next fill(s) — the main trick that makes a flat shape feel to sit in front of (or above) what's behind it */
+function shadowed(ctx: CanvasRenderingContext2D, draw: () => void, blur = 7, dy = 4.5, dx = 1.5, color = "rgba(10,8,25,.4)") {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.shadowOffsetX = dx;
+  ctx.shadowOffsetY = dy;
+  draw();
+  ctx.restore();
+}
+/** a soft specular highlight — the gloss streak that reads as "light hitting a curved/glossy surface" */
+function gloss(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, rot = -0.5, alpha = 0.3) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, TAU);
+  ctx.fillStyle = "#ffffff";
+  ctx.globalAlpha = alpha;
+  ctx.fill();
   ctx.restore();
 }
 
@@ -91,18 +116,21 @@ const social: PictureDraw = (ctx, S, p, t) => {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     // phone
-    rr(ctx, -29, -31, 30, 62, 7);
-    ctx.fillStyle = lgrad(ctx, -29, -31, 1, 31, [
-      [0, p.ink],
-      [1, p.inkLight],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -29, -31, 30, 62, 7);
+      ctx.fillStyle = lgrad(ctx, -29, -31, 1, 31, [
+        [0, p.ink],
+        [1, p.inkLight],
+      ]);
+      ctx.fill();
+    }, 10, 7, 2);
     rr(ctx, -29, -31, 30, 62, 7);
     ctx.strokeStyle = p.white;
     ctx.globalAlpha = 0.12;
     ctx.lineWidth = 1.2;
     ctx.stroke();
     ctx.globalAlpha = 1;
+    gloss(ctx, -22, -24, 6, 14, -0.3, 0.1);
     // speaker notch
     rr(ctx, -19, -27, 10, 2.4, 1.2);
     ctx.fillStyle = p.shadow;
@@ -215,17 +243,20 @@ const advertising: PictureDraw = (ctx, S, p, t) => {
     ctx.fill();
 
     // megaphone
-    ctx.beginPath();
-    ctx.moveTo(-8, -9);
-    ctx.quadraticCurveTo(10, -9, 26, -22);
-    ctx.lineTo(26, 20);
-    ctx.quadraticCurveTo(10, 7, -8, 7);
-    ctx.closePath();
-    ctx.fillStyle = lgrad(ctx, -8, -9, 26, 20, [
-      [0, p.accent2],
-      [1, p.accent],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      ctx.beginPath();
+      ctx.moveTo(-8, -9);
+      ctx.quadraticCurveTo(10, -9, 26, -22);
+      ctx.lineTo(26, 20);
+      ctx.quadraticCurveTo(10, 7, -8, 7);
+      ctx.closePath();
+      ctx.fillStyle = lgrad(ctx, -8, -9, 26, 20, [
+        [0, p.accent2],
+        [1, p.accent],
+      ]);
+      ctx.fill();
+    }, 9, 6, 2);
+    gloss(ctx, 4, -8, 11, 3, -0.3, 0.22);
     rr(ctx, -14, -7, 7, 14, 2.5);
     ctx.fillStyle = p.ink;
     ctx.fill();
@@ -273,6 +304,7 @@ const content: PictureDraw = (ctx, S, p, t) => {
       [1, p.accent2],
     ]);
     ctx.fill();
+    gloss(ctx, 19, -21, 3.4, 1.8, -0.5, 0.3);
     poly(ctx, [
       [19, -23],
       [19, -13],
@@ -292,12 +324,14 @@ const content: PictureDraw = (ctx, S, p, t) => {
     ctx.fill();
 
     // board
-    rr(ctx, -42, -8, 34, 32, 4);
-    ctx.fillStyle = lgrad(ctx, -42, -8, -8, 24, [
-      [0, p.ink],
-      [1, p.inkLight],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -42, -8, 34, 32, 4);
+      ctx.fillStyle = lgrad(ctx, -42, -8, -8, 24, [
+        [0, p.ink],
+        [1, p.inkLight],
+      ]);
+      ctx.fill();
+    }, 9, 6, 2);
     const clap = blip(t, 3.2, 0.1);
     ctx.save();
     ctx.translate(-25, -8);
@@ -366,12 +400,14 @@ const photo: PictureDraw = (ctx, S, p, t) => {
     }
 
     // body
-    rr(ctx, -34, -10, 60, 34, 7);
-    ctx.fillStyle = lgrad(ctx, -34, -10, 26, 24, [
-      [0, p.ink],
-      [1, p.inkLight],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -34, -10, 60, 34, 7);
+      ctx.fillStyle = lgrad(ctx, -34, -10, 26, 24, [
+        [0, p.ink],
+        [1, p.inkLight],
+      ]);
+      ctx.fill();
+    }, 10, 7, 2);
     rr(ctx, -10, -22, 20, 13, 3);
     ctx.fillStyle = p.ink;
     ctx.fill();
@@ -403,6 +439,7 @@ const photo: PictureDraw = (ctx, S, p, t) => {
     ctx.globalAlpha = 0.9;
     ctx.fill();
     ctx.globalAlpha = 1;
+    gloss(ctx, cx - 5, cy - 6, 4, 2.2, -0.6, 0.4);
     const spin = t * 0.6;
     for (let i = 0; i < 6; i++) {
       const a = spin + (i / 6) * TAU;
@@ -485,12 +522,14 @@ const events: PictureDraw = (ctx, S, p, t) => {
     }
 
     // backdrop
-    rr(ctx, -36, -40, 72, 34, 2);
-    ctx.fillStyle = lgrad(ctx, -36, -40, 36, -6, [
-      [0, p.ink],
-      [1, p.inkLight],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -36, -40, 72, 34, 2);
+      ctx.fillStyle = lgrad(ctx, -36, -40, 36, -6, [
+        [0, p.ink],
+        [1, p.inkLight],
+      ]);
+      ctx.fill();
+    }, 8, 5, 1.5);
     ctx.beginPath();
     ctx.moveTo(-30, -14);
     for (let x = -30; x <= 30; x += 3) ctx.lineTo(x, -14 - Math.abs(Math.sin(x * 0.5 + t * 3)) * 7);
@@ -501,17 +540,19 @@ const events: PictureDraw = (ctx, S, p, t) => {
     ctx.globalAlpha = 1;
 
     // stage platform
-    poly(ctx, [
-      [-44, 32],
-      [44, 32],
-      [34, 10],
-      [-34, 10],
-    ]);
-    ctx.fillStyle = lgrad(ctx, 0, 10, 0, 32, [
-      [0, p.inkLight],
-      [1, p.ink],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      poly(ctx, [
+        [-44, 32],
+        [44, 32],
+        [34, 10],
+        [-34, 10],
+      ]);
+      ctx.fillStyle = lgrad(ctx, 0, 10, 0, 32, [
+        [0, p.inkLight],
+        [1, p.ink],
+      ]);
+      ctx.fill();
+    }, 10, 6, 0);
     rr(ctx, -34, 8.5, 68, 2.2, 1);
     ctx.fillStyle = p.accent;
     ctx.globalAlpha = 0.7;
@@ -576,9 +617,11 @@ const pr: PictureDraw = (ctx, S, p, t) => {
     ctx.save();
     ctx.translate(-4, -8);
     ctx.rotate(-0.1);
-    rr(ctx, -28, -30, 42, 46, 2);
-    ctx.fillStyle = p.panel;
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -28, -30, 42, 46, 2);
+      ctx.fillStyle = p.panel;
+      ctx.fill();
+    }, 8, 5, 2);
     rr(ctx, -24, -25, 34, 5, 1);
     ctx.fillStyle = p.ink;
     ctx.globalAlpha = 0.85;
@@ -623,12 +666,15 @@ const pr: PictureDraw = (ctx, S, p, t) => {
     ctx.ellipse(-9, -8, 8, 2.2, 0, 0, TAU);
     ctx.fillStyle = p.inkLight;
     ctx.fill();
-    rr(ctx, -15, -46, 10, 16, 5);
-    ctx.fillStyle = lgrad(ctx, -15, -46, -5, -30, [
-      [0, p.ink],
-      [1, p.inkLight],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -15, -46, 10, 16, 5);
+      ctx.fillStyle = lgrad(ctx, -15, -46, -5, -30, [
+        [0, p.ink],
+        [1, p.inkLight],
+      ]);
+      ctx.fill();
+    }, 7, 4, 1.5);
+    gloss(ctx, -12, -42, 1.6, 5.5, 0.1, 0.18);
     for (let i = 0; i < 3; i++) {
       rr(ctx, -14, -44 + i * 4.4, 8, 1.4, 0.7);
       ctx.fillStyle = p.shadow;
@@ -705,12 +751,17 @@ const strategy: PictureDraw = (ctx, S, p, t) => {
       [13.5, p.panel],
       [7, p.accent],
     ];
-    for (const [rad, col] of rings) {
-      ctx.beginPath();
-      ctx.arc(-10, 2, rad, 0, TAU);
-      ctx.fillStyle = col;
-      ctx.fill();
-    }
+    rings.forEach(([rad, col], i) => {
+      const draw = () => {
+        ctx.beginPath();
+        ctx.arc(-10, 2, rad, 0, TAU);
+        ctx.fillStyle = col;
+        ctx.fill();
+      };
+      if (i === 0) shadowed(ctx, draw, 9, 6, 1.5);
+      else draw();
+    });
+    gloss(ctx, -15, -5, 7, 3, -0.5, 0.16);
     rr(ctx, -12, 22, 4, 14, 2);
     ctx.fillStyle = p.inkLight;
     ctx.fill();
@@ -757,12 +808,14 @@ const strategy: PictureDraw = (ctx, S, p, t) => {
 const ai: PictureDraw = (ctx, S, p, t) => {
   space(ctx, S, () => {
     // chip
-    rr(ctx, -20, 10, 40, 24, 4);
-    ctx.fillStyle = lgrad(ctx, -20, 10, 20, 34, [
-      [0, p.inkLight],
-      [1, p.ink],
-    ]);
-    ctx.fill();
+    shadowed(ctx, () => {
+      rr(ctx, -20, 10, 40, 24, 4);
+      ctx.fillStyle = lgrad(ctx, -20, 10, 20, 34, [
+        [0, p.inkLight],
+        [1, p.ink],
+      ]);
+      ctx.fill();
+    }, 9, 6, 2);
     for (let i = -2; i <= 2; i++) {
       ctx.fillStyle = p.inkLight;
       ctx.fillRect(-20 - 3, 13 + i * 4, 3, 2);
@@ -773,18 +826,30 @@ const ai: PictureDraw = (ctx, S, p, t) => {
     ctx.fill();
 
     // brain
+    shadowed(
+      ctx,
+      () => {
+        ctx.beginPath();
+        ctx.arc(-9, -2, 15, Math.PI * 0.4, Math.PI * 1.7);
+        ctx.arc(9, -2, 15, Math.PI * 1.3, Math.PI * 0.6);
+        ctx.closePath();
+        ctx.fillStyle = lgrad(ctx, -24, -15, 24, 10, [
+          [0, p.accent2],
+          [0.55, p.accent2],
+          [1, p.accent],
+        ]);
+        ctx.fill();
+      },
+      10,
+      6,
+      1.5,
+    );
+    gloss(ctx, -5, -12, 10, 4, -0.4, 0.22);
     ctx.save();
     ctx.beginPath();
     ctx.arc(-9, -2, 15, Math.PI * 0.4, Math.PI * 1.7);
     ctx.arc(9, -2, 15, Math.PI * 1.3, Math.PI * 0.6);
     ctx.closePath();
-    const bg = lgrad(ctx, -24, -15, 24, 10, [
-      [0, p.accent2],
-      [0.55, p.accent2],
-      [1, p.accent],
-    ]);
-    ctx.fillStyle = bg;
-    ctx.fill();
     ctx.clip();
     ctx.strokeStyle = p.shadow;
     ctx.globalAlpha = 0.25;
@@ -880,27 +945,39 @@ const it: PictureDraw = (ctx, S, p, t) => {
     }
 
     // cloud
+    shadowed(ctx, () => {
+      cloud(ctx, 2, -24, 46, 18);
+      ctx.fillStyle = lgrad(ctx, -18, -34, 24, -14, [
+        [0, p.white],
+        [1, p.panel],
+      ]);
+      ctx.fill();
+    }, 7, 4, 1);
     cloud(ctx, 2, -24, 46, 18);
-    ctx.fillStyle = lgrad(ctx, -18, -34, 24, -14, [
-      [0, p.white],
-      [1, p.panel],
-    ]);
-    ctx.fill();
     ctx.strokeStyle = p.ink;
     ctx.globalAlpha = 0.15;
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.globalAlpha = 1;
+    gloss(ctx, -8, -32, 9, 3.5, -0.3, 0.5);
 
     // rack
     for (let i = 0; i < 3; i++) {
       const y = 10 + i * 9.5;
-      rr(ctx, -22, y, 38, 8, 2);
-      ctx.fillStyle = lgrad(ctx, -22, y, 16, y + 8, [
-        [0, p.ink],
-        [1, p.inkLight],
-      ]);
-      ctx.fill();
+      shadowed(
+        ctx,
+        () => {
+          rr(ctx, -22, y, 38, 8, 2);
+          ctx.fillStyle = lgrad(ctx, -22, y, 16, y + 8, [
+            [0, p.ink],
+            [1, p.inkLight],
+          ]);
+          ctx.fill();
+        },
+        5,
+        3,
+        1,
+      );
       rr(ctx, -19, y + 2, 20, 1.3, 0.6);
       ctx.fillStyle = p.shadow;
       ctx.globalAlpha = 0.6;
@@ -924,9 +1001,17 @@ const it: PictureDraw = (ctx, S, p, t) => {
     ]);
     ctx.fillStyle = p.inkLight;
     ctx.fill();
-    rr(ctx, -18, -22, 36, 22, 2);
-    ctx.fillStyle = p.ink;
-    ctx.fill();
+    shadowed(
+      ctx,
+      () => {
+        rr(ctx, -18, -22, 36, 22, 2);
+        ctx.fillStyle = p.ink;
+        ctx.fill();
+      },
+      7,
+      4,
+      1.5,
+    );
     rr(ctx, -15.5, -19.5, 31, 17, 1);
     ctx.fillStyle = p.panel;
     ctx.fill();
@@ -943,19 +1028,28 @@ const it: PictureDraw = (ctx, S, p, t) => {
     // shield
     ctx.save();
     ctx.translate(20, 20);
-    poly(ctx, [
-      [0, -13],
-      [11, -8],
-      [11, 2],
-      [0, 14],
-      [-11, 2],
-      [-11, -8],
-    ]);
-    ctx.fillStyle = lgrad(ctx, -11, -13, 11, 14, [
-      [0, p.accent],
-      [1, p.accent2],
-    ]);
-    ctx.fill();
+    shadowed(
+      ctx,
+      () => {
+        poly(ctx, [
+          [0, -13],
+          [11, -8],
+          [11, 2],
+          [0, 14],
+          [-11, 2],
+          [-11, -8],
+        ]);
+        ctx.fillStyle = lgrad(ctx, -11, -13, 11, 14, [
+          [0, p.accent],
+          [1, p.accent2],
+        ]);
+        ctx.fill();
+      },
+      8,
+      5,
+      1.5,
+    );
+    gloss(ctx, -3, -7, 4.5, 2.2, -0.4, 0.3);
     const draw = Math.min(1, (t % 4) / 0.5);
     ctx.beginPath();
     ctx.moveTo(-5, 0);

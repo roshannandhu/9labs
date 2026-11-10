@@ -8,12 +8,20 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { palette, swatchTable, nearestSwatch, type SwatchTable } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
-import { particleBus, heroTarget, digitTarget, sameTarget, type ParticleTarget } from "./bus";
-import type { IconKey } from "@/content/site";
+import { particleBus, heroTarget, digitTarget, picTarget, sameTarget, type ParticleTarget } from "./bus";
+import { site, type IconKey } from "@/content/site";
 
-const SLOTS = ["hero", "stage"] as const;
+const SLOTS = ["hero", "stage-1", "stage-2", "stage-3", "stage-4", "stage-5", "stage-6", "stage-7", "stage-8", "stage-9", "finale"] as const;
 type SlotName = (typeof SLOTS)[number];
-const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : "stage");
+/** each service's own full-screen scene has its own named slot (`stage-<n>`); a digit only ever
+ * appears as the lead-in into scene 1, and "all nine" only ever appears in the finale. */
+const ICON_SLOT = new Map<IconKey, SlotName>(site.services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
+const slotFor = (t: ParticleTarget): SlotName => {
+  if (t.kind === "hero") return "hero";
+  if (t.kind === "all9") return "finale";
+  if (t.kind === "pic") return ICON_SLOT.get(t.icon) ?? "stage-1";
+  return "stage-1";
+};
 const isDark = () => document.documentElement.dataset.theme === "dark";
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 // how far into a flight the "landing" content still shows (fades out) / the "arriving" content
@@ -30,12 +38,12 @@ const easeOut = (x: number) => 1 - (1 - x) ** 3;
 const STAGGER = 0.16;
 
 /**
- * The one particle swarm — only the "Social media" scene (`scenes/Scene1Social.tsx`) still uses
- * it: that scene's own (non-pinned, reversible) scroll trigger writes `particleBus` directly as it
- * scrolls into view, flying the swarm from the hero 9 through the digit "1" into the phone
- * picture. Every other scene is plain CSS/canvas, untouched by this engine.
+ * The one particle swarm. `ServiceTrack` (`src/components/services/ServiceTrack.tsx`) writes
+ * `particleBus` directly, continuously, from the services section's own scroll position: the
+ * swarm flies from the hero 9 through the digit "1" into the first picture, then directly from
+ * picture to picture as each of the nine scenes scrolls past, and finally into the finale "9" —
+ * reversible the whole way, since it only ever follows that one scroll-derived number.
  *
-
  * Two layers, so nothing ever looks like dust once it has landed:
  * - **Formed** (at rest): a crisp picture or digit, drawn at full detail *inside* its slot in the
  *   page (so it scrolls natively, no jitter). A service picture keeps being redrawn every frame
@@ -131,7 +139,7 @@ export function ParticleStage() {
     // it sat a little in front of the page rather than glued flat to it
     const updateDrift = (name: SlotName) => {
       const s = rest.get(name);
-      const b = name === "stage" ? slotRect(name) : undefined;
+      const b = name === "hero" ? undefined : slotRect(name);
       if (!s) return;
       const off = b ? Math.max(-14, Math.min(14, (window.innerHeight / 2 - (b.top + b.height / 2)) * 0.045)) : 0;
       if (off === s.drift) return;
@@ -220,23 +228,35 @@ export function ParticleStage() {
       const resting = sameTarget(from, to);
       for (const name of SLOTS) updateDrift(name);
 
-      // the formed layers (always on: hero is static, the stage keeps living while resting)
+      // the formed layers (always on: hero is static, the active scene keeps living while resting;
+      // every other scene's slot is explicitly kept at 0 — only one is ever showing at a time)
+      drawFormed("hero", heroTarget, pal);
       if (resting) {
-        drawFormed("hero", heroTarget, pal);
         setOpacity("hero", 1);
-        drawFormed("stage", to, pal);
-        setOpacity("stage", 1);
+        const activeSlot = slotFor(to);
+        for (const name of SLOTS) {
+          if (name === "hero") continue;
+          if (name === activeSlot) {
+            drawFormed(name, to, pal);
+            setOpacity(name, 1);
+          } else {
+            setOpacity(name, 0);
+          }
+        }
       } else {
         const showFrom = u < 0.5;
         const heroInvolved = from.kind === "hero" || to.kind === "hero";
-        drawFormed("hero", heroTarget, pal);
         setOpacity("hero", heroInvolved ? (showFrom ? earlyOp(u) : lateOp(u)) : 1);
-        const stageContent = showFrom ? from : to;
-        if (stageContent.kind === "hero") {
-          setOpacity("stage", 0);
-        } else {
-          drawFormed("stage", stageContent, pal);
-          setOpacity("stage", showFrom ? earlyOp(u) : lateOp(u));
+        const content = showFrom ? from : to;
+        const contentSlot = slotFor(content);
+        for (const name of SLOTS) {
+          if (name === "hero") continue;
+          if (name === contentSlot && content.kind !== "hero") {
+            drawFormed(name, content, pal);
+            setOpacity(name, showFrom ? earlyOp(u) : lateOp(u));
+          } else {
+            setOpacity(name, 0);
+          }
         }
       }
 
@@ -384,10 +404,9 @@ export function ParticleStage() {
       const dark = isDark();
       started = true;
       heroT0 = performance.now();
-      digitShape("9", N, family, dark); // the hero, needed immediately
-      const steps: ParticleTarget[] = [];
-      for (let i = 1; i <= 9; i++) steps.push(digitTarget(i));
-      for (const icon of Object.keys(PICTURES) as IconKey[]) steps.push({ kind: "pic", icon });
+      digitShape("9", N, family, dark); // the hero (and the finale) — needed immediately
+      const steps: ParticleTarget[] = [digitTarget(1)]; // the lead-in into scene 1
+      for (const s of site.services) steps.push(picTarget(s.icon)); // in scene order, scene 1 first
       for (const step of steps) {
         await new Promise((res) => setTimeout(res, 0));
         if (cancelled) return;
