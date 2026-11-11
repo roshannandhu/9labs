@@ -1047,11 +1047,10 @@ html[data-intro="playing"] [data-logo-9] {
   box-shadow: none;
 }
 /* ---- the orbit (laptop/tablet) ------------------------------------------------------------
-   Two wheels that turn together like a pair of gears: the icon wheel (OrbitNav.tsx `OrbitGear`)
-   in the gap left of the card, and the card wheel (useServiceTrack `placeOrbit`), whose swing
-   uses the gap on the right. Both are positioned every frame from JS, so there's deliberately no
-   CSS transition on transform or opacity — it would chase the per-frame writes instead of
-   smoothing them. The query matches `ORBIT_MQ` in useServiceTrack.ts — keep the two in step. */
+   Left-hand icon wheel (`OrbitNav.tsx` `OrbitGear`) beside the horizontal card row: active card
+   is centred cleanly to the right of `OrbitGear`, the next card peeks in horizontally from the right,
+   and cards sliding out to the left fade smoothly just before reaching the `OrbitGear` bay. The
+   query matches `ORBIT_MQ` in useServiceTrack.ts — keep the two in step. */
 .svc-stage {
   position: relative;
 }
@@ -1063,16 +1062,20 @@ html[data-intro="playing"] [data-logo-9] {
   .svc-scroller {
     --gear-w: clamp(150px, 19vw, 290px);
     --card-w: min(calc(100vw - 2 * var(--gear-w) - 56px), 980px);
-    --card-h: clamp(460px, calc(100svh - 300px), 680px);
+    --card-h: clamp(500px, calc(100svh - 240px), 740px);
   }
   .svc-scroller {
-    padding-block: 36px;
-    /* native snap points don't follow transforms, and here the cards move by transform — the
-       settle onto a card is done in JS instead (useServiceTrack) */
-    scroll-snap-type: none;
-    /* the card wheel turns behind a soft window: cards fade in and out over its last 36px */
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 36px, #000 calc(100% - 36px), transparent);
-    mask-image: linear-gradient(to bottom, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+    /* fade cards cleanly along the OrbitGear margin so left-exiting cards never cross under the icons */
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent calc(50% - var(--card-w) / 2 - 22px),
+      #000 calc(50% - var(--card-w) / 2 - 2px)
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent calc(50% - var(--card-w) / 2 - 22px),
+      #000 calc(50% - var(--card-w) / 2 - 2px)
+    );
   }
   .orbit-gear {
     display: block;
