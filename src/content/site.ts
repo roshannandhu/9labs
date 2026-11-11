@@ -1,11 +1,14 @@
 /**
- * All homepage content for the frontend demo.
+ * The website's built-in content: the defaults the site ships with.
  *
- * Copy marked "working draft" in the client brief is used verbatim. Items the client
- * will supply later (logo, contact details, social links, e-book titles/covers) use
- * clearly fake placeholders. The shape of this file mirrors the future Payload CMS
- * collections/globals, so the admin can replace it without UI changes.
+ * Everything here can be changed in the admin (Payload). `getSite()` (src/lib/content/getSite.ts)
+ * lays the admin's values over these, so anything left empty there falls back to this file, and
+ * `pnpm seed` copies this file into a fresh database. Components read the merged result with
+ * `useSite()`; only the fixed facts of the nine activities (their order, icon and anchor) are
+ * read from here directly, because each position has its own animated scene.
  */
+import type { SiteData } from "./types";
+export type * from "./types";
 
 export type IconKey =
   | "social"
@@ -28,6 +31,8 @@ export type Service = {
   tags: string[];
   /** "What do you need?" chips in the Talk-to-us window (admin: add / edit / remove). */
   needs: string[];
+  /** Send this activity's enquiries to a different WhatsApp number (digits only). */
+  whatsappNumber?: string;
 };
 
 /** The 9 Quiz: each answer adds points to activities (by their icon key); the top 3 are suggested. */
@@ -46,6 +51,8 @@ export type QuizQuestion = {
   hint?: string;
   /** Allow several answers (shows a Next button). */
   multi?: boolean;
+  /** Which part of the result sentence this question fills ("You're {who}, your goal is {goal}…"). */
+  role?: "who" | "goal" | "when";
   options: QuizOption[];
 };
 
@@ -61,22 +68,28 @@ export type Ebook = {
   pages: number;
   readTime: string;
   chapters: string[];
-  /** Cover image (uploaded in the admin later). Without one, a designed cover is drawn from `tone`. */
+  /** Cover image (uploaded in the admin). Without one, a designed cover is drawn from `tone`. */
   cover?: string;
 };
 
-export const site = {
+export const site: SiteData = {
   name: "Nine Labs Solutions",
   shortName: "Nine Labs",
   location: "Dubai South, Dubai, UAE",
   type: "Marketing, events and technology company",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ninelabs.example",
+  tagline: "Marketing, events and technology — the bridge between your business and your results.",
+  mapUrl: "https://maps.google.com/?q=Dubai+South",
+  geo: { locality: "Dubai South", region: "Dubai", country: "AE", latitude: 24.89, longitude: 55.16 },
 
   contact: {
     email: "hello@ninelabs.example",
     phone: "+971 5X XXX XXXX",
     whatsappNumber: "971500000000",
     whatsappText: "Hi Nine Labs, I'd like to talk about a project.",
+    whatsappFab: true,
+    fabLabel: "Chat with us",
+    chatLabel: "Chat on WhatsApp",
   },
 
   socials: [
@@ -86,7 +99,7 @@ export const site = {
     { key: "facebook", label: "Facebook", href: "#" },
     { key: "tiktok", label: "TikTok", href: "#" },
     { key: "youtube", label: "YouTube", href: "#" },
-  ] as const,
+  ],
 
   nav: [
     { label: "Home", href: "#home", id: "home" },
@@ -96,13 +109,29 @@ export const site = {
     { label: "The 9 Quiz", href: "#quiz", id: "quiz" },
     { label: "Contact", href: "#contact", id: "contact" },
   ],
+  navCta: { label: "Start The 9 Quiz", action: "quiz" },
+  sections: ["services", "about", "quiz", "ebooks", "contact"],
 
   hero: {
-    eyebrow: "Marketing · Events · Technology — Dubai South",
-    headline: "Marketing, events and technology, built to deliver results.",
+    eyebrow: "Marketing · Events · Technology",
+    eyebrowExtra: " — Dubai South",
+    headline: "Marketing, events and technology,",
+    headlineAccent: "built to deliver results.",
     sub: "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes.",
-    primaryCta: "Start The 9 Quiz",
-    secondaryCta: "Download our free e-books",
+    primary: { label: "Start The 9 Quiz", action: "quiz" },
+    secondary: { label: "Download our free e-books", action: "link", href: "#ebooks" },
+    caption: "9 services · one team",
+  },
+
+  servicesSection: {
+    label: "Our 9 labs",
+    heading: "Nine activities.",
+    accent: "One team.",
+    intro:
+      "Everything a brand needs to grow — from the first strategy session to the last frame of the event film — planned and delivered by one team.",
+    outro: "All nine.",
+    outroAccent: "One team.",
+    cardCta: "Talk to us about this",
   },
 
   services: [
@@ -205,6 +234,25 @@ export const site = {
   ] satisfies Service[],
 
   about: {
+    label: "About us",
+    strip: "Nine activities · one team · one aim",
+    story: {
+      label: "How we work",
+      heading: "Three steps",
+      accent: "across the bridge.",
+      yourSideLabel: "Your side",
+      yourSideTitle: "Your business",
+      yourSideChips: ["Goals", "Ideas", "Feedback"],
+      ourSideLabel: "Our side",
+      ourSideTitle: "Nine Labs",
+      middleLabel: "The middle",
+      pillOut: "Your goals →",
+      pillIn: "← Our expertise",
+      result: "✓ Results",
+    },
+    valuesLabel: "Our values",
+    valuesHeading: "What we stand on.",
+    valuesIntro: "Five values that hold the bridge up — in every campaign, video, event and strategy.",
     statement: "We are the bridge between your business and your results.",
     body:
       "Nine Labs Solutions is a marketing, events and technology company based in Dubai South. We are the bridge between your business and your results. We see your company as our own, and we work in both directions: your goals come to us, and our expertise goes to you. Nine activities, one team, one aim: results you can see.",
@@ -231,12 +279,37 @@ export const site = {
   ] satisfies Value[],
 
   quiz: {
-    heading: "Meet The 9 Quiz.",
+    label: "The 9 Quiz",
+    heading: "Meet",
+    accent: "The 9 Quiz.",
+    meta: "{count} questions · about a minute · no sign-up",
+    result: {
+      label: "Your Nine Labs plan",
+      heading: "Here’s how we’d get you across.",
+      summary: "You're {who}, and your main goal is “{goal}”. Here is where Nine Labs would start{when}.",
+      why: "Because you said “{answers}”.",
+      steps: [
+        { title: "A short discovery call", text: "We listen first: your goals, your customers and what has worked so far." },
+        { title: "Start with {first}", text: "{firstDescription}" },
+        { title: "Measure, then grow", text: "Add {next} when the numbers say it's time. Clear monthly reporting." },
+      ],
+      matches: 3,
+      whatsappCta: "Send this to Nine Labs on WhatsApp",
+      whatsappIntro: "Hi Nine Labs! I took The 9 Quiz.",
+      whatsappOutro: "Can we talk?",
+      emailEnabled: true,
+      emailPlaceholder: "Or e-mail it to me: you@company.com",
+      emailCta: "E-mail me",
+      emailSent: "Plan on its way to {email}.",
+      retake: "↺ Retake",
+      ebooksCta: "Get the free e-books →",
+    },
     text: "Nine quick questions, about a minute. Tap your answers and see which of our nine activities fit your business best.",
     cta: "Start The 9 Quiz",
     questions: [
       {
         id: "who",
+        role: "who",
         label: "About us",
         q: "What best describes you?",
         options: [
@@ -249,6 +322,7 @@ export const site = {
       },
       {
         id: "goal",
+        role: "goal",
         label: "Main goal",
         q: "What is your main goal right now?",
         options: [
@@ -332,6 +406,7 @@ export const site = {
       },
       {
         id: "when",
+        role: "when",
         label: "Start",
         q: "When would you like to start?",
         options: [
@@ -348,8 +423,76 @@ export const site = {
   enquiry: {
     title: "Talk to us",
     intro: "Tell us a little, and it goes straight to our team on WhatsApp.",
+    activityLabel: "Activity",
+    needsLabel: "What do you need?",
+    budgetLabel: "Budget",
+    timelineLabel: "When",
+    nameLabel: "Your name *",
+    namePlaceholder: "Your name",
+    nameError: "Please add your name.",
+    companyLabel: "Company",
+    companyPlaceholder: "Optional",
+    messageLabel: "Message",
+    messagePlaceholder: "Anything else we should know? (optional)",
+    showBudget: true,
+    showTimeline: true,
+    showCompany: true,
+    showMessage: true,
+    whatsappCta: "Send on WhatsApp",
+    emailEnabled: true,
+    emailCta: "E-mail instead",
+    greeting: "Hi Nine Labs! 👋",
+    signature: "(Sent from the Nine Labs website)",
+    thanksTitle: "Thanks, {name}!",
+    thanksText: "Your message is ready in WhatsApp — just press send. We usually reply within a working day.",
+    again: "Open WhatsApp again",
     budgets: ["Under AED 5k", "AED 5–20k", "AED 20–50k", "AED 50k+", "Not sure yet"],
     timelines: ["As soon as possible", "Within a month", "In 1–3 months", "Just exploring"],
+  },
+
+  ebooksSection: {
+    label: "Free e-books",
+    heading: "Principles, not tricks.",
+    accent: "Free to read.",
+    intro: "Three short e-books that explain how growth really works — and how we work. Pick one, open it, and we’ll send it to your inbox.",
+    cardLabel: "E-book {n} · {pages} pages",
+    cardCta: "Get the free e-book",
+    insideLabel: "Inside this book",
+  },
+  ebookForm: {
+    eyebrow: "Free e-book · {n}",
+    title: "Where should we send it?",
+    text: "We’ll email “{title}” to you.",
+    nameLabel: "Full name",
+    namePlaceholder: "Your name",
+    emailLabel: "Email",
+    emailPlaceholder: "you@company.com",
+    phoneLabel: "Phone / WhatsApp",
+    phonePlaceholder: "50 123 4567",
+    phoneRequired: true,
+    companyLabel: "Company",
+    companyPlaceholder: "Company name",
+    showCompany: true,
+    consent: "I agree to receive this e-book and occasional updates from Nine Labs Solutions. Unsubscribe anytime.",
+    submit: "Send me the e-book",
+    sending: "Sending…",
+    codes: [
+      { code: "+971", label: "UAE +971" },
+      { code: "+966", label: "KSA +966" },
+      { code: "+974", label: "QA +974" },
+      { code: "+965", label: "KW +965" },
+      { code: "+973", label: "BH +973" },
+      { code: "+968", label: "OM +968" },
+      { code: "+91", label: "IN +91" },
+      { code: "+44", label: "UK +44" },
+      { code: "+1", label: "US +1" },
+    ],
+    defaultCode: "+971",
+    successTitle: "You’re on the list{name}!",
+    successPending: "We’ll send “{title}” to {email} as soon as it’s approved. Keep an eye on your inbox.",
+    successSent: "“{title}” is on its way to {email}. Check your inbox (and the spam folder, just in case).",
+    error: "Sorry, that didn’t go through. Please try again in a moment.",
+    back: "Back to the shelf",
   },
 
   ebooks: [
@@ -389,19 +532,65 @@ export const site = {
   ] satisfies Ebook[],
 
   closing: {
-    line: "Ready to cross the bridge?",
+    label: "Contact",
+    heading: "Ready to cross",
+    accent: "the bridge?",
+    text: "Tell us where you want to go. Your goals reach us, our expertise reaches you — and together we get across.",
+    emailLabel: "Email",
+    phoneLabel: "Phone / WhatsApp",
+    visitLabel: "Visit",
     cta: "Start The 9 Quiz",
     loop: "Ready to cross the bridge? ✦ Start The 9 Quiz ✦ ",
   },
 
   footer: {
     copyright: "© 2026 Nine Labs Solutions. All rights reserved.",
+    navTitle: "Navigate",
+    activitiesTitle: "Activities",
+    contactTitle: "Contact",
+    pagesTitle: "Company",
+    links: [
+      { label: "About us", href: "/about" },
+      { label: "FAQ", href: "/faq" },
+      { label: "Privacy", href: "/privacy" },
+    ],
+  },
+
+  faqPreview: { enabled: false, label: "FAQ", heading: "Questions,", accent: "answered.", cta: "See all questions", items: [] },
+
+  theme: { default: "light", toggle: true, intro: true, grid: 0.06, colors: {} },
+
+  seo: {
+    title: "Nine Labs Solutions — Marketing, Events & Technology in Dubai",
+    titleTemplate: "%s · Nine Labs Solutions",
+    description:
+      "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes.",
+    keywords: [
+      "marketing agency Dubai",
+      "digital marketing Dubai",
+      "social media marketing UAE",
+      "events and trade shows Dubai",
+      "AI consultancy Dubai",
+      "IT consultancy UAE",
+      "video production Dubai",
+      "PR agency Dubai",
+      "Dubai South",
+    ],
+    index: true,
+  },
+
+  integrations: {
+    cookieText: "We use cookies to understand how the site is used. You can accept or decline.",
+    cookieAccept: "Accept",
+    cookieDecline: "Decline",
   },
 };
 
-export type Site = typeof site;
+export type Site = SiteData;
 
-/** A WhatsApp chat link to Nine Labs with a pre-filled message. */
-export const waHref = (text: string = site.contact.whatsappText) =>
-  `https://wa.me/${site.contact.whatsappNumber}?text=${encodeURIComponent(text)}`;
-export const whatsappHref = waHref();
+/** A WhatsApp chat link with a pre-filled message. */
+export const waLink = (number: string, text: string) => `https://wa.me/${number.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
+
+/** Fill `{name}` style placeholders in admin-edited text. Unknown placeholders are left as they are. */
+export const fill = (template: string, values: Record<string, string | number | undefined>) =>
+  template.replace(/\{(\w+)\}/g, (m, k: string) => (values[k] === undefined ? m : String(values[k])));

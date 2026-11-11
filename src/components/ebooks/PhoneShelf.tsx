@@ -2,14 +2,15 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { site } from "@/content/site";
+import { fill } from "@/content/site";
+import { useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { Book3D } from "./Book3D";
 
 const W = "min(54vw, 224px)";
 const H = `calc(${W} * 1.45)`;
 const STEP = `calc(${W} * 0.92)`; // centre → peek distance
-const GLOW: Record<string, string> = { blue: "#5a7bf0", purple: "#8c53fe", duo: "#5ce0e6" };
+const GLOW: Record<string, string> = { blue: "#5a7bf0", purple: "var(--brand-a)", duo: "var(--brand-b)" };
 
 /**
  * E-books on a phone: a horizontal carousel, one book at a time with the previous and next ones
@@ -20,6 +21,8 @@ const GLOW: Record<string, string> = { blue: "#5a7bf0", purple: "#8c53fe", duo: 
  */
 export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
   const { reduced } = useDemo();
+  const site = useSite();
+  const t = site.ebooksSection;
   const books = site.ebooks;
   const n = books.length;
   const [cur, setCur] = useState(0);
@@ -52,7 +55,7 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
         }}
         onPointerCancel={() => (start.current = null)}
         aria-roledescription="carousel"
-        aria-label="Free e-books"
+        aria-label={t.label}
       >
         {/* soft glow in the focused book's colour (a gradient, no blur filter: cheap on phones) */}
         <span
@@ -105,7 +108,7 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
         </button>
         <div className="flex gap-2" aria-hidden="true">
           {books.map((b, i) => (
-            <span key={b.slug} className={`h-1.5 rounded-full transition-all duration-500 ${i === mod(cur) ? "w-6 bg-[linear-gradient(90deg,#8c53fe,#5ce0e6)]" : "w-1.5 bg-white/25"}`} />
+            <span key={b.slug} className={`h-1.5 rounded-full transition-all duration-500 ${i === mod(cur) ? "w-6 bg-[linear-gradient(90deg,var(--brand-a),var(--brand-b))]" : "w-1.5 bg-white/25"}`} />
           ))}
         </div>
         <button type="button" onClick={() => setCur((c) => c + 1)} className="grid h-11 w-11 place-items-center rounded-full border border-white/12 text-white/80" aria-label="Next e-book">
@@ -126,12 +129,12 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
             transition={{ duration: reduced ? 0 : 0.35 }}
           >
             <p className="label-mono">
-              E-book {book.n} · {book.pages} pages
+              {fill(t.cardLabel, { n: book.n, pages: book.pages })}
             </p>
             <h3 className="mt-2 text-[22px] font-semibold">{book.title}</h3>
             <p className="mx-auto mt-2 max-w-[34ch] text-[15px] leading-relaxed text-nl-ink">{book.oneLiner}</p>
             <button type="button" className="btn btn-primary btn-sm mt-5" onClick={() => onOpen(book.slug)}>
-              Get the free e-book
+              {t.cardCta}
             </button>
           </motion.div>
         </AnimatePresence>

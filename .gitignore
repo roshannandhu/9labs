@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local database, uploaded files and the development mail outbox
+/data/
+/uploads/
+!.env.example

@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { site } from "@/content/site";
-import { useQuiz } from "@/components/providers/QuizProvider";
+import { usePathname } from "next/navigation";
+import { useSite } from "@/components/providers/SiteProvider";
+import { CtaButton } from "./CtaButton";
 import Magnet from "@/components/reactbits/Magnet";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
+/** On inner pages (/about, /faq…) a section link points back to the homepage: "#services" → "/#services". */
+export const navHref = (href: string, home: boolean) => (href.startsWith("#") && !home ? `/${href}` : href);
+
 export function Nav() {
-  const quiz = useQuiz();
+  const site = useSite();
+  const pathname = usePathname();
+  const home = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState("home");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +39,7 @@ export function Nav() {
   }, []);
 
   useEffect(() => {
+    if (!home) return;
     const ids = site.nav.map((n) => n.id);
     const els = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const io = new IntersectionObserver(
@@ -43,7 +50,10 @@ export function Nav() {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [home, site.nav]);
+
+  // the current link: the section in view on the homepage, the page itself elsewhere
+  const current = home ? activeId : pathname;
 
   return (
     // Always visible: the logo lives here permanently (the landing animation lands on it).
@@ -56,7 +66,7 @@ export function Nav() {
         aria-hidden="true"
       />
       <nav className="container-x relative flex h-[var(--nav-h)] items-center justify-between gap-6" aria-label="Main">
-        <a href="#home" aria-label="Nine Labs Solutions — back to top" className="-my-2 rounded-xl py-2" data-cursor="Home">
+        <a href={home ? "#home" : "/"} aria-label={`${site.name} — ${home ? "back to top" : "home"}`} className="-my-2 rounded-xl py-2" data-cursor="Home">
           <Logo />
         </a>
 
@@ -64,10 +74,10 @@ export function Nav() {
           {site.nav.map((item) => (
             <li key={item.id}>
               <a
-                href={item.href}
+                href={navHref(item.href, home)}
                 className="link-glow text-[13px] font-medium text-white/70 transition-colors hover:text-white data-[active=true]:text-white"
-                data-active={activeId === item.id}
-                aria-current={activeId === item.id ? "true" : undefined}
+                data-active={current === item.id}
+                aria-current={current === item.id ? "true" : undefined}
               >
                 {item.label}
               </a>
@@ -78,12 +88,10 @@ export function Nav() {
         <div className="flex items-center gap-2.5">
           <span className="hidden sm:block">
             <Magnet padding={40} magnetStrength={3} maxOffset={10}>
-              <button type="button" className="btn btn-primary btn-nav" onClick={() => quiz.open()} data-cursor="Start">
-                Start The 9 Quiz
-              </button>
+              {site.navCta.label && <CtaButton cta={site.navCta} className="btn btn-primary btn-nav" data-cursor="Start" />}
             </Magnet>
           </span>
-          <ThemeToggle />
+          {site.theme.toggle && <ThemeToggle />}
           <button
             type="button"
             className="relative grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-white/[0.03] text-white lg:hidden"
@@ -103,7 +111,7 @@ export function Nav() {
           </button>
         </div>
       </nav>
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} activeId={activeId} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} activeId={current} home={home} />
     </header>
   );
 }

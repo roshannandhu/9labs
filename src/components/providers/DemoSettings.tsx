@@ -45,16 +45,21 @@ function readStored(): Partial<DemoSettings> {
   }
 }
 
-export function DemoSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<DemoSettings>(DEFAULT_SETTINGS);
+/** The Concept Lab (a demo tool for trying colours) is off unless NEXT_PUBLIC_DEMO_LAB=true. */
+export const LAB_ENABLED = process.env.NEXT_PUBLIC_DEMO_LAB === "true";
+
+export function DemoSettingsProvider({ children, initial }: { children: React.ReactNode; initial?: Partial<DemoSettings> }) {
+  const base = useMemo(() => ({ ...DEFAULT_SETTINGS, ...initial }), [initial]);
+  const [settings, setSettings] = useState<DemoSettings>(base);
   const [systemReduced, setSystemReduced] = useState(false);
   const [ready, setReady] = useState(false);
 
   // Load from storage + URL once on the client.
   useEffect(() => {
-    const stored = readStored();
+    // the look comes from the admin; a browser-stored override only exists for the demo lab
+    const stored = LAB_ENABLED ? readStored() : {};
     const params = new URLSearchParams(window.location.search);
-    const next: DemoSettings = { ...DEFAULT_SETTINGS, ...stored };
+    const next: DemoSettings = { ...base, ...stored };
     if (params.get("motion") === "reduce") next.motion = "reduce";
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate client-only settings after SSR
     setSettings(next);
@@ -65,7 +70,7 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
     const onChange = (e: MediaQueryListEvent) => setSystemReduced(e.matches);
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
-  }, []);
+  }, [base]);
 
   const reduced = settings.motion === "reduce" || (settings.motion === "system" && systemReduced);
 
@@ -82,7 +87,7 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
 
   // Persist (best effort).
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !LAB_ENABLED) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch {
@@ -93,7 +98,7 @@ export function DemoSettingsProvider({ children }: { children: React.ReactNode }
   const set = useCallback((patch: Partial<DemoSettings>) => {
     setSettings((s) => ({ ...s, ...patch }));
   }, []);
-  const reset = useCallback(() => setSettings(DEFAULT_SETTINGS), []);
+  const reset = useCallback(() => setSettings(base), [base]);
 
   const value = useMemo(() => ({ settings, set, reset, reduced, ready }), [settings, set, reset, reduced, ready]);
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;

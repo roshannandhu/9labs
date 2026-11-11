@@ -1,7 +1,7 @@
-import { site } from "@/content/site";
+import type { SiteData } from "@/content/types";
 
 /** Structured data for search engines (Organization + ProfessionalService + the nine services + e-books). */
-export function buildJsonLd() {
+export function buildJsonLd(site: SiteData) {
   const orgId = `${site.url}/#organization`;
   return {
     "@context": "https://schema.org",
@@ -12,15 +12,15 @@ export function buildJsonLd() {
         name: site.name,
         url: site.url,
         description: site.hero.sub,
-        slogan: "The bridge between your business and your results.",
+        slogan: site.about.statement,
         email: site.contact.email,
         address: {
           "@type": "PostalAddress",
-          addressLocality: "Dubai South",
-          addressRegion: "Dubai",
-          addressCountry: "AE",
+          addressLocality: site.geo.locality,
+          addressRegion: site.geo.region,
+          addressCountry: site.geo.country,
         },
-        geo: { "@type": "GeoCoordinates", latitude: 24.89, longitude: 55.16 },
+        geo: { "@type": "GeoCoordinates", latitude: site.geo.latitude, longitude: site.geo.longitude },
         areaServed: ["Dubai", "United Arab Emirates", "GCC"],
         knowsAbout: site.services.map((s) => s.title),
         sameAs: site.socials.map((s) => s.href).filter((h) => h.startsWith("http")),

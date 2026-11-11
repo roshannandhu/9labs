@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { site, waHref, type QuizQuestion } from "@/content/site";
+import { fill } from "@/content/site";
+import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
+import { beacon, newRef, postJson } from "@/lib/api";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
 import { scrollToId } from "@/lib/scroll";
 import { useModalLock } from "@/lib/useModalLock";
@@ -10,30 +12,36 @@ import { useDemo } from "@/components/providers/DemoSettings";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
-const questions = site.quiz.questions as QuizQuestion[];
-const COUNT = questions.length; // 9
 const ease = [0.16, 1, 0.3, 1] as const;
 
 /**
- * The 9 Quiz: nine questions, one per screen, answered with big tap cards (keys 1–5 work too).
+ * The 9 Quiz: the admin's questions, one per screen, answered with big tap cards (keys 1–5 work too).
  * Single-answer questions move on by themselves; "pick all that apply" ones get a Next button.
  * The result is worked out in the browser (src/lib/quiz/score.ts): the top three activities with
  * a match score and why, a three-step plan, and one tap to send it all to Nine Labs on WhatsApp.
+ * Each finished quiz is also saved for the admin (Quiz → Quiz results), in the background.
  */
 export default function QuizOverlay({ open, first, onClose }: { open: boolean; first: string; onClose: () => void }) {
   const { reduced } = useDemo();
-  const [idx, setIdx] = useState(0); // 0..8 questions · 9 result
+  const site = useSite();
+  const wa = useWhatsApp();
+  const questions = site.quiz.questions;
+  const COUNT = questions.length;
+  const t = site.quiz.result;
+  const ref = useRef("");
+  const [idx, setIdx] = useState(0); // 0..COUNT-1 questions · COUNT result
   const [dir, setDir] = useState(1);
   const [answers, setAnswers] = useState<QuizAnswers>({});
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const advance = useRef(0);
 
   // fresh start every time it opens (optionally with question 1 already answered)
   useEffect(() => {
     if (!open) return;
-    const start = first && questions[0].options.some((o) => o.id === first);
+    const start = Boolean(first) && Boolean(questions[0]?.options.some((o) => o.id === first));
     /* eslint-disable react-hooks/set-state-in-effect -- reset the dialog each time it opens */
     setAnswers(start ? { [questions[0].id]: [first] } : {});
     setIdx(start ? 1 : 0);
@@ -41,6 +49,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     setSent(false);
     setEmail("");
     /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh start only when it opens, not when content refreshes
   }, [open, first]);
 
   useModalLock(open, panel, onClose);
@@ -52,7 +61,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
       setDir(to >= idx ? 1 : -1);
       setIdx(Math.max(0, Math.min(COUNT, to)));
     },
-    [idx],
+    [idx, COUNT],
   );
 
   const q = idx < COUNT ? questions[idx] : null;
@@ -98,7 +107,16 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     return () => window.removeEventListener("keydown", onKey);
   }, [open, q, picked.length, idx, choose, go]);
 
-  const result = useMemo(() => (idx >= COUNT ? scoreQuiz(answers) : null), [idx, answers]);
+  const result = useMemo(() => (idx >= COUNT ? scoreQuiz(site, answers) : null), [idx, answers, site, COUNT]);
+
+  // a finished quiz is saved once for the admin; the result never waits for it
+  const done = Boolean(result);
+  useEffect(() => {
+    if (!done || !open) return;
+    ref.current = newRef();
+    void postJson("/api/public/quiz-submissions", { ref: ref.current, answers });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished quiz
+  }, [done, open]);
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
 
   return (
@@ -117,7 +135,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
             className="pointer-events-none fixed inset-0 opacity-80"
             style={{
               background:
-                "radial-gradient(50% 40% at 50% 0%, color-mix(in srgb, #8c53fe 20%, transparent), transparent 70%), radial-gradient(40% 40% at 85% 100%, color-mix(in srgb, #5ce0e6 16%, transparent), transparent 70%)",
+                "radial-gradient(50% 40% at 50% 0%, color-mix(in srgb, var(--brand-a) 20%, transparent), transparent 70%), radial-gradient(40% 40% at 85% 100%, color-mix(in srgb, var(--brand-b) 16%, transparent), transparent 70%)",
             }}
             aria-hidden="true"
           />
@@ -126,7 +144,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
             ref={panel}
             role="dialog"
             aria-modal="true"
-            aria-label="The 9 Quiz"
+            aria-label={site.quiz.label}
             tabIndex={-1}
             className="relative mx-auto flex min-h-full w-full max-w-2xl flex-col px-4 pb-8 pt-4 outline-none sm:px-6 sm:pt-7"
             initial={{ y: 24, opacity: 0 }}
@@ -137,7 +155,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
             {/* header: title, step, close */}
             <div className="flex items-center justify-between gap-3">
               <p className="label-mono flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#8c53fe]" /> The 9 Quiz
+                <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--brand-a)]" /> {site.quiz.label}
               </p>
               <div className="flex items-center gap-3">
                 {q && (
@@ -149,7 +167,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                   type="button"
                   onClick={onClose}
                   className="grid h-11 w-11 place-items-center rounded-full border border-white/12 text-white/80 transition-colors hover:border-nl-purple hover:text-white"
-                  aria-label="Close The 9 Quiz"
+                  aria-label={`Close ${site.quiz.label}`}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
                     <path d="M2 2l10 10M12 2L2 12" />
@@ -158,12 +176,12 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
               </div>
             </div>
 
-            {/* progress: nine segments */}
-            <div className="mt-4 grid grid-cols-9 gap-1.5" aria-hidden="true">
+            {/* progress: one segment per question */}
+            <div className="mt-4 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${COUNT}, minmax(0, 1fr))` }} aria-hidden="true">
               {questions.map((qq, i) => (
                 <span key={qq.id} className="h-1 overflow-hidden rounded-full bg-white/10">
                   <span
-                    className="block h-full rounded-full bg-gradient-to-r from-[#8c53fe] to-[#5ce0e6] transition-[width] duration-500"
+                    className="block h-full rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)] transition-[width] duration-500"
                     style={{ width: i < idx || idx >= COUNT ? "100%" : i === idx ? "35%" : "0%" }}
                   />
                 </span>
@@ -180,7 +198,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                     exit={{ opacity: 0, x: reduced ? 0 : -dir * 40 }}
                     transition={{ duration: 0.32, ease }}
                   >
-                    <p className="label-mono !text-[#8c53fe]">Question {idx + 1}</p>
+                    <p className="label-mono !text-[color:var(--brand-a)]">Question {idx + 1}</p>
                     <h2 className="mt-2 text-[clamp(1.6rem,5.4vw,2.6rem)] font-semibold leading-[1.06] tracking-[-0.035em] text-white">{q.q}</h2>
                     {q.hint && <p className="mt-2 text-[14.5px] text-nl-ink">{q.hint}</p>}
 
@@ -195,7 +213,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                             aria-checked={on}
                             onClick={() => choose(o.id)}
                             className={`quiz-option group relative flex min-h-[58px] items-center gap-3 rounded-2xl border px-4 py-3 text-left text-[15.5px] font-medium transition-all duration-200 sm:min-h-[64px] sm:text-base ${
-                              on ? "border-transparent text-white" : "border-white/12 bg-[var(--chip-bg)] text-white/85 hover:-translate-y-0.5 hover:border-[#8c53fe]/60"
+                              on ? "border-transparent text-white" : "border-white/12 bg-[var(--chip-bg)] text-white/85 hover:-translate-y-0.5 hover:border-[color:var(--brand-a)]/60"
                             } ${i === q.options.length - 1 && q.options.length % 2 ? "sm:col-span-2" : ""}`}
                             data-on={on}
                           >
@@ -232,9 +250,9 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                 ) : (
                   result && (
                     <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
-                      <p className="label-mono !text-[#8c53fe]">Your Nine Labs plan</p>
+                      <p className="label-mono !text-[color:var(--brand-a)]">{t.label}</p>
                       <h2 className="mt-2 text-[clamp(1.8rem,5vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white">
-                        Here’s how we’d get you across.
+                        {t.heading}
                       </h2>
                       <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.summary}</p>
 
@@ -247,7 +265,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                             transition={{ delay: 0.15 + i * 0.1, duration: 0.5, ease }}
                             className="flex items-start gap-4 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5"
                           >
-                            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[#8c53fe]/35 bg-[#8c53fe]/10 text-white">
+                            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white">
                               <ActivityIcon icon={m.service.icon} size={26} play />
                             </span>
                             <span className="min-w-0 flex-1">
@@ -255,11 +273,11 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                                 <span className="font-display text-[16px] font-semibold text-white sm:text-[17px]">
                                   {i + 1}. {m.service.title}
                                 </span>
-                                <span className="shrink-0 font-digits text-xs font-black text-[#8c53fe]">{m.score}%</span>
+                                <span className="shrink-0 font-digits text-xs font-black text-[color:var(--brand-a)]">{m.score}%</span>
                               </span>
                               <span className="mt-2 block h-1 overflow-hidden rounded-full bg-white/10">
                                 <motion.span
-                                  className="block h-full rounded-full bg-gradient-to-r from-[#8c53fe] to-[#5ce0e6]"
+                                  className="block h-full rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]"
                                   initial={{ width: 0 }}
                                   animate={{ width: `${m.score}%` }}
                                   transition={{ delay: 0.35 + i * 0.1, duration: 0.9, ease }}
@@ -274,7 +292,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
                         {result.steps.map((s, i) => (
                           <li key={s.title} className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4">
-                            <span className="font-digits text-xs font-black text-[#8c53fe]">0{i + 1}</span>
+                            <span className="font-digits text-xs font-black text-[color:var(--brand-a)]">0{i + 1}</span>
                             <p className="mt-1 font-display font-semibold text-white">{s.title}</p>
                             <p className="mt-1 text-[13.5px] leading-relaxed text-nl-ink">{s.text}</p>
                           </li>
@@ -282,19 +300,29 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       </ol>
 
                       <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5">
-                        <a href={waHref(result.whatsappText)} target="_blank" rel="noopener noreferrer" className="btn btn-primary w-full">
-                          <SocialIcon name="whatsapp" size={18} /> Send this to Nine Labs on WhatsApp
+                        <a
+                          href={wa(result.whatsappText)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-primary w-full"
+                          onClick={() => beacon("/api/public/quiz-submissions", { ref: ref.current, action: "whatsapp" })}
+                        >
+                          <SocialIcon name="whatsapp" size={18} /> {t.whatsappCta}
                         </a>
-                        {sent ? (
+                        {!t.emailEnabled ? null : sent ? (
                           <p className="mt-3 text-[15px] text-white" role="status">
-                            ✓ Plan on its way to <span className="text-[#8c53fe]">{email}</span>. <span className="text-white/50">(Demo: nothing was sent.)</span>
+                            ✓ {fill(t.emailSent, { email })}
                           </p>
                         ) : (
                           <form
                             className="mt-3 flex flex-col gap-2.5 sm:flex-row"
-                            onSubmit={(e) => {
+                            onSubmit={async (e) => {
                               e.preventDefault();
-                              if (/^\S+@\S+\.\S+$/.test(email)) setSent(true);
+                              if (!/^\S+@\S+\.\S+$/.test(email) || sending) return;
+                              setSending(true);
+                              const res = await postJson("/api/public/quiz-email", { ref: ref.current, email, answers });
+                              setSending(false);
+                              if (res.ok) setSent(true);
                             }}
                           >
                             <label htmlFor="quiz-email" className="sr-only">
@@ -306,17 +334,17 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                               required
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              placeholder="Or e-mail it to me: you@company.com"
+                              placeholder={t.emailPlaceholder}
                               className="min-h-[48px] flex-1 rounded-full border border-white/12 bg-transparent px-5 text-[16px] text-white placeholder:text-white/35 focus:border-nl-purple/70 focus:outline-none"
                             />
-                            <button type="submit" className="btn btn-outline btn-sm !min-h-[48px]">
-                              E-mail me
+                            <button type="submit" disabled={sending} className="btn btn-outline btn-sm !min-h-[48px] disabled:opacity-60">
+                              {t.emailCta}
                             </button>
                           </form>
                         )}
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <button type="button" className="btn btn-sm text-white/60 hover:text-white" onClick={() => go(0)}>
-                            ↺ Retake
+                            {t.retake}
                           </button>
                           <button
                             type="button"
@@ -326,7 +354,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                               window.setTimeout(() => scrollToId("ebooks"), 450);
                             }}
                           >
-                            Get the free e-books →
+                            {t.ebooksCta}
                           </button>
                         </div>
                       </div>

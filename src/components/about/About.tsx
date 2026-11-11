@@ -1,6 +1,6 @@
 "use client";
 
-import { site } from "@/content/site";
+import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import ScrollReveal from "@/components/reactbits/ScrollReveal";
 import CountUp from "@/components/reactbits/CountUp";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
@@ -41,16 +41,21 @@ const VALUE_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
+// the values grid follows however many value cards the admin keeps
+const VALUE_COLS: Record<number, string> = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5", 6: "lg:grid-cols-3" };
+const STAT_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
+
 export function About() {
   const { settings } = useDemo();
+  const site = useSite();
   const a = site.about;
 
   return (
     <section id="about" aria-labelledby="about-title" className="relative py-24 sm:py-32">
       <div className="container-x">
-        <SectionLabel index="02">About us</SectionLabel>
+        <SectionLabel index={sectionNo(site, "about")}>{a.label}</SectionLabel>
         <span id="about-title" className="sr-only">
-          About Nine Labs Solutions
+          About {site.name}
         </span>
         <ScrollReveal
           containerClassName="mt-6"
@@ -67,10 +72,10 @@ export function About() {
         <div className="mt-12 grid gap-10 lg:grid-cols-12 lg:gap-12">
           <AnimatedContent distance={40} duration={1} ease="expo.out" className="lg:col-span-7">
             <p className="text-[17px] leading-relaxed text-nl-ink sm:text-lg">{a.body}</p>
-            <p className="mt-5 border-l-2 border-nl-purple/60 pl-4 text-[15px] italic leading-relaxed text-white/65">“{a.philosophy}”</p>
+            {a.philosophy && <p className="mt-5 border-l-2 border-nl-purple/60 pl-4 text-[15px] italic leading-relaxed text-white/65">“{a.philosophy}”</p>}
           </AnimatedContent>
           <AnimatedContent distance={40} duration={1} delay={0.1} ease="expo.out" className="lg:col-span-5">
-            <dl className="grid grid-cols-3 divide-x divide-white/10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
+            <dl className={`grid ${STAT_COLS[a.stats.length] ?? "grid-cols-3"} divide-x divide-white/10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]`}>
               {a.stats.map((s) => (
                 <div key={s.label} className="flex flex-col items-center px-3 py-6 text-center sm:py-8">
                   <dt className="label-mono order-2 mt-2">{s.label}</dt>
@@ -80,7 +85,7 @@ export function About() {
                 </div>
               ))}
             </dl>
-            <p className="label-mono mt-3 text-center !text-white/35">Nine activities · one team · one aim</p>
+            {a.strip && <p className="label-mono mt-3 text-center !text-white/35">{a.strip}</p>}
           </AnimatedContent>
         </div>
       </div>
@@ -92,20 +97,20 @@ export function About() {
       <div className="container-x mt-24 sm:mt-28">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <SectionLabel index="03">Our values</SectionLabel>
-            <SpringHeading text="What we stand on." className="mt-4 text-[clamp(1.8rem,3.6vw,2.8rem)] font-semibold leading-[1.05] tracking-[-0.03em]" />
+            <SectionLabel index={sectionNo(site, "values")}>{a.valuesLabel}</SectionLabel>
+            <SpringHeading text={a.valuesHeading} className="mt-4 text-[clamp(1.8rem,3.6vw,2.8rem)] font-semibold leading-[1.05] tracking-[-0.03em]" />
           </div>
-          <p className="max-w-[40ch] text-[15px] text-nl-ink">Five values that hold the bridge up — in every campaign, video, event and strategy.</p>
+          {a.valuesIntro && <p className="max-w-[40ch] text-[15px] text-nl-ink">{a.valuesIntro}</p>}
         </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className={`mt-10 grid gap-4 sm:grid-cols-2 ${VALUE_COLS[site.values.length] ?? "lg:grid-cols-4"}`}>
           {site.values.map((v, i) => (
             <AnimatedContent
-              key={v.key}
+              key={`${v.key}-${i}`}
               distance={50}
               duration={0.9}
               delay={i * 0.07}
               ease="expo.out"
-              className={`relative hover:z-10 focus-within:z-10 ${i === 4 ? "sm:col-span-2 lg:col-span-1" : ""}`}
+              className={`relative hover:z-10 focus-within:z-10 ${i === site.values.length - 1 && site.values.length % 2 ? "sm:col-span-2 lg:col-span-1" : ""}`}
             >
               <SpotlightCard
                 className="h-full !rounded-3xl !p-6 will-change-transform"
@@ -118,7 +123,7 @@ export function About() {
                 <div className="relative flex h-full flex-col">
                   <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.03] text-nl-blue-soft">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      {VALUE_ICONS[v.key]}
+                      {VALUE_ICONS[v.key] ?? VALUE_ICONS.partnership}
                     </svg>
                   </span>
                   <span className="label-mono mt-6 !text-[11px]">0{i + 1}</span>

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import type { Ebook } from "@/content/site";
+import { fill, type Ebook } from "@/content/site";
+import { useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { useQuiz } from "@/components/providers/QuizProvider";
 import { getLenis } from "@/lib/scroll";
@@ -15,9 +16,10 @@ import { LeadForm, type LeadValues } from "./LeadForm";
 type Phase = "fly" | "front" | "open" | "closing";
 
 function Inside({ book }: { book: Ebook }) {
+  const { insideLabel } = useSite().ebooksSection;
   return (
     <div className="flex h-full flex-col p-6 sm:p-7">
-      <p className="label-mono !text-[11px] !text-nl-purple">Inside this book</p>
+      <p className="label-mono !text-[11px] !text-nl-purple">{insideLabel}</p>
       <h3 className="mt-2 text-[22px] font-semibold leading-tight">{book.title}</h3>
       <p className="mt-1.5 text-[13px] leading-snug text-nl-ink">{book.subtitle}</p>
       <ol className="mt-5 space-y-2.5">
@@ -72,24 +74,29 @@ function ChaptersDisclosure({ book }: { book: Ebook }) {
 
 function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null; onBack: () => void }) {
   const quiz = useQuiz();
+  const site = useSite();
+  const f = site.ebookForm;
   const first = lead?.name.trim().split(/\s+/)[0] ?? "";
+  // "…as soon as it's approved" or "…is on its way", depending on how the admin sends books
+  const [before, after] = fill(lead?.sent ? f.successSent : f.successPending, { title: book.title }).split("{email}");
   return (
     <div className="flex h-full flex-col items-start p-6 sm:p-7" role="status" aria-live="polite">
       <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true" className="drop-shadow-[0_0_14px_var(--nl-purple)]">
         <circle cx="28" cy="28" r="26" stroke="var(--nl-purple)" strokeWidth="1.5" pathLength={1} className="construct-draw" style={{ animationDelay: "0.9s" }} />
         <path d="M17 29l7 7 15-16" stroke="rgb(var(--fg-rgb))" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" pathLength={1} className="construct-draw" style={{ animationDelay: "1.3s" }} />
       </svg>
-      <h3 className="mt-5 text-[22px] font-semibold leading-tight">You’re on the list{first ? `, ${first}` : ""}!</h3>
+      <h3 className="mt-5 text-[22px] font-semibold leading-tight">{fill(f.successTitle, { name: first ? `, ${first}` : "" })}</h3>
       <p className="mt-2 text-[14px] leading-relaxed text-nl-ink">
-        We’ll send <span className="text-white">“{book.title}”</span> to <span className="text-nl-purple">{lead?.email}</span> as soon as it’s approved. Keep an eye on your inbox.
+        {before}
+        {after !== undefined && <span className="text-nl-purple">{lead?.email}</span>}
+        {after}
       </p>
-      <p className="label-mono mt-3 !text-[9.5px] !text-white/35">Demo — no email was sent</p>
       <div className="mt-auto flex w-full flex-col gap-2.5">
         <button type="button" className="btn btn-primary btn-sm w-full" onClick={() => quiz.open()}>
-          Start The 9 Quiz
+          {site.quiz.cta}
         </button>
         <button type="button" className="btn btn-outline btn-sm w-full" onClick={onBack}>
-          Back to the shelf
+          {f.back}
         </button>
       </div>
     </div>
@@ -239,6 +246,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
  * fields scroll above the keyboard, and the confirmation is never cut off.
  */
 function BookPage({ book, onClose, reduced }: { book: Ebook; onClose: () => void; reduced: boolean }) {
+  const site = useSite();
   const panel = useRef<HTMLDivElement>(null);
   const [lead, setLead] = useState<LeadValues | null>(null);
   useModalLock(true, panel, onClose);
@@ -261,7 +269,7 @@ function BookPage({ book, onClose, reduced }: { book: Ebook; onClose: () => void
         data-lenis-prevent
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-nl-bg/85 px-4 py-3 backdrop-blur-xl">
-          <p className="label-mono">Free e-book {book.n}</p>
+          <p className="label-mono">{fill(site.ebookForm.eyebrow, { n: book.n })}</p>
           <button
             type="button"
             onClick={onClose}

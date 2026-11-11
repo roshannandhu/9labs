@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { DEFAULT_SETTINGS, useDemo, type MotionPref } from "@/components/providers/DemoSettings";
+import { DEFAULT_SETTINGS, LAB_ENABLED, useDemo, type MotionPref } from "@/components/providers/DemoSettings";
 
 // Logo indigo family first (the client's colour), then the brief's electric blue for comparison.
 const BLUES = ["#5a48f5", "#3530d0", "#6d5dfc", "#3b82ff"];
@@ -16,7 +16,7 @@ const PURPLES = ["#6f55e8", "#7c4dff", "#8b5cf6", "#5b21b6"];
 export function ConceptLab() {
   const { settings, set, reset } = useDemo();
   const [open, setOpen] = useState(false);
-  if (process.env.NEXT_PUBLIC_DEMO_LAB === "false") return null;
+  if (!LAB_ENABLED) return null;
 
   return (
     // Demo-only control, hidden on phones so a visitor judging the real site never sees it

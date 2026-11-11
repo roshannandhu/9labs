@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
-import { site } from "@/content/site";
+import { getSite } from "@/lib/content/getSite";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const site = await getSite();
+  const open = site.seo.index && process.env.NEXT_PUBLIC_NOINDEX !== "1";
   return {
-    rules: [process.env.NEXT_PUBLIC_NOINDEX === "1" ? { userAgent: "*", disallow: "/" } : { userAgent: "*", allow: "/" }],
+    rules: [open ? { userAgent: "*", allow: "/", disallow: ["/admin", "/api", "/download"] } : { userAgent: "*", disallow: "/" }],
     sitemap: `${site.url}/sitemap.xml`,
     host: site.url,
   };

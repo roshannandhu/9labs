@@ -43,6 +43,9 @@
      The logo, the landing animation and every particle number use it. */
   --logo-from: #030303;
   --logo-to: #3533cb;
+  /* the logo's purple → cyan pair, used for highlights in both themes (admin: Look → brand colours) */
+  --brand-a: #8c53fe;
+  --brand-b: #5ce0e6;
   --grid-alpha: 0.06;
   --nav-h: 56px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
