@@ -56,6 +56,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
   const syncRef = useRef<(() => void) | null>(null);
   const cancelLoopRef = useRef<(() => void) | null>(null);
   const loopStateRef = useRef({ p: 0 });
+  const loopMetaRef = useRef<{ anchor: number; d: number; prevSnap: string } | null>(null);
   const isLoopingRef = useRef(false);
   const wideRef = useRef(false);
 
@@ -65,109 +66,110 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       if (!el) return;
       const target = ((i % N) + N) % N;
       const step = cardStep(el);
-      const current = activeRef.current;
 
-      // Cancel any in-flight loop or scroll tween cleanly and restore horizontal row state
+      // Cancel any in-flight loop or scroll tween cleanly and commit any mid-wrap card first
       gsap.killTweensOf(loopStateRef.current);
       gsap.killTweensOf(el);
       cancelLoopRef.current?.();
 
-      // When looping across boundaries (8 -> 0 or 0 -> 8),
-      // perform a horizontal glide synced on GSAP ticker with animated particle flight
-      // and continuous OrbitGear rotation across the seam:
-      if (Math.abs(current - target) > 1 && (current === 0 || current === N - 1) && (target === 0 || target === N - 1)) {
-        const isForward = target === 0 && current === N - 1;
-        const dir = isForward ? 1 : -1;
-        const fromIcon = services[current].icon;
-        const toIcon = services[target].icon;
-        const cards = cardsOf(el);
-        const outCard = cards[current];
-        const inCard = cards[target];
-        const peekIdx = isForward ? 1 : N - 2;
-        const peekCard = cards[peekIdx];
-        const peekY = window.innerWidth < 640 ? 12 : 18;
-        const peekScale = 1 - (window.innerWidth < 640 ? 0.05 : PEEK_SCALE);
-        const peekOpacity = window.innerWidth < 640 ? 0.52 : PEEK_OPACITY;
+      const current = activeRef.current;
+      const d = ringOffset(target - current);
+      const crossesSeam = Math.abs(d) > 0.001 && (current + d < 0 || current + d >= N);
+
+      // Crossing the 9 <-> 1 seam (forward or backward): glide cards a true full card step around
+      // the circular ring while driving continuous OrbitGear posRef and adjacent-card particles
+      if (crossesSeam) {
+        const anchorIdx = current;
+        const dir = d > 0 ? 1 : -1;
+        const totalSteps = Math.abs(d);
+        const prevSnap = el.style.scrollSnapType;
+        el.style.scrollSnapType = "none";
+        el.scrollTo({ left: anchorIdx * step, behavior: "instant" });
 
         setActive(target);
         activeRef.current = target;
         isLoopingRef.current = true;
+        loopMetaRef.current = { anchor: anchorIdx, d, prevSnap };
         loopStateRef.current.p = 0;
-        let jumped = false;
+
+        const cards = cardsOf(el);
+        const phone = window.innerWidth < 640;
+        const maxArc = phone ? 12 : 18;
+        const maxScale = phone ? 0.05 : PEEK_SCALE;
+        const peekOpacity = phone ? 0.52 : PEEK_OPACITY;
+        const duration = Math.min(0.85, Math.max(0.62, 0.62 + (totalSteps - 1) * 0.08));
 
         gsap.to(loopStateRef.current, {
           p: 1,
-          duration: 0.62,
-          ease: "sine.inOut",
+          duration,
+          ease: "power2.out",
           onUpdate: () => {
-            const ease = loopStateRef.current.p;
-            // Drive OrbitGear continuously one notch past the seam (8 -> 9 or 0 -> -1)
-            posRef.current = isForward ? N - 1 + ease : -ease;
-            particleBus.from = picTarget(fromIcon);
-            particleBus.to = picTarget(toIcon);
-            particleBus.dir = dir;
-            particleBus.u = ease;
+            const p = loopStateRef.current.p;
+            const visPos = anchorIdx + d * p;
+            posRef.current = visPos;
 
-            if (ease < 0.48) {
-              if (outCard) {
-                const outP = ease / 0.48;
-                const yArc = outP * 16;
-                const scale = 1 - outP * 0.06;
-                const opacity = 1 - outP * 0.92;
-                outCard.style.transform = `translate3d(${(-dir * outP * 72).toFixed(1)}px, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
-                outCard.style.opacity = opacity.toFixed(2);
-              }
-            } else {
-              if (!jumped) {
-                jumped = true;
-                if (outCard) {
-                  outCard.style.opacity = "0";
-                  outCard.style.transform = "";
-                  outCard.setAttribute("data-active", "false");
+            // Fly particle swarm continuously across the currently active 1-step icon pair
+            const traveled = p * totalSteps;
+            const segIdx = Math.min(Math.floor(traveled), Math.ceil(totalSteps) - 1);
+            const rawU = traveled - segIdx;
+            const segFrom = (((anchorIdx + dir * segIdx) % N) + N) % N;
+            const segTo = (((anchorIdx + dir * (segIdx + 1)) % N) + N) % N;
+            particleBus.from = picTarget(services[segFrom].icon);
+            particleBus.to = picTarget(services[segTo].icon);
+            particleBus.dir = dir;
+            particleBus.u = Math.max(0, Math.min(1, rawU));
+
+            const edgeIn = Math.min(1, p / 0.2);
+            const edgeOut = p > 0.65 ? Math.max(0, 1 - (p - 0.65) / 0.35) : 1;
+
+            cards.forEach((c, idx) => {
+              const offset = ringOffset(idx - visPos);
+              const absOffset = Math.abs(offset);
+              if (absOffset > 2.2) {
+                if (c.style.opacity !== "0") {
+                  c.style.opacity = "0";
+                  c.style.pointerEvents = "none";
                 }
-                if (peekCard) {
-                  peekCard.style.transform = `translate3d(0, ${peekY}px, 0) scale(${peekScale.toFixed(3)})`;
-                  peekCard.style.opacity = "0";
-                  peekCard.style.pointerEvents = "";
-                  peekCard.setAttribute("data-active", "false");
-                }
-                if (inCard) {
-                  inCard.setAttribute("data-active", "true");
-                }
-                el.scrollTo({ left: target * step, behavior: "instant" });
+                if (c.style.transform !== "") c.style.transform = "";
+                if (c.getAttribute("data-active") !== "false") c.setAttribute("data-active", "false");
+                return;
               }
-              const enterP = (ease - 0.48) / 0.52;
-              const inRemaining = 1 - enterP;
-              if (inCard) {
-                const yArc = inRemaining * 16;
-                const scale = 1 - inRemaining * 0.06;
-                const opacity = 1 - inRemaining * 0.92;
-                inCard.style.transform = `translate3d(${(dir * inRemaining * 72).toFixed(1)}px, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
-                inCard.style.opacity = opacity.toFixed(2);
+              if (c.style.pointerEvents !== "") c.style.pointerEvents = "";
+              const clampedAbs = Math.min(1.2, absOffset);
+              const yArc = clampedAbs * maxArc;
+              const scale = 1 - clampedAbs * maxScale;
+              let opacity = Math.max(0.18, 1 - clampedAbs * (1 - peekOpacity));
+
+              // Smooth alpha for cards whose circular ring slot differs from their linear DOM slot at start/end
+              const wrappedStart = Math.abs((idx - anchorIdx) - ringOffset(idx - anchorIdx)) > 0.1;
+              const wrappedEnd = Math.abs((idx - target) - ringOffset(idx - target)) > 0.1;
+              if (wrappedStart) opacity *= edgeIn;
+              if (wrappedEnd) opacity *= edgeOut;
+
+              const dx = (offset - (idx - anchorIdx)) * step;
+              c.style.transform = `translate3d(${dx.toFixed(1)}px, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
+              c.style.opacity = opacity.toFixed(2);
+              const isActive = absOffset < 0.28;
+              if (c.getAttribute("data-active") !== (isActive ? "true" : "false")) {
+                c.setAttribute("data-active", isActive ? "true" : "false");
               }
-              if (peekCard) {
-                peekCard.style.opacity = (enterP * peekOpacity).toFixed(2);
-              }
-            }
+            });
           },
           onComplete: () => {
             isLoopingRef.current = false;
+            loopMetaRef.current = null;
+            cards.forEach((c) => {
+              c.style.transform = "";
+              c.style.opacity = "";
+              c.style.pointerEvents = "";
+            });
+            el.scrollTo({ left: target * step, behavior: "instant" });
+            el.style.scrollSnapType = prevSnap || "";
             posRef.current = target;
+            const toIcon = services[target].icon;
             particleBus.from = picTarget(toIcon);
             particleBus.to = picTarget(toIcon);
             particleBus.u = 0;
-            if (outCard) {
-              outCard.style.transform = "";
-              outCard.style.opacity = "";
-            }
-            if (inCard) {
-              inCard.style.transform = "";
-              inCard.style.opacity = "";
-            }
-            if (peekCard) {
-              peekCard.style.transform = "";
-              peekCard.style.opacity = "";
-            }
             syncRef.current?.();
           },
         });
@@ -310,7 +312,17 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       cards.forEach((c) => {
         c.style.transform = "";
         c.style.opacity = "";
+        c.style.pointerEvents = "";
       });
+      const meta = loopMetaRef.current;
+      loopMetaRef.current = null;
+      if (meta) {
+        const s = cardStep(el);
+        const commitIdx = ((Math.round(meta.anchor + meta.d * loopStateRef.current.p) % N) + N) % N;
+        el.scrollTo({ left: commitIdx * s, behavior: "instant" });
+        el.style.scrollSnapType = meta.prevSnap || "";
+        posRef.current = commitIdx;
+      }
       sync();
     };
     cancelLoopRef.current = cancelActiveLoop;
@@ -455,6 +467,8 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       const target = e.target as HTMLElement | null;
       if (target?.closest("button") || target?.closest("a") || target?.closest("input")) return;
 
+      gsap.killTweensOf(el);
+      cancelActiveLoop();
       isMouseDown = true;
       hasDragged = false;
       startX = e.clientX;
@@ -466,8 +480,6 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       dragVelocity = 0;
       window.clearTimeout(wheelTimer);
       wheelTimer = undefined;
-      gsap.killTweensOf(el);
-      cancelActiveLoop();
       el.style.scrollSnapType = "none";
     };
 

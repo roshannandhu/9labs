@@ -411,11 +411,12 @@ export function ParticleStage() {
         ((fromSlot === "stage-9" && toSlot === "stage-1") ||
          (fromSlot === "stage-1" && toSlot === "stage-9"));
 
-      // the flat row (phone): the far end of the row really is 8 cards off to the side, so stand it
-      // in next to the card in focus. The orbit (laptop/tablet) already has both on screen — the
-      // wheel turns 9 → 1 like any other step — so leave its real positions alone.
+      // Only fall back to projected adjacency when the cards are genuinely separated across the
+      // flat track (> 1.35x viewport/container width). During continuous ring wraps (crossesSeam),
+      // GPU transforms place Card 09 and Card 01 side-by-side in adjacent slots with true rects.
       const offSide = (b: DOMRect) => b.right < 0 || b.left > window.innerWidth;
-      if (isLoopWrap && (offSide(A.b) || offSide(B.b))) {
+      const farApart = Math.abs(B.cx - A.cx) > Math.max(window.innerWidth, tm.cw) * 1.35;
+      if (isLoopWrap && farApart && (offSide(A.b) || offSide(B.b))) {
         const stepDist = Math.min(window.innerWidth * 0.82, (tm.cw || window.innerWidth) * 0.82);
         if (Math.abs(A.b.left - tm.left) < Math.abs(B.b.left - tm.left)) {
           // A is the card in focus on screen; project B to adjacent spot
