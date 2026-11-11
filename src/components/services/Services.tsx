@@ -8,7 +8,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
-import { OrbitNav } from "./OrbitNav";
+import { OrbitArc, OrbitGear } from "./OrbitNav";
 import { Scene1Social } from "./scenes/Scene1Social";
 import { Scene2Advertising } from "./scenes/Scene2Advertising";
 import { Scene3Content } from "./scenes/Scene3Content";
@@ -53,33 +53,37 @@ export function Services() {
 
 function ServicesTrack({ heading }: { heading: React.ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { active, goTo, running, inView } = useServiceTrack(scrollerRef);
+  const { active, goTo, running, posRef } = useServiceTrack(scrollerRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
 
   return (
     <section id="services" aria-labelledby="services-title" className="relative py-16 sm:py-24">
       <div className="pb-8 sm:pb-12">{heading}</div>
-      <div
-        ref={scrollerRef}
-        data-lenis-prevent-horizontal
-        data-particle-track
-        tabIndex={0}
-        role="region"
-        aria-roledescription="carousel"
-        aria-label="Our nine services"
-        className="svc-scroller"
-      >
-        <Scene1Social s={s1} />
-        <Scene2Advertising s={s2} active={active === 1} />
-        <Scene3Content s={s3} active={active === 2} />
-        <Scene4Photo s={s4} />
-        <Scene5Events s={s5} active={active === 4} />
-        <Scene6PR s={s6} />
-        <Scene7Strategy s={s7} />
-        <Scene8AI s={s8} active={active === 7} />
-        <Scene9IT s={s9} />
+      {/* laptop/tablet: the icon wheel (left) and the card wheel (the scroller) turn together */}
+      <div className="svc-stage">
+        <div
+          ref={scrollerRef}
+          data-lenis-prevent-horizontal
+          data-particle-track
+          tabIndex={0}
+          role="region"
+          aria-roledescription="carousel"
+          aria-label="Our nine services"
+          className="svc-scroller"
+        >
+          <Scene1Social s={s1} />
+          <Scene2Advertising s={s2} active={active === 1} />
+          <Scene3Content s={s3} active={active === 2} />
+          <Scene4Photo s={s4} />
+          <Scene5Events s={s5} active={active === 4} />
+          <Scene6PR s={s6} />
+          <Scene7Strategy s={s7} />
+          <Scene8AI s={s8} active={active === 7} />
+          <Scene9IT s={s9} />
+        </div>
+        <OrbitGear services={services} active={active} goTo={goTo} posRef={posRef} />
       </div>
-      <OrbitNav services={services} active={active} goTo={goTo} running={running} inView={inView} />
+      <OrbitArc services={services} active={active} goTo={goTo} running={running} />
       <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />

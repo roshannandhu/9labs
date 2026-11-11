@@ -411,7 +411,11 @@ export function ParticleStage() {
         ((fromSlot === "stage-9" && toSlot === "stage-1") ||
          (fromSlot === "stage-1" && toSlot === "stage-9"));
 
-      if (isLoopWrap) {
+      // the flat row (phone): the far end of the row really is 8 cards off to the side, so stand it
+      // in next to the card in focus. The orbit (laptop/tablet) already has both on screen — the
+      // wheel turns 9 → 1 like any other step — so leave its real positions alone.
+      const offSide = (b: DOMRect) => b.right < 0 || b.left > window.innerWidth;
+      if (isLoopWrap && (offSide(A.b) || offSide(B.b))) {
         const stepDist = Math.min(window.innerWidth * 0.82, (tm.cw || window.innerWidth) * 0.82);
         if (Math.abs(A.b.left - tm.left) < Math.abs(B.b.left - tm.left)) {
           // A is the card in focus on screen; project B to adjacent spot

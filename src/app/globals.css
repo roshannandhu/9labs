@@ -1046,61 +1046,114 @@ html[data-intro="playing"] [data-logo-9] {
   border: none;
   box-shadow: none;
 }
-/* the orbit: a half-circle fan replacing the dock on laptop (fixed, left of the carousel, shown
-   only while the section is in view), flattened into a shallow arc in the dock's old spot on
-   phone. Position/scale/opacity come from React (distance from the active index); CSS only does
-   the shape, the active state and the transition between positions. */
+/* ---- the orbit (laptop/tablet) ------------------------------------------------------------
+   Two wheels that turn together like a pair of gears: the icon wheel (OrbitNav.tsx `OrbitGear`)
+   in the gap left of the card, and the card wheel (useServiceTrack `placeOrbit`), whose swing
+   uses the gap on the right. Both are positioned every frame from JS, so there's deliberately no
+   CSS transition on transform or opacity — it would chase the per-frame writes instead of
+   smoothing them. The query matches `ORBIT_MQ` in useServiceTrack.ts — keep the two in step. */
+.svc-stage {
+  position: relative;
+}
+.orbit-gear {
+  display: none;
+}
+@media (min-width: 768px) and (min-height: 560px) {
+  .svc-stage,
+  .svc-scroller {
+    --gear-w: clamp(150px, 19vw, 290px);
+    --card-w: min(calc(100vw - 2 * var(--gear-w) - 56px), 980px);
+    --card-h: clamp(460px, calc(100svh - 300px), 680px);
+  }
+  .svc-scroller {
+    padding-block: 36px;
+    /* native snap points don't follow transforms, and here the cards move by transform — the
+       settle onto a card is done in JS instead (useServiceTrack) */
+    scroll-snap-type: none;
+    /* the card wheel turns behind a soft window: cards fade in and out over its last 36px */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  }
+  .orbit-gear {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(50% + var(--card-w) / 2 + 14px);
+    width: var(--gear-w);
+    z-index: 30;
+    pointer-events: none;
+  }
+  .orbit-arc {
+    display: none;
+  }
+}
 .orbit-icon {
   position: absolute;
-  top: 50%;
+  left: 0;
+  top: 0;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
+  margin: -22px 0 0 -22px; /* JS writes the centre point; this re-centres the box on it */
   border-radius: 14px;
   background: var(--surface-1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgb(var(--fg-rgb) / 0.6);
+  border: 1px solid rgb(var(--fg-rgb) / 0.08);
+  color: rgb(var(--fg-rgb) / 0.62);
   cursor: pointer;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease, background 0.3s ease, color 0.3s ease;
+  pointer-events: auto;
+  will-change: transform, opacity;
+  transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
+/* active: solid brand fill + a tight ring. No blurred halo — blur(6px) on an inset:-10px layer
+   spread the old glow to about twice the icon's size, which read as a blob touching the card */
 .orbit-icon--on {
   background: var(--nl-indigo);
   border-color: transparent;
   color: #fff;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--nl-indigo) 16%, transparent),
+    0 10px 22px -12px color-mix(in srgb, var(--nl-indigo) 70%, transparent);
 }
-.orbit-tag {
+/* every icon has a caption under it (riding its transform), shown near the front of the wheel */
+.orbit-cap {
   position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 12px;
-  padding-bottom: 3px;
-  font-size: 12px;
-  font-weight: 500;
-  color: rgb(var(--fg-rgb));
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  width: max-content;
+  max-width: 104px;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  font-weight: 500;
+  text-align: center;
+  color: rgb(var(--fg-rgb));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
 }
-.orbit-tag-fill {
+.orbit-cap[data-show="true"] {
+  opacity: 1;
+}
+.orbit-track {
   position: absolute;
-  bottom: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: 1.5px;
-  border-radius: 99px;
-  background: var(--nl-indigo);
-  opacity: 0.6;
-  transform-origin: left center;
-  animation: svc-dot-fill 5s linear forwards;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
 }
-@keyframes svc-dot-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
+.orbit-track ellipse {
+  stroke: rgb(var(--fg-rgb));
+  stroke-opacity: 0.12;
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
 }
+/* ---- phone: a shallow arc of icons under the card ---- */
 .orbit-arc-row {
   display: flex;
   align-items: center;
@@ -1151,6 +1204,14 @@ html[data-intro="playing"] [data-logo-9] {
   opacity: 0.6;
   transform-origin: left center;
   animation: svc-dot-fill 5s linear forwards;
+}
+@keyframes svc-dot-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .svc-scroller:focus-visible,
 .orbit-icon:focus-visible,
