@@ -32,6 +32,16 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
   const [idx, setIdx] = useState(0); // 0..COUNT-1 questions · COUNT result
   const [dir, setDir] = useState(1);
   const [answers, setAnswers] = useState<QuizAnswers>({});
+  // the answers as of the very last tap (state lags a frame behind): "Next" checks this, so a
+  // question can never be left behind empty, however fast the taps come
+  const latest = useRef<QuizAnswers>({});
+  // which question is live right now: the one sliding away keeps its buttons for a moment, and a
+  // tap on those must do nothing
+  const live = useRef(0);
+  const commit = useCallback((next: QuizAnswers) => {
+    latest.current = next;
+    setAnswers(next);
+  }, []);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -43,8 +53,9 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     if (!open) return;
     const start = Boolean(first) && Boolean(questions[0]?.options.some((o) => o.id === first));
     /* eslint-disable react-hooks/set-state-in-effect -- reset the dialog each time it opens */
-    setAnswers(start ? { [questions[0].id]: [first] } : {});
+    commit(start ? { [questions[0].id]: [first] } : {});
     setIdx(start ? 1 : 0);
+    live.current = start ? 1 : 0;
     setDir(1);
     setSent(false);
     setEmail("");
@@ -59,7 +70,8 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     (to: number) => {
       window.clearTimeout(advance.current);
       setDir(to >= idx ? 1 : -1);
-      setIdx(Math.max(0, Math.min(COUNT, to)));
+      live.current = Math.max(0, Math.min(COUNT, to));
+      setIdx(live.current);
     },
     [idx, COUNT],
   );
@@ -69,23 +81,25 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
 
   const choose = useCallback(
     (optId: string) => {
-      if (!q) return;
+      // a tap that lands on the previous question while it slides away is not an answer
+      if (!q || idx !== live.current || !q.options.some((o) => o.id === optId)) return;
+      const a = latest.current;
       if (q.multi) {
         const only = new Set(q.options.filter((o) => o.only).map((o) => o.id));
-        setAnswers((a) => {
-          const cur = a[q.id] ?? [];
-          if (cur.includes(optId)) return { ...a, [q.id]: cur.filter((x) => x !== optId) };
-          // "Nothing yet" stands alone; picking anything else drops it
-          return { ...a, [q.id]: only.has(optId) ? [optId] : [...cur.filter((x) => !only.has(x)), optId] };
-        });
+        const cur = a[q.id] ?? [];
+        // "Nothing yet" stands alone; picking anything else drops it
+        commit({ ...a, [q.id]: cur.includes(optId) ? cur.filter((x) => x !== optId) : only.has(optId) ? [optId] : [...cur.filter((x) => !only.has(x)), optId] });
         return;
       }
-      setAnswers((a) => ({ ...a, [q.id]: [optId] }));
+      commit({ ...a, [q.id]: [optId] });
       window.clearTimeout(advance.current);
       advance.current = window.setTimeout(() => go(idx + 1), reduced ? 120 : 260);
     },
-    [q, idx, go, reduced],
+    [q, idx, go, reduced, commit],
   );
+  const next = useCallback(() => {
+    if (q && idx === live.current && latest.current[q.id]?.length) go(idx + 1);
+  }, [q, idx, go]);
 
   // keys: 1–5 pick an answer, Enter = next, ← = back
   useEffect(() => {
@@ -96,16 +110,16 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
       if (n >= 1 && n <= q.options.length) {
         e.preventDefault();
         choose(q.options[n - 1].id);
-      } else if (e.key === "Enter" && q.multi && picked.length) {
+      } else if (e.key === "Enter" && q.multi) {
         e.preventDefault();
-        go(idx + 1);
+        next();
       } else if (e.key === "ArrowLeft" && idx > 0) {
         go(idx - 1);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, q, picked.length, idx, choose, go]);
+  }, [open, q, idx, choose, go, next]);
 
   const result = useMemo(() => (idx >= COUNT ? scoreQuiz(site, answers) : null), [idx, answers, site, COUNT]);
 
@@ -241,7 +255,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         ← Back
                       </button>
                       {q.multi && (
-                        <button type="button" onClick={() => go(idx + 1)} disabled={!picked.length} className="btn btn-primary btn-sm disabled:opacity-40">
+                        <button type="button" onClick={next} disabled={!picked.length} className="btn btn-primary btn-sm disabled:opacity-40">
                           Next →
                         </button>
                       )}

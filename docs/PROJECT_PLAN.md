@@ -2,7 +2,20 @@
 
 _Prepared from the client brief (Homepage Content and Design Brief, final version 7 Nov 2026)._
 
-**Current stage:** frontend demo for client approval (see `README.md`). Backend/admin follow after approval.
+**Current stage (Nov 2026): the admin and backend are built.** The site is dynamic and fully
+editable; see `README.md` (how it works, how to run and deploy it) and `docs/ADMIN_GUIDE.md` (how to
+use the admin). The rest of this document is the original plan, kept as a record. Where the build
+differs from it:
+
+| Planned | Built | Why |
+|---|---|---|
+| Cloudflare Workers + D1 + R2 | Host-neutral: SQLite file, files on disk, one adapter each in `src/payload.config.ts` | The hosting was not decided; nothing ties the app to one host |
+| Resend for e-mail | The domain's own mailbox over SMTP (`src/lib/mail/transport.ts`) | The owner wants to use the mailbox that comes with the domain |
+| E-book sent as a signed link | Link, attachment or both — chosen in the admin, per book if wanted | Owner's request |
+| Admin login with e-mail + password | Google sign-in only, for listed e-mails | Owner's request |
+| Turnstile on the forms | Same-origin check, hidden field, timing trap and a per-visitor limit | Works without a third-party account; Turnstile can be added later |
+| Inner page per service (`/services/[slug]`) | Not built | Not asked for; the nine cards live on the homepage |
+| The nine cards reorderable | Order fixed, words editable | Each position has its own animated scene |
 
 
 > Phase order updated per user: **Frontend demo → client approval → backend/admin.**

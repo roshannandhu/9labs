@@ -23,7 +23,7 @@ export function BookLanding({ book }: { book: Ebook }) {
           </div>
           <div className="min-w-0">
             <p className="label-mono">{t.label}</p>
-            <h1 className="mt-3 font-display text-[clamp(2rem,4.6vw,3.2rem)] font-semibold leading-[1.03] tracking-[-0.035em] text-white">{book.title}</h1>
+            <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,2.8rem)] font-semibold leading-[1.03] tracking-[-0.035em] text-white">{book.title}</h1>
             {book.subtitle && <p className="mt-3 text-[17px] leading-snug text-nl-ink">{book.subtitle}</p>}
             <div className="mt-4 flex flex-wrap gap-1.5 text-[12.5px] text-white/60">
               {book.pages > 0 && <span className="rounded-full border border-white/12 px-2.5 py-1">{book.pages} pages</span>}

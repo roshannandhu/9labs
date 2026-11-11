@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored React Bits components (copied from github.com/DavidHDev/react-bits)
     "src/components/reactbits/**",
+    // Files Payload generates (pnpm generate:types, generate:importmap, payload migrate:create)
+    "src/payload-types.ts",
+    "src/migrations/**",
+    "src/app/(payload)/admin/importMap.js",
   ]),
 ]);
 

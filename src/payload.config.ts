@@ -29,10 +29,14 @@ import { EnquirySettings } from "./payload/globals/EnquirySettings";
 import { EbookSettings } from "./payload/globals/EbookSettings";
 import { adminEndpoints } from "./payload/endpoints";
 import { seedIfEmpty } from "./payload/seed";
+import { migrations } from "./migrations";
 import { createTransport, mailFromAddress } from "./lib/mail/transport";
 import { appSecret } from "./lib/auth/tokens";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** The admin is for non-technical people: no "API" tab on any screen. */
+const plain = <T extends { admin?: object }>(c: T): T => ({ ...c, admin: { ...c.admin, hideAPIURL: true } });
 
 // The default database is a file next to the app; make sure its folder exists on a first start.
 const databaseUrl = process.env.DATABASE_URI || `file:${path.resolve(process.cwd(), "data/ninelabs.db")}`;
@@ -60,13 +64,16 @@ export default buildConfig({
     },
   },
   routes: { admin: "/admin", api: "/api" },
-  collections: [Services, Enquiries, Ebooks, Leads, EbookFiles, QuizSubmissions, Values, Faqs, Pages, Media, Users, LoginEvents, RateHits],
-  globals: [Company, Navigation, Homepage, Footer, SiteSettings, EnquirySettings, EbookSettings, QuizSettings],
+  collections: [Services, Enquiries, Ebooks, Leads, EbookFiles, QuizSubmissions, Values, Faqs, Pages, Media, Users, LoginEvents, RateHits].map(plain),
+  globals: [Company, Navigation, Homepage, Footer, SiteSettings, EnquirySettings, EbookSettings, QuizSettings].map(plain),
   endpoints: adminEndpoints,
   editor: lexicalEditor(),
   db: sqliteAdapter({
     client: { url: databaseUrl },
     migrationDir: path.resolve(dirname, "migrations"),
+    // In development the schema follows the code by itself. In production the committed
+    // migrations run on start-up, so a new deployment brings its own database changes.
+    prodMigrations: migrations,
   }),
   email: nodemailerAdapter({
     defaultFromAddress: mailFromAddress(),
