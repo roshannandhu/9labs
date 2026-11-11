@@ -49,6 +49,8 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
+    // no profile pictures fetched from an outside service
+    avatar: "default",
     meta: { titleSuffix: " · Nine Labs Admin", icons: [{ rel: "icon", type: "image/svg+xml", url: "/admin-icon.svg" }] },
     components: {
       graphics: { Logo: "/payload/components/Brand#Logo", Icon: "/payload/components/Brand#Icon" },

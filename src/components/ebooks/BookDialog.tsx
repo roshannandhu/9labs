@@ -72,7 +72,7 @@ function ChaptersDisclosure({ book }: { book: Ebook }) {
   );
 }
 
-function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null; onBack: () => void }) {
+export function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null; onBack: () => void }) {
   const quiz = useQuiz();
   const site = useSite();
   const f = site.ebookForm;

@@ -17,6 +17,7 @@ export const QuizSubmissions: CollectionConfig = {
     useAsTitle: "top",
     defaultColumns: ["top", "action", "email", "status", "createdAt"],
     description: "Every finished quiz: the answers, what was recommended, and whether the visitor contacted you.",
+    components: { beforeListTable: ["/payload/components/ExportButton#QuizExport"] },
   },
   defaultSort: "-createdAt",
   access: { read: adminUp, update: adminUp, create: nobody, delete: adminUp },

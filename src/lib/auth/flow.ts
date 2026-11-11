@@ -15,7 +15,18 @@ export function adminOrigin(req: Request): string {
 }
 export const redirectTo = (req: Request, path: string) => NextResponse.redirect(new URL(path, adminOrigin(req)), 303);
 
-export const clientIp = (req: Request) => (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || req.headers.get("x-real-ip") || "";
+/**
+ * The visitor's network address, for the sign-in log and the forms' per-visitor limits.
+ * A proxy in front of the app appends the address it saw to X-Forwarded-For, so the entry to
+ * trust is counted from the right: 1 = one proxy (the usual case), 2 = a CDN in front of the
+ * host's own proxy, and so on (TRUSTED_PROXY_HOPS). Entries further left can be made up by the
+ * visitor and are ignored.
+ */
+export function clientIp(req: Request): string {
+  const hops = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS) || 1);
+  const chain = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return chain[chain.length - hops] ?? chain[0] ?? req.headers.get("x-real-ip") ?? "";
+}
 
 type LoginResult = "ok" | "denied" | "google-error";
 

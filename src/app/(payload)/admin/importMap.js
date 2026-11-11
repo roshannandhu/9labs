@@ -1,6 +1,7 @@
 import { EnquiryExport as EnquiryExport_f713070eccfb1fe790a1109e8c813b50 } from '../../../payload/components/ExportButton'
 import { LeadActions as LeadActions_ced3da96fddb554dd6befcf5c3a4dbc8 } from '../../../payload/components/LeadActions'
 import { LeadTools as LeadTools_9cd47b29f187e10cdfc7d25feb75ae4a } from '../../../payload/components/LeadTools'
+import { QuizExport as QuizExport_f713070eccfb1fe790a1109e8c813b50 } from '../../../payload/components/ExportButton'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -40,6 +41,7 @@ export const importMap = {
   "/payload/components/ExportButton#EnquiryExport": EnquiryExport_f713070eccfb1fe790a1109e8c813b50,
   "/payload/components/LeadActions#LeadActions": LeadActions_ced3da96fddb554dd6befcf5c3a4dbc8,
   "/payload/components/LeadTools#LeadTools": LeadTools_9cd47b29f187e10cdfc7d25feb75ae4a,
+  "/payload/components/ExportButton#QuizExport": QuizExport_f713070eccfb1fe790a1109e8c813b50,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,

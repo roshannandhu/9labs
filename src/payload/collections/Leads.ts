@@ -37,6 +37,8 @@ export const Leads: CollectionConfig = {
     text("error", "Problem", undefined, { admin: { position: "sidebar", readOnly: true, condition: (d: { error?: string }) => Boolean(d?.error) } }),
     bool("consent", "Agreed to receive e-mails", false),
     text("source", "Came from", undefined, { admin: { readOnly: true } }),
+    // the current download link: a new link (Resend) gets a new version and a fresh download allowance
     { name: "tokenVersion", type: "number", defaultValue: 1, admin: { hidden: true } },
+    { name: "linkDownloads", type: "number", defaultValue: 0, admin: { hidden: true } },
   ],
 };

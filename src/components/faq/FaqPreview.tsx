@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSite } from "@/components/providers/SiteProvider";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
@@ -19,12 +20,12 @@ export function FaqPreview() {
           <FaqList items={f.items} />
         </AnimatedContent>
         {f.cta && (
-          <a href="/faq" className="link-glow mt-6 inline-flex items-center gap-2 py-1 text-sm font-medium text-white">
+          <Link href="/faq" className="link-glow mt-6 inline-flex items-center gap-2 py-1 text-sm font-medium text-white">
             {f.cta}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </a>
+          </Link>
         )}
       </div>
     </section>

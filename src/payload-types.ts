@@ -370,6 +370,7 @@ export interface Lead {
   consent?: boolean | null;
   source?: string | null;
   tokenVersion?: number | null;
+  linkDownloads?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -746,6 +747,7 @@ export interface LeadsSelect<T extends boolean = true> {
   consent?: T;
   source?: T;
   tokenVersion?: T;
+  linkDownloads?: T;
   updatedAt?: T;
   createdAt?: T;
 }
