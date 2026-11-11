@@ -16,6 +16,7 @@ export type SpotlightCardProps = React.HTMLAttributes<HTMLDivElement> & {
   ambient?: boolean;
   flare?: boolean;
   grain?: number;
+  popScale?: number;
   theme?: 'dark' | 'light';
 };
 
@@ -33,6 +34,7 @@ type Settings = {
   ambient: boolean;
   flare: boolean;
   grain: number;
+  popScale: number;
 };
 
 const THEMES: Record<'dark' | 'light', Palette> = {
@@ -95,6 +97,7 @@ const SpotlightCard = ({
   ambient = false,
   flare = true,
   grain = 0,
+  popScale = 1,
   theme = 'dark',
   ...rest
 }: SpotlightCardProps) => {
@@ -117,7 +120,8 @@ const SpotlightCard = ({
     smoothing: clamp(smoothing, 0, 1),
     ambient,
     flare,
-    grain: clamp(grain, 0, 1)
+    grain: clamp(grain, 0, 1),
+    popScale: Math.max(1, popScale)
   };
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -134,11 +138,32 @@ const SpotlightCard = ({
     if (!root || !light || !noise || !edge) return undefined;
 
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const state = { x: 0, y: 0, presence: 0, flare: 0, time: Math.random() * 60, pressed: false, visible: false };
+    const hoverQuery = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    const canHover = () => (hoverQuery ? hoverQuery.matches : true);
+    const state = {
+      x: 0,
+      y: 0,
+      presence: 0,
+      flare: 0,
+      pop: 0,
+      time: Math.random() * 60,
+      pressed: false,
+      visible: false,
+      tapUntil: 0,
+      suppressScrollUntil: 0,
+      tapX: 0,
+      tapY: 0,
+      tapScrollY: 0,
+      downX: 0,
+      downY: 0,
+      downMoved: false
+    };
     const pointer = { x: 0, y: 0, active: false };
-    const drawn = { light: '', edge: '', noise: '' };
+    const drawn = { light: '', edge: '', noise: '', transform: '', zIndex: '' };
     let focus: Element | null = null;
     let raf = 0;
+    let tapTimer = 0;
+    let suppressTimer = 0;
     let last = 0;
     let alive = true;
 
@@ -172,6 +197,29 @@ const SpotlightCard = ({
         noise.style.maskImage = grainy;
       }
       noise.style.opacity = String(state.presence * s.grain);
+
+      if (s.popScale > 1 && !reduce) {
+        const gain = (s.popScale - 1) * state.pop;
+        const dip = state.pressed && s.flare ? 0.016 * state.flare : 0;
+        const scale = Math.max(0.97, 1 + gain - dip);
+        const liftY = -5 * state.pop + (state.pressed && s.flare ? 2 * state.flare : 0);
+        const active = Math.abs(scale - 1) > 0.0005 || Math.abs(liftY) > 0.05;
+        const transform = active ? `translate3d(0, ${liftY.toFixed(2)}px, 0) scale(${scale.toFixed(4)})` : '';
+        const zIndex = state.pop > 0.02 ? '10' : '';
+        if (transform !== drawn.transform) {
+          drawn.transform = transform;
+          root.style.transform = transform;
+        }
+        if (zIndex !== drawn.zIndex) {
+          drawn.zIndex = zIndex;
+          root.style.zIndex = zIndex;
+        }
+      } else if (drawn.transform || drawn.zIndex) {
+        drawn.transform = '';
+        drawn.zIndex = '';
+        root.style.transform = '';
+        root.style.zIndex = '';
+      }
     };
 
     const tick = (now: number) => {
@@ -181,20 +229,44 @@ const SpotlightCard = ({
       const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
       const rect = root.getBoundingClientRect();
+      const hoverCapable = canHover();
       let tx = state.x;
       let ty = state.y;
       let target = 0;
+      let popTarget = 0;
       if (focus && root.contains(focus)) {
         const box = focus.getBoundingClientRect();
         tx = box.left + box.width / 2 - rect.left;
         ty = box.top + box.height / 2 - rect.top;
         target = 1;
-      } else if (pointer.active) {
+        popTarget = 1;
+      } else if (now < state.tapUntil && s.popScale > 1 && state.visible) {
+        tx = state.tapX;
+        ty = state.tapY;
+        target = 1;
+        popTarget = 1;
+      } else if (hoverCapable && pointer.active) {
         tx = pointer.x - rect.left;
         ty = pointer.y - rect.top;
         const gap = Math.hypot(Math.max(0, -tx, tx - rect.width), Math.max(0, -ty, ty - rect.height));
-        if (gap === 0) target = 1;
-        else if (s.proximity > 0) target = Math.max(0, 1 - gap / s.proximity) ** 2;
+        if (gap === 0) {
+          target = 1;
+          popTarget = 1;
+        } else if (s.proximity > 0) {
+          target = Math.max(0, 1 - gap / s.proximity) ** 2;
+        }
+      } else if (!hoverCapable && s.popScale > 1 && state.visible && now >= state.suppressScrollUntil) {
+        const vh = window.innerHeight || 1;
+        const cy = rect.top + rect.height / 2;
+        const band = vh * 0.26;
+        const raw = clamp(1 - Math.abs(cy - vh * 0.48) / band, 0, 1);
+        const scrollFocus = raw * raw * (3 - 2 * raw);
+        if (scrollFocus > 0.12) {
+          tx = rect.width * 0.5;
+          ty = rect.height * 0.34;
+          target = scrollFocus * 0.92;
+          popTarget = scrollFocus;
+        }
       }
       if (target < 0.6 && s.ambient && state.visible) {
         if (!reduce) state.time += dt;
@@ -216,44 +288,93 @@ const SpotlightCard = ({
       const press = state.pressed && s.flare && !reduce ? 1 : 0;
       state.flare += (press - state.flare) * (1 - Math.exp(-dt / (press ? 0.05 : 0.28)));
       if (Math.abs(press - state.flare) < 0.002) state.flare = press;
+      const popSpeed = reduce || s.popScale <= 1 ? 1 : 1 - Math.exp(-dt / (popTarget > state.pop ? 0.095 : 0.15));
+      state.pop += (popTarget - state.pop) * popSpeed;
+      if (Math.abs(popTarget - state.pop) < 0.002 || s.popScale <= 1 || reduce) {
+        state.pop = s.popScale <= 1 || reduce ? 0 : popTarget;
+      }
       paint(s);
       const moving = Math.abs(tx - state.x) > 0.1 || Math.abs(ty - state.y) > 0.1;
-      const settled = !moving && state.presence === target && state.flare === press;
+      const settled =
+        !moving && state.presence === target && state.flare === press && state.pop === (s.popScale <= 1 || reduce ? 0 : popTarget);
       if (!settled || (s.ambient && state.visible && !reduce)) raf = requestAnimationFrame(tick);
     };
 
     const wake = () => {
       if (raf || !alive) return;
-      if (!state.visible && state.presence <= 0 && !focus) return;
+      if (!state.visible && state.presence <= 0 && state.pop <= 0 && !focus) return;
       last = performance.now();
       raf = requestAnimationFrame(tick);
     };
     wakeRef.current = wake;
 
     const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') {
+        if (!state.downMoved && Math.hypot(event.clientX - state.downX, event.clientY - state.downY) > 10) {
+          state.downMoved = true;
+          if (state.pressed) {
+            state.pressed = false;
+            wake();
+          }
+        }
+        return;
+      }
+      state.tapUntil = 0;
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.active = true;
-      if (!state.visible && state.presence <= 0) return;
-      if (state.presence > 0 || settingsRef.current.proximity > 0 || root.contains(event.target as Node | null)) wake();
+      if (!state.visible && state.presence <= 0 && state.pop <= 0) return;
+      if (state.presence > 0 || state.pop > 0 || settingsRef.current.proximity > 0 || root.contains(event.target as Node | null)) wake();
     };
     const onOut = (event: PointerEvent) => {
       if (event.relatedTarget) return;
       pointer.active = false;
-      if (state.visible || state.presence > 0) wake();
+      if (state.visible || state.presence > 0 || state.pop > 0) wake();
     };
     const onDown = (event: PointerEvent) => {
-      pointer.x = event.clientX;
-      pointer.y = event.clientY;
-      pointer.active = true;
+      state.downX = event.clientX;
+      state.downY = event.clientY;
+      state.downMoved = false;
+      if (event.pointerType === 'mouse') {
+        pointer.x = event.clientX;
+        pointer.y = event.clientY;
+        pointer.active = true;
+      }
       state.pressed = true;
       wake();
     };
     const onUp = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') pointer.active = false;
-      if (!state.pressed && event.pointerType === 'mouse') return;
+      if (event.pointerType !== 'mouse') {
+        pointer.active = false;
+        const wasTap = !state.downMoved && settingsRef.current.popScale > 1 && root.contains(event.target as Node | null);
+        state.pressed = false;
+        if (wasTap) {
+          const rect = root.getBoundingClientRect();
+          state.tapX = clamp(event.clientX - rect.left, 0, rect.width);
+          state.tapY = clamp(event.clientY - rect.top, 0, rect.height);
+          state.tapScrollY = window.scrollY;
+          const until = performance.now() + 2400;
+          state.tapUntil = until;
+          state.suppressScrollUntil = 0;
+          window.clearTimeout(tapTimer);
+          tapTimer = window.setTimeout(wake, 2420);
+          window.dispatchEvent(new CustomEvent('spotlight-card:tap', { detail: { target: root, until } }));
+        }
+        wake();
+        return;
+      }
+      if (!state.pressed) return;
       state.pressed = false;
       wake();
+    };
+    const onPeerTap = (event: Event) => {
+      const detail = (event as CustomEvent<{ target: HTMLElement; until: number }>).detail;
+      if (!detail || detail.target === root) return;
+      state.tapUntil = 0;
+      state.suppressScrollUntil = detail.until;
+      window.clearTimeout(suppressTimer);
+      suppressTimer = window.setTimeout(wake, Math.max(0, detail.until - performance.now()) + 20);
+      if (state.presence > 0 || state.pop > 0) wake();
     };
     const onFocusIn = (event: FocusEvent) => {
       if (!(event.target instanceof Element) || !event.target.matches(':focus-visible')) return;
@@ -266,27 +387,39 @@ const SpotlightCard = ({
       wake();
     };
     const onScroll = () => {
-      if ((state.visible || state.presence > 0) && (pointer.active || state.presence > 0)) wake();
+      state.suppressScrollUntil = 0;
+      if (state.tapUntil && Math.abs(window.scrollY - state.tapScrollY) > 100) {
+        state.tapUntil = 0;
+      }
+      if (!canHover() && settingsRef.current.popScale > 1) {
+        if (state.visible || state.presence > 0 || state.pop > 0) wake();
+        return;
+      }
+      if ((state.visible || state.presence > 0 || state.pop > 0) && (pointer.active || state.presence > 0 || state.pop > 0)) wake();
     };
 
     const observer = new IntersectionObserver(entries => {
       state.visible = entries.some(entry => entry.isIntersecting);
-      if (state.visible) wake();
+      if (state.visible || state.presence > 0 || state.pop > 0) wake();
     });
     observer.observe(root);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('spotlight-card:tap', onPeerTap);
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp, { passive: true });
+    window.addEventListener('pointercancel', onUp, { passive: true });
     window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     document.addEventListener('pointerout', onOut);
-    root.addEventListener('pointerdown', onDown);
+    root.addEventListener('pointerdown', onDown, { passive: true });
     root.addEventListener('focusin', onFocusIn);
     root.addEventListener('focusout', onFocusOut);
 
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      window.clearTimeout(tapTimer);
+      window.clearTimeout(suppressTimer);
       observer.disconnect();
+      window.removeEventListener('spotlight-card:tap', onPeerTap);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);

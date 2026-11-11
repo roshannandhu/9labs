@@ -99,12 +99,20 @@ export function About() {
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {site.values.map((v, i) => (
-            <AnimatedContent key={v.key} distance={50} duration={0.9} delay={i * 0.07} ease="expo.out" className={i === 4 ? "sm:col-span-2 lg:col-span-1" : ""}>
+            <AnimatedContent
+              key={v.key}
+              distance={50}
+              duration={0.9}
+              delay={i * 0.07}
+              ease="expo.out"
+              className={`relative hover:z-10 focus-within:z-10 ${i === 4 ? "sm:col-span-2 lg:col-span-1" : ""}`}
+            >
               <SpotlightCard
-                className="h-full !rounded-3xl !p-6"
+                className="h-full !rounded-3xl !p-6 will-change-transform"
                 spotlightColor={settings.purple}
                 intensity={0.22}
                 spotlightSize={260}
+                popScale={1.038}
                 style={{ ["--spotlight-card-surface" as string]: "linear-gradient(160deg,var(--surface-1),var(--surface-2))" }}
               >
                 <div className="relative flex h-full flex-col">
