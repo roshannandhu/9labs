@@ -44,8 +44,9 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
 
   const fieldBase = "rounded-xl border bg-white/[0.04] px-3.5 text-[16px] text-white placeholder:text-white/35 transition-colors focus:outline-none focus:border-nl-purple/80 focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--nl-purple)_18%,transparent)]";
   const field = `w-full min-w-0 ${fieldBase}`;
-  const h = compact ? "h-11" : "h-[42px]";
+  const h = compact ? "h-11" : "h-[42px] md:h-[38px]";
   const border = (k: keyof LeadValues) => (show(k) ? "border-red-400/70" : "border-white/12");
+  const errCls = "mt-1 text-[11px] leading-tight text-red-600 [[data-theme='dark']_&]:text-red-300 [.paper_&]:!text-red-600";
 
   return (
     <form
@@ -76,7 +77,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
       <h3 className="mt-1 text-[19px] font-semibold leading-tight">Where should we send it?</h3>
       <p className="mt-1 text-[12.5px] leading-snug text-nl-ink">We’ll email you a private download link for “{book.title}”.</p>
 
-      <div className={`mb-5 mt-4 flex flex-col ${compact ? "gap-3.5" : "gap-2.5"}`}>
+      <div className={`mb-5 mt-4 md:mb-3.5 md:mt-3 flex flex-col ${compact ? "gap-3.5" : "gap-2.5 md:gap-2"}`}>
         <div>
           <label htmlFor={`${uid}-name`} className="mb-1 block text-[12px] font-medium text-white/70">
             Full name
@@ -93,7 +94,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             placeholder="Your name"
           />
           {show("name") && (
-            <p id={`${uid}-name-err`} className="mt-1 text-[11.5px] text-red-300">
+            <p id={`${uid}-name-err`} className={errCls}>
               {show("name")}
             </p>
           )}
@@ -116,7 +117,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             placeholder="you@company.com"
           />
           {show("email") && (
-            <p id={`${uid}-email-err`} className="mt-1 text-[11.5px] text-red-300">
+            <p id={`${uid}-email-err`} className={errCls}>
               {show("email")}
             </p>
           )}
@@ -131,7 +132,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             </label>
             <select
               id={`${uid}-code`}
-              className={`${fieldBase} ${h} w-[122px] shrink-0 border-white/12 px-2.5`}
+              className={`${fieldBase} ${h} w-[138px] shrink-0 border-white/12 !px-2.5`}
               value={v.code}
               onChange={(e) => set("code", e.target.value)}
             >
@@ -156,7 +157,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             />
           </div>
           {show("phone") && (
-            <p id={`${uid}-phone-err`} className="mt-1 text-[11.5px] text-red-300">
+            <p id={`${uid}-phone-err`} className={errCls}>
               {show("phone")}
             </p>
           )}
@@ -188,7 +189,7 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
             />
             <span>I agree to receive this e-book and occasional updates from Nine Labs Solutions. Unsubscribe anytime.</span>
           </label>
-          {show("consent") && <p className="mt-1 text-[11.5px] text-red-300">{show("consent")}</p>}
+          {show("consent") && <p className={errCls}>{show("consent")}</p>}
         </div>
       </div>
 

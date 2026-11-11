@@ -174,8 +174,8 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   if (!wide) return <BookPage book={book} onClose={onClose} reduced={reduced} />;
 
   // Page size for the open spread (desktop/tablet): left page = contents, right page = form.
-  const pw = "min(372px, 42vw, calc((100svh - 120px) / 1.42))";
-  const ph = `calc(${pw} * 1.42)`;
+  const pw = "min(404px, 42vw, calc((100svh - 64px) / 1.46))";
+  const ph = `calc(${pw} * 1.46)`;
 
 
   return (
@@ -193,7 +193,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
         style={{ background: "radial-gradient(40% 50% at 50% 50%, color-mix(in srgb, var(--nl-purple) 14%, transparent), transparent 70%)" }}
         aria-hidden="true"
       />
-      <div ref={dialog} role="dialog" aria-modal="true" aria-label={`Get the free e-book: ${book.title}`} className="relative flex min-h-full items-center justify-center px-4 py-16">
+      <div ref={dialog} role="dialog" aria-modal="true" aria-label={`Get the free e-book: ${book.title}`} className="relative flex min-h-full items-center justify-center px-4 py-8">
         <button
           ref={closeBtn}
           type="button"
@@ -220,7 +220,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
               turned={turned}
               insideCover={<Inside book={book} />}
               firstPage={
-                <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-6 sm:p-7" aria-hidden={turned || !isOpen ? true : undefined} inert={turned || !isOpen}>
+                <div ref={formPage} className="h-full overflow-y-auto overscroll-contain p-5 sm:p-6" aria-hidden={turned || !isOpen ? true : undefined} inert={turned || !isOpen}>
                   <LeadForm book={book} onDone={setLead} />
                 </div>
               }
