@@ -349,10 +349,10 @@ html.lenis body {
   /* the nav bar's background: flush, no card, no margins — fades in on scroll instead of a
      floating pill. Same blur technique as `.glass`, deliberately without its glow/edge gradient. */
   .nav-surface {
-    background: rgb(var(--fg-rgb) / 0.045);
+    background: rgb(var(--fg-rgb) / 0.055);
     backdrop-filter: blur(16px) saturate(150%);
     -webkit-backdrop-filter: blur(16px) saturate(150%);
-    border-bottom: 1px solid rgb(var(--fg-rgb) / 0.08);
+    border-bottom: 1px solid rgb(var(--fg-rgb) / 0.1);
   }
   .link-glow {
     position: relative;
@@ -1046,127 +1046,50 @@ html[data-intro="playing"] [data-logo-9] {
   border: none;
   box-shadow: none;
 }
-/* the named peek: a full-height vertical bar — number over name, read top-to-bottom like a book
-   spine — at whichever edge of a neighbouring card is actually peeking into view, so you read
-   what's next without it ever becoming the active card. Phone only exposes a ~10px sliver of a
-   neighbour (`--card-w: 82vw`) — too narrow for any label to land inside the viewport, so this is
-   laptop/tablet-only; the dock alone names things on phone. */
-.peek-label {
-  display: none;
+/* the orbit: a half-circle fan replacing the dock on laptop (fixed, left of the carousel, shown
+   only while the section is in view), flattened into a shallow arc in the dock's old spot on
+   phone. Position/scale/opacity come from React (distance from the active index); CSS only does
+   the shape, the active state and the transition between positions. */
+.orbit-icon {
   position: absolute;
-  top: 28px;
-  bottom: 28px;
-  z-index: 20;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px 9px;
-  writing-mode: vertical-rl;
-  border-radius: 999px;
-  background: color-mix(in srgb, currentColor 7%, transparent);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  opacity: 0;
-  transition: opacity 0.35s ease, background 0.25s ease;
-  pointer-events: none;
-}
-.peek-label b {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  opacity: 0.5;
-}
-.scene-card[data-peek="left"] .peek-label {
-  right: 20px;
-  opacity: 1;
-}
-.scene-card[data-peek="right"] .peek-label {
-  left: 20px;
-  opacity: 1;
-}
-@media (min-width: 640px) {
-  .peek-label {
-    display: flex;
-  }
-}
-/* the dock: a glass capsule holding all nine stops. Each is a quiet dot; the active one blooms
-   into a named pill (with the autoplay fill as a thin underline), and on fine pointers the others
-   magnify and drop a name tooltip on hover — the macOS Dock gesture, used as a wayfinder. */
-.svc-dock {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 6px;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, currentColor 6%, transparent);
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--surface-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.svc-dock::-webkit-scrollbar {
-  display: none;
-}
-.svc-dot {
-  position: relative;
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  min-width: 28px;
-  padding: 0 7px;
-  border-radius: 999px;
+  color: rgb(var(--fg-rgb) / 0.6);
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.34, 1.3, 0.64, 1), background 0.25s ease;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease, background 0.3s ease, color 0.3s ease;
 }
-.svc-dot-dot {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-radius: 99px;
-  background: currentColor;
-  opacity: 0.3;
-  transition: opacity 0.25s ease;
+.orbit-icon--on {
+  background: var(--nl-indigo);
+  border-color: transparent;
+  color: #fff;
 }
-.svc-dot--on {
-  padding: 0 12px 0 10px;
-  background: color-mix(in srgb, currentColor 13%, transparent);
-}
-.svc-dot--on .svc-dot-dot {
-  opacity: 0.9;
-}
-.svc-dot-label {
-  position: relative;
-  margin-left: 6px;
-  max-width: 30vw;
-  overflow: hidden;
+.orbit-tag {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 12px;
   padding-bottom: 3px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
+  color: rgb(var(--fg-rgb));
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
-@media (min-width: 640px) {
-  .svc-dot-label {
-    max-width: 160px;
-  }
-}
-.svc-dot-fill {
+.orbit-tag-fill {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 1.5px;
   border-radius: 99px;
-  background: currentColor;
-  opacity: 0.65;
+  background: var(--nl-indigo);
+  opacity: 0.6;
   transform-origin: left center;
   animation: svc-dot-fill 5s linear forwards;
 }
@@ -1178,38 +1101,60 @@ html[data-intro="playing"] [data-logo-9] {
     transform: scaleX(1);
   }
 }
-.svc-dot-tip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  margin-bottom: 8px;
-  padding: 4px 9px;
-  border-radius: 7px;
-  background: var(--surface-2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translate(-50%, 4px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-  pointer-events: none;
+.orbit-arc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 10px 4px;
 }
-@media (hover: hover) and (pointer: fine) {
-  .svc-dot:not(.svc-dot--on):hover {
-    transform: scale(1.45);
-    background: color-mix(in srgb, currentColor 10%, transparent);
-  }
-  .svc-dot:not(.svc-dot--on):hover .svc-dot-dot {
-    opacity: 0.9;
-  }
-  .svc-dot:hover .svc-dot-tip {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+.orbit-arc-row::-webkit-scrollbar {
+  display: none;
+}
+.arc-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--surface-1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgb(var(--fg-rgb) / 0.6);
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, background 0.3s ease, color 0.3s ease;
+}
+.arc-icon--on {
+  background: var(--nl-indigo);
+  border-color: transparent;
+  color: #fff;
+}
+.arc-label {
+  position: relative;
+  margin: 2px 0 0;
+  padding-bottom: 3px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(var(--fg-rgb));
+}
+.arc-label-fill {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 60px;
+  margin-left: -30px;
+  height: 1.5px;
+  border-radius: 99px;
+  background: var(--nl-indigo);
+  opacity: 0.6;
+  transform-origin: left center;
+  animation: svc-dot-fill 5s linear forwards;
 }
 .svc-scroller:focus-visible,
-.svc-dot:focus-visible {
+.orbit-icon:focus-visible,
+.arc-icon:focus-visible {
   outline: 2px solid var(--nl-purple);
   outline-offset: 3px;
 }

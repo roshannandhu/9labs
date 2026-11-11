@@ -8,6 +8,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
+import { OrbitNav } from "./OrbitNav";
 import { Scene1Social } from "./scenes/Scene1Social";
 import { Scene2Advertising } from "./scenes/Scene2Advertising";
 import { Scene3Content } from "./scenes/Scene3Content";
@@ -52,7 +53,7 @@ export function Services() {
 
 function ServicesTrack({ heading }: { heading: React.ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { active, goTo, running } = useServiceTrack(scrollerRef);
+  const { active, goTo, running, inView } = useServiceTrack(scrollerRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
 
   return (
@@ -78,32 +79,7 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
         <Scene8AI s={s8} active={active === 7} />
         <Scene9IT s={s9} />
       </div>
-      <div className="container-x mt-5 flex justify-center sm:mt-7">
-        <div className="svc-dock min-w-0" role="group" aria-label="Choose a service">
-          {services.map((s, i) => (
-            <button
-              key={s.slug}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Go to ${s.short}`}
-              aria-current={i === active ? "true" : undefined}
-              className={`svc-dot${i === active ? " svc-dot--on" : ""}`}
-            >
-              <span className="svc-dot-dot" aria-hidden="true" />
-              {i === active ? (
-                <span className="svc-dot-label">
-                  {s.short}
-                  {running && <span key={active} className="svc-dot-fill" aria-hidden="true" />}
-                </span>
-              ) : (
-                <span className="svc-dot-tip" aria-hidden="true">
-                  {s.short}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      <OrbitNav services={services} active={active} goTo={goTo} running={running} inView={inView} />
       <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />
