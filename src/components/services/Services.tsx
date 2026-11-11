@@ -52,7 +52,7 @@ export function Services() {
 
 function ServicesTrack({ heading }: { heading: React.ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { active, goTo, playing, running, togglePlay } = useServiceTrack(scrollerRef);
+  const { active, goTo, running } = useServiceTrack(scrollerRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
 
   return (
@@ -78,7 +78,7 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
         <Scene8AI s={s8} active={active === 7} />
         <Scene9IT s={s9} />
       </div>
-      <div className="container-x mt-5 flex flex-wrap items-center justify-between gap-3 sm:mt-7 sm:flex-nowrap">
+      <div className="container-x mt-5 flex justify-center sm:mt-7">
         <div className="svc-dock min-w-0" role="group" aria-label="Choose a service">
           {services.map((s, i) => (
             <button
@@ -102,40 +102,6 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
               )}
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={togglePlay} aria-label={playing ? "Pause automatic scrolling" : "Play automatic scrolling"} className="svc-ctl">
-            {playing ? (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <rect x="3.5" y="2.5" width="3" height="11" rx="1" />
-                <rect x="9.5" y="2.5" width="3" height="11" rx="1" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.4-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7Z" />
-              </svg>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(active === 0 ? services.length - 1 : active - 1)}
-            aria-label="Previous service"
-            className="svc-ctl"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(active === services.length - 1 ? 0 : active + 1)}
-            aria-label="Next service"
-            className="svc-ctl"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
         </div>
       </div>
       <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">

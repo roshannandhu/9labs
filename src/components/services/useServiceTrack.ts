@@ -41,7 +41,6 @@ const posOf = (el: HTMLElement, step: number) => {
 export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
   const { reduced } = useDemo();
   const [active, setActive] = useState(0);
-  const [playing, setPlaying] = useState(true);
   const [held, setHeld] = useState(false);
   const [inView, setInView] = useState(false);
   const activeRef = useRef(0);
@@ -517,7 +516,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     };
   }, [scrollerRef, reduced]);
 
-  const running = !reduced && playing && !held && inView;
+  const running = !reduced && !held && inView;
   useEffect(() => {
     if (!running) return;
     const el = scrollerRef.current;
@@ -531,6 +530,5 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     };
   }, [running, active, goTo, scrollerRef]);
 
-  const togglePlay = useCallback(() => setPlaying((p) => !p), []);
-  return { active, goTo, playing, running, togglePlay };
+  return { active, goTo, running };
 }

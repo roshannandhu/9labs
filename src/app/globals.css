@@ -1030,60 +1030,51 @@ html[data-intro="playing"] [data-logo-9] {
   border: none;
   box-shadow: none;
 }
-/* the named peek: a quiet number + name chip at whichever edge of a neighbouring card is
-   actually peeking into view, so you read what's next without it ever becoming the active card.
-   Phone only exposes a ~10px sliver of a neighbour (`--card-w: 82vw`) — too narrow for any label
-   to land inside the viewport, so the chip is laptop/tablet-only; the dock alone names things on
-   phone. */
+/* the named peek: a full-height vertical bar — number over name, read top-to-bottom like a book
+   spine — at whichever edge of a neighbouring card is actually peeking into view, so you read
+   what's next without it ever becoming the active card. Phone only exposes a ~10px sliver of a
+   neighbour (`--card-w: 82vw`) — too narrow for any label to land inside the viewport, so this is
+   laptop/tablet-only; the dock alone names things on phone. */
 .peek-label {
   display: none;
   position: absolute;
-  top: 18px;
+  top: 28px;
+  bottom: 28px;
   z-index: 20;
   align-items: center;
-  gap: 6px;
-  padding: 5px 11px 5px 9px;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 9px;
+  writing-mode: vertical-rl;
   border-radius: 999px;
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 500;
-  white-space: nowrap;
+  letter-spacing: 0.01em;
   opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.35s ease, background 0.25s ease;
   pointer-events: none;
 }
 .peek-label b {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 .scene-card[data-peek="left"] .peek-label {
-  right: 18px;
+  right: 20px;
   opacity: 1;
-  transform: translateY(0);
 }
 .scene-card[data-peek="right"] .peek-label {
-  left: 18px;
+  left: 20px;
   opacity: 1;
-  transform: translateY(0);
 }
 @media (min-width: 640px) {
   .peek-label {
     display: flex;
-    top: 26px;
-    padding: 6px 13px 6px 10px;
-    font-size: 12px;
-  }
-  .scene-card[data-peek="left"] .peek-label {
-    right: 26px;
-  }
-  .scene-card[data-peek="right"] .peek-label {
-    left: 26px;
   }
 }
 /* the dock: a glass capsule holding all nine stops. Each is a quiet dot; the active one blooms
@@ -1201,31 +1192,8 @@ html[data-intro="playing"] [data-logo-9] {
     transform: translate(-50%, 0);
   }
 }
-.svc-ctl {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 99px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: color-mix(in srgb, currentColor 8%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  cursor: pointer;
-  transition: background 0.25s ease, border-color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease, opacity 0.2s ease;
-}
-.svc-ctl:hover {
-  background: color-mix(in srgb, currentColor 15%, transparent);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 4px 16px -2px rgba(140, 83, 254, 0.25);
-}
-.svc-ctl:active {
-  transform: scale(0.93);
-}
 .svc-scroller:focus-visible,
-.svc-dot:focus-visible,
-.svc-ctl:focus-visible {
+.svc-dot:focus-visible {
   outline: 2px solid var(--nl-purple);
   outline-offset: 3px;
 }
