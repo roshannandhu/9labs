@@ -134,7 +134,7 @@ const SpotlightCard = ({
     if (!root || !light || !noise || !edge) return undefined;
 
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const state = { x: 0, y: 0, presence: 0, flare: 0, time: Math.random() * 60, pressed: false, visible: true };
+    const state = { x: 0, y: 0, presence: 0, flare: 0, time: Math.random() * 60, pressed: false, visible: false };
     const pointer = { x: 0, y: 0, active: false };
     const drawn = { light: '', edge: '', noise: '' };
     let focus: Element | null = null;
@@ -224,6 +224,7 @@ const SpotlightCard = ({
 
     const wake = () => {
       if (raf || !alive) return;
+      if (!state.visible && state.presence <= 0 && !focus) return;
       last = performance.now();
       raf = requestAnimationFrame(tick);
     };
@@ -233,12 +234,13 @@ const SpotlightCard = ({
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.active = true;
+      if (!state.visible && state.presence <= 0) return;
       if (state.presence > 0 || settingsRef.current.proximity > 0 || root.contains(event.target as Node | null)) wake();
     };
     const onOut = (event: PointerEvent) => {
       if (event.relatedTarget) return;
       pointer.active = false;
-      wake();
+      if (state.visible || state.presence > 0) wake();
     };
     const onDown = (event: PointerEvent) => {
       pointer.x = event.clientX;
@@ -264,7 +266,7 @@ const SpotlightCard = ({
       wake();
     };
     const onScroll = () => {
-      if (pointer.active || state.presence > 0) wake();
+      if ((state.visible || state.presence > 0) && (pointer.active || state.presence > 0)) wake();
     };
 
     const observer = new IntersectionObserver(entries => {
@@ -280,7 +282,6 @@ const SpotlightCard = ({
     root.addEventListener('pointerdown', onDown);
     root.addEventListener('focusin', onFocusIn);
     root.addEventListener('focusout', onFocusOut);
-    wake();
 
     return () => {
       alive = false;

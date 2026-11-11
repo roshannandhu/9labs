@@ -68,7 +68,8 @@ export function ParticleStage() {
     // fillRect scales linearly with N and profiled as the single largest per-frame cost during an
     // active flight; the "exact formation" accuracy (true per-pixel colour, exact placement) is
     // independent of density, so this is a pure smoothness win, not a quality trade
-    const N = phone ? 5000 : 9600;
+    const N = phone ? 4400 : 6000;
+    const dustDpr = 1;
     const r = rng(9001);
 
     // assembly: each particle streams in from a point just beyond a screen edge (hero forming, once)
@@ -176,9 +177,9 @@ export function ParticleStage() {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       const W = window.innerWidth;
       const H = window.innerHeight;
-      margin = Math.round(H * 0.3);
-      cv.width = Math.round(W * dpr);
-      cv.height = Math.round((H + 2 * margin) * dpr);
+      margin = Math.round(H * 0.2);
+      cv.width = Math.round(W * dustDpr);
+      cv.height = Math.round((H + 2 * margin) * dustDpr);
       cv.style.width = `${W}px`;
       cv.style.height = `${H + 2 * margin}px`;
       page.box = null; // resizing cleared it
@@ -224,6 +225,9 @@ export function ParticleStage() {
     const updateDrift = (name: SlotName, gm: Geom | null) => {
       const s = rest.get(name);
       if (!s) return;
+      if (name !== "hero" && gm && (gm.b.right < -80 || gm.b.left > window.innerWidth + 80 || gm.b.bottom < -80 || gm.b.top > window.innerHeight + 80)) {
+        return;
+      }
       const off = name !== "hero" && gm ? Math.round(Math.max(-14, Math.min(14, (window.innerHeight / 2 - (gm.b.top + gm.b.height / 2)) * 0.045)) * 10) / 10 : 0;
       if (off === s.drift) return;
       s.drift = off;
@@ -445,10 +449,10 @@ export function ParticleStage() {
         ox = wrapRect.left;
         oy = wrapRect.top + ty;
       } else {
-        const mx = Math.round(tm.cw * 0.3);
+        const mx = Math.round(tm.cw * 0.2);
         const w = tm.cw + 2 * mx;
-        const wpx = Math.round(w * dpr);
-        const hpx = Math.round(tm.ch * dpr);
+        const wpx = Math.round(w * dustDpr);
+        const hpx = Math.round(tm.ch * dustDpr);
         if (S.c.width !== wpx || S.c.height !== hpx) {
           S.c.width = wpx;
           S.c.height = hpx;
@@ -464,7 +468,7 @@ export function ParticleStage() {
       if (S.tx !== tx || S.ty !== ty) {
         S.tx = tx;
         S.ty = ty;
-        S.c.style.transform = `translate3d(${tx}px, ${ty}px, 60px)`;
+        S.c.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
       }
 
       if (asm >= 1 && probe < 40) {
@@ -535,9 +539,9 @@ export function ParticleStage() {
       }
       for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
 
-      const size = Math.max(1.1, Math.min(phone ? 2.4 : 2.8, (A.h + (B.h - A.h) * u) * (phone ? 0.0085 : 0.005)));
+      const size = Math.max(1.2, Math.min(phone ? 2.6 : 3.0, (A.h + (B.h - A.h) * u) * (phone ? 0.0088 : 0.0056)));
       const g = S.g;
-      g.setTransform(dpr, 0, 0, dpr, -ox * dpr, -oy * dpr);
+      g.setTransform(dustDpr, 0, 0, dustDpr, -ox * dustDpr, -oy * dustDpr);
       g.globalAlpha = dustAlpha;
       const half = size / 2;
       // `start[b]` now marks the end of bucket b, so bucket b runs from end-count to end
@@ -554,10 +558,10 @@ export function ParticleStage() {
       // remember the patch drawn (in this canvas's own pixels), so next frame clears only that
       if (minX <= maxX) {
         S.box = [
-          Math.floor((minX - half - ox) * dpr) - 2,
-          Math.floor((minY - half - oy) * dpr) - 2,
-          Math.ceil((maxX - minX + size) * dpr) + 4,
-          Math.ceil((maxY - minY + size) * dpr) + 4,
+          Math.floor((minX - half - ox) * dustDpr) - 2,
+          Math.floor((minY - half - oy) * dustDpr) - 2,
+          Math.ceil((maxX - minX + size) * dustDpr) + 4,
+          Math.ceil((maxY - minY + size) * dustDpr) + 4,
         ];
         drawn = S;
       }
@@ -585,6 +589,21 @@ export function ParticleStage() {
     watched.forEach((el) => io.observe(el));
 
     let cancelled = false;
+    let lastActivity = 0;
+    let idleTimer: number | undefined;
+    let idleHandle: number | undefined;
+    const bumpActivity = () => {
+      lastActivity = performance.now();
+    };
+    window.addEventListener("scroll", bumpActivity, { passive: true });
+    window.addEventListener("wheel", bumpActivity, { passive: true });
+    window.addEventListener("pointermove", bumpActivity, { passive: true });
+
+    const ric = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
     const offIntro = onIntroDone(async () => {
       family = digitFont.style.fontFamily;
       try {
@@ -599,9 +618,51 @@ export function ParticleStage() {
       assembling = !!hero && hero.bottom > 0 && hero.top < window.innerHeight && window.scrollY < 40;
       started = true;
       heroT0 = performance.now();
-      // the nine pictures, in the order a visitor meets them
+
+      const waitIdle = () =>
+        new Promise<void>((resolve) => {
+          const poll = () => {
+            if (cancelled) {
+              resolve();
+              return;
+            }
+            const busy = assembling || drawn !== null || performance.now() - lastActivity < 180;
+            if (busy) {
+              idleTimer = window.setTimeout(poll, 120);
+              return;
+            }
+            if (ric.requestIdleCallback) {
+              idleHandle = ric.requestIdleCallback(
+                () => {
+                  idleHandle = undefined;
+                  if (cancelled) {
+                    resolve();
+                    return;
+                  }
+                  if (assembling || drawn !== null || performance.now() - lastActivity < 140) {
+                    idleTimer = window.setTimeout(poll, 120);
+                    return;
+                  }
+                  resolve();
+                },
+                { timeout: 600 },
+              );
+            } else {
+              idleTimer = window.setTimeout(() => {
+                if (cancelled || (!assembling && drawn === null && performance.now() - lastActivity >= 140)) {
+                  resolve();
+                } else {
+                  poll();
+                }
+              }, 32);
+            }
+          };
+          idleTimer = window.setTimeout(poll, 220);
+        });
+
+      // the nine pictures, in the order a visitor meets them, sampled only during idle windows
       for (const { pic: step } of STAGES) {
-        await new Promise((res) => setTimeout(res, 0));
+        await waitIdle();
         if (cancelled) return;
         shapeFor(step, dark);
       }
@@ -610,10 +671,15 @@ export function ParticleStage() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(idleTimer);
+      if (idleHandle !== undefined) ric.cancelIdleCallback?.(idleHandle);
       offIntro();
       gsap.ticker.remove(frame);
       io.disconnect();
       window.removeEventListener("resize", resize);
+      window.removeEventListener("scroll", bumpActivity);
+      window.removeEventListener("wheel", bumpActivity);
+      window.removeEventListener("pointermove", bumpActivity);
       for (const s of rest.values()) s.c.remove();
       tcv.remove();
     };

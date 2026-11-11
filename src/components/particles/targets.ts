@@ -33,17 +33,13 @@ export type Shape = {
 /** Font size used for sampling a digit, as a fraction of the square canvas. */
 export const GLYPH_SIZE = 0.78;
 
-const SAMPLE_SIZE = 600;
+const SAMPLE_SIZE = 320;
 const cache = new Map<string, Shape>();
 const DIRS = [
   [1, 0],
   [-1, 0],
   [0, 1],
   [0, -1],
-  [0.71, 0.71],
-  [-0.71, 0.71],
-  [0.71, -0.71],
-  [-0.71, -0.71],
 ];
 
 /** Small deterministic RNG, so the same shape always samples the same way. */
@@ -58,7 +54,7 @@ export function rng(seed: number) {
 }
 
 /**
- * Draws `draw(ctx, S)` fully coloured on a 600px canvas, then samples it into a Shape: `n`
+ * Draws `draw(ctx, S)` fully coloured on a 320px canvas, then samples it into a Shape: `n`
  * blue-noise points over its visible (alpha ≥ 0.5) pixels, each carrying its own pixel colour and
  * a depth from how close it sits to the shape's edge.
  */
@@ -75,21 +71,20 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
   draw(ctx, S);
 
   const data = ctx.getImageData(0, 0, S, S).data;
-  const inside = (x: number, y: number) => {
-    const xi = Math.round(x);
-    const yi = Math.round(y);
-    return xi >= 0 && yi >= 0 && xi < S && yi < S && data[(yi * S + xi) * 4 + 3] >= 128;
-  };
+  const mask = new Uint8Array(S * S);
 
-  // filled area + bounding box
+  // filled area + bounding box + opaque alpha mask in one pass
   let area = 0;
   let minX = S;
   let maxX = 0;
   let minY = S;
   let maxY = 0;
   for (let y = 0; y < S; y++) {
+    const row = y * S;
     for (let x = 0; x < S; x++) {
-      if (data[(y * S + x) * 4 + 3] >= 128) {
+      const p = row + x;
+      if (data[p * 4 + 3] >= 128) {
+        mask[p] = 1;
         area++;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
@@ -98,50 +93,68 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
       }
     }
   }
+  const inside = (x: number, y: number) => {
+    if (x < -0.5 || y < -0.5) return false;
+    const xi = (x + 0.5) | 0;
+    const yi = (y + 0.5) | 0;
+    return xi < S && yi < S && mask[yi * S + xi] === 1;
+  };
   const H = Math.max(1, maxY - minY);
 
   // blue-noise (Poisson-disc, Bridson) points: evenly spaced but organic — no rows, clumps or holes.
   const r = rng(seed);
+  const TWO_PI = Math.PI * 2;
   const poisson = (rad: number) => {
     const cell = rad / Math.SQRT2;
-    const gw = Math.ceil(S / cell);
+    const invCell = 1 / cell;
+    const rad2 = rad * rad;
+    const gw = Math.ceil(S * invCell);
     const grid = new Int32Array(gw * gw).fill(-1);
     const out: number[] = [];
     const active: number[] = [];
     const fits = (x: number, y: number) => {
       if (!inside(x, y)) return false;
-      const gx = Math.floor(x / cell);
-      const gy = Math.floor(y / cell);
-      for (let j = Math.max(0, gy - 2); j <= Math.min(gw - 1, gy + 2); j++) {
-        for (let i = Math.max(0, gx - 2); i <= Math.min(gw - 1, gx + 2); i++) {
-          const k = grid[j * gw + i];
+      const gx = Math.max(0, (x * invCell) | 0);
+      const gy = Math.max(0, (y * invCell) | 0);
+      const j0 = gy > 2 ? gy - 2 : 0;
+      const j1 = gy + 2 < gw ? gy + 2 : gw - 1;
+      const i0 = gx > 2 ? gx - 2 : 0;
+      const i1 = gx + 2 < gw ? gx + 2 : gw - 1;
+      for (let j = j0; j <= j1; j++) {
+        const gRow = j * gw;
+        for (let i = i0; i <= i1; i++) {
+          const k = grid[gRow + i];
           if (k < 0) continue;
           const dx = out[k * 2] - x;
           const dy = out[k * 2 + 1] - y;
-          if (dx * dx + dy * dy < rad * rad) return false;
+          if (dx * dx + dy * dy < rad2) return false;
         }
       }
       return true;
     };
     const add = (x: number, y: number) => {
-      const k = out.length / 2;
+      const k = out.length >> 1;
       out.push(x, y);
-      grid[Math.floor(y / cell) * gw + Math.floor(x / cell)] = k;
+      const gx = Math.max(0, Math.min(gw - 1, (x * invCell) | 0));
+      const gy = Math.max(0, Math.min(gw - 1, (y * invCell) | 0));
+      grid[gy * gw + gx] = k;
       active.push(k);
     };
-    for (let sy = rad / 2; sy < S; sy += rad) {
-      for (let sx = rad / 2; sx < S; sx += rad) {
+    for (let sy = rad * 0.5; sy < S; sy += rad) {
+      for (let sx = rad * 0.5; sx < S; sx += rad) {
         if (!fits(sx, sy)) continue;
         add(sx, sy);
         while (active.length) {
-          const ai = Math.floor(r() * active.length);
+          const ai = (r() * active.length) | 0;
           const k = active[ai];
+          const kx = out[k * 2];
+          const ky = out[k * 2 + 1];
           let found = false;
-          for (let t = 0; t < 24; t++) {
-            const ang = r() * Math.PI * 2;
+          for (let t = 0; t < 12; t++) {
+            const ang = r() * TWO_PI;
             const m = rad * (1 + r());
-            const x = out[k * 2] + Math.cos(ang) * m;
-            const y = out[k * 2 + 1] + Math.sin(ang) * m;
+            const x = kx + Math.cos(ang) * m;
+            const y = ky + Math.sin(ang) * m;
             if (fits(x, y)) {
               add(x, y);
               found = true;
@@ -157,10 +170,10 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
     }
     return out;
   };
-  let d = Math.sqrt(area / (Math.max(1, n) * 1.25));
+  let d = Math.sqrt(area / (Math.max(1, n) * 1.72));
   let pts = poisson(d);
-  for (let k = 0; k < 4 && pts.length / 2 < n; k++) {
-    d *= Math.sqrt(pts.length / 2 / n) * 0.98;
+  for (let k = 0; k < 1 && pts.length / 2 < n; k++) {
+    d *= Math.sqrt(pts.length / 2 / n) * 0.96;
     pts = poisson(d);
   }
   const count = pts.length / 2;
@@ -186,13 +199,19 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
   // polar order: angle around the shape's centre, then radius — so a flight reads as one swirl
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => {
-    const ai = Math.atan2(keep[i * 2 + 1] - cy, keep[i * 2] - cx);
-    const aj = Math.atan2(keep[j * 2 + 1] - cy, keep[j * 2] - cx);
-    if (ai !== aj) return ai - aj;
-    const ri = (keep[i * 2] - cx) ** 2 + (keep[i * 2 + 1] - cy) ** 2;
-    const rj = (keep[j * 2] - cx) ** 2 + (keep[j * 2 + 1] - cy) ** 2;
-    return ri - rj;
+  const angles = new Float32Array(n);
+  const dists = new Float32Array(n);
+  const order = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    order[i] = i;
+    const dx = keep[i * 2] - cx;
+    const dy = keep[i * 2 + 1] - cy;
+    angles[i] = Math.atan2(dy, dx);
+    dists[i] = dx * dx + dy * dy;
+  }
+  order.sort((i, j) => {
+    const da = angles[i] - angles[j];
+    return da !== 0 ? da : dists[i] - dists[j];
   });
 
   const radii = [0.018, 0.04, 0.07].map((f) => f * H);
