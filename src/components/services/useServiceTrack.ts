@@ -247,6 +247,13 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         if (c.getAttribute("data-active") !== (isActive ? "true" : "false")) {
           c.setAttribute("data-active", isActive ? "true" : "false");
         }
+        // the card one step away reads its own number + name at the edge that's actually
+        // peeking into view (the visible sliver is the near edge, not the card's own centre)
+        const peekSide = absOffset > 0.5 && absOffset < 1.65 ? (offset < 0 ? "left" : "right") : "";
+        if ((c.getAttribute("data-peek") || "") !== peekSide) {
+          if (peekSide) c.setAttribute("data-peek", peekSide);
+          else c.removeAttribute("data-peek");
+        }
       });
 
       const idx = Math.round(pos);

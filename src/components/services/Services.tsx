@@ -78,8 +78,8 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
         <Scene8AI s={s8} active={active === 7} />
         <Scene9IT s={s9} />
       </div>
-      <div className="container-x mt-5 flex items-center justify-between gap-3 sm:mt-7">
-        <div className="flex items-center" role="group" aria-label="Choose a service">
+      <div className="container-x mt-5 flex flex-wrap items-center justify-between gap-3 sm:mt-7 sm:flex-nowrap">
+        <div className="svc-dock min-w-0" role="group" aria-label="Choose a service">
           {services.map((s, i) => (
             <button
               key={s.slug}
@@ -89,7 +89,17 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
               aria-current={i === active ? "true" : undefined}
               className={`svc-dot${i === active ? " svc-dot--on" : ""}`}
             >
-              {i === active && running && <span key={active} className="svc-dot-fill" />}
+              <span className="svc-dot-dot" aria-hidden="true" />
+              {i === active ? (
+                <span className="svc-dot-label">
+                  {s.short}
+                  {running && <span key={active} className="svc-dot-fill" aria-hidden="true" />}
+                </span>
+              ) : (
+                <span className="svc-dot-tip" aria-hidden="true">
+                  {s.short}
+                </span>
+              )}
             </button>
           ))}
         </div>

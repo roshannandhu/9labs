@@ -5,6 +5,10 @@ import { SceneCaption } from "./SceneCaption";
 export function Scene6PR({ s }: { s: Service }) {
   return (
     <section id={`service-${s.slug}`} aria-roledescription="slide" aria-label={`${s.n} of 9: ${s.title}`} className="scene-section scene-card">
+      <span className="peek-label" aria-hidden="true">
+        <b>{String(s.n).padStart(2, "0")}</b>
+        {s.short}
+      </span>
       <h3 className="mx-auto max-w-[16ch] text-center font-display text-[clamp(1.5rem,5vw,3.2rem)] font-semibold leading-[1.02] tracking-[-0.03em]">
         Your story. <span className="font-accent text-gradient">Heard everywhere.</span>
       </h3>

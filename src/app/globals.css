@@ -1030,45 +1030,136 @@ html[data-intro="playing"] [data-logo-9] {
   border: none;
   box-shadow: none;
 }
-/* dots: the active one stretches into a pill that fills over the autoplay interval */
+/* the named peek: a quiet number + name chip at whichever edge of a neighbouring card is
+   actually peeking into view, so you read what's next without it ever becoming the active card.
+   Phone only exposes a ~10px sliver of a neighbour (`--card-w: 82vw`) — too narrow for any label
+   to land inside the viewport, so the chip is laptop/tablet-only; the dock alone names things on
+   phone. */
+.peek-label {
+  display: none;
+  position: absolute;
+  top: 18px;
+  z-index: 20;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+.peek-label b {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.55;
+}
+.scene-card[data-peek="left"] .peek-label {
+  right: 18px;
+  opacity: 1;
+  transform: translateY(0);
+}
+.scene-card[data-peek="right"] .peek-label {
+  left: 18px;
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (min-width: 640px) {
+  .peek-label {
+    display: flex;
+    top: 26px;
+    padding: 6px 13px 6px 10px;
+    font-size: 12px;
+  }
+  .scene-card[data-peek="left"] .peek-label {
+    right: 26px;
+  }
+  .scene-card[data-peek="right"] .peek-label {
+    left: 26px;
+  }
+}
+/* the dock: a glass capsule holding all nine stops. Each is a quiet dot; the active one blooms
+   into a named pill (with the autoplay fill as a thin underline), and on fine pointers the others
+   magnify and drop a name tooltip on hover — the macOS Dock gesture, used as a wayfinder. */
+.svc-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.svc-dock::-webkit-scrollbar {
+  display: none;
+}
 .svc-dot {
   position: relative;
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 18px;
   height: 28px;
+  min-width: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
   cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.3, 0.64, 1), background 0.25s ease;
 }
-.svc-dot::before {
-  content: "";
+.svc-dot-dot {
   width: 7px;
   height: 7px;
+  flex: none;
   border-radius: 99px;
   background: currentColor;
-  opacity: 0.25;
+  opacity: 0.3;
   transition: opacity 0.25s ease;
 }
 .svc-dot--on {
-  width: 40px;
+  padding: 0 12px 0 10px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
 }
-.svc-dot--on::before {
-  width: 28px;
-  opacity: 0.85;
+.svc-dot--on .svc-dot-dot {
+  opacity: 0.9;
 }
-.svc-dot--on:has(.svc-dot-fill)::before {
-  opacity: 0.25;
+.svc-dot-label {
+  position: relative;
+  margin-left: 6px;
+  max-width: 30vw;
+  overflow: hidden;
+  padding-bottom: 3px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+@media (min-width: 640px) {
+  .svc-dot-label {
+    max-width: 160px;
+  }
 }
 .svc-dot-fill {
   position: absolute;
-  top: 50%;
-  left: 6px;
-  width: 28px;
-  height: 7px;
-  margin-top: -3.5px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
   border-radius: 99px;
   background: currentColor;
-  opacity: 0.85;
+  opacity: 0.65;
   transform-origin: left center;
   animation: svc-dot-fill 5s linear forwards;
 }
@@ -1078,6 +1169,36 @@ html[data-intro="playing"] [data-logo-9] {
   }
   to {
     transform: scaleX(1);
+  }
+}
+.svc-dot-tip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-bottom: 8px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .svc-dot:not(.svc-dot--on):hover {
+    transform: scale(1.45);
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
+  .svc-dot:not(.svc-dot--on):hover .svc-dot-dot {
+    opacity: 0.9;
+  }
+  .svc-dot:hover .svc-dot-tip {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
 .svc-ctl {
