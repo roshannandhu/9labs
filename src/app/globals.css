@@ -44,7 +44,7 @@
   --logo-from: #030303;
   --logo-to: #3533cb;
   --grid-alpha: 0.06;
-  --nav-h: 72px;
+  --nav-h: 56px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
@@ -338,6 +338,21 @@ html.lenis body {
     min-height: 42px;
     padding: 0 1.15rem;
     font-size: 14px;
+  }
+  /* the nav's own CTA size: thin enough for the flush Apple-style bar, same gradient-glow pill */
+  .btn-nav {
+    min-height: 34px;
+    padding: 0 1rem;
+    gap: 0.4rem;
+    font-size: 12.5px;
+  }
+  /* the nav bar's background: flush, no card, no margins — fades in on scroll instead of a
+     floating pill. Same blur technique as `.glass`, deliberately without its glow/edge gradient. */
+  .nav-surface {
+    background: rgb(var(--fg-rgb) / 0.045);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border-bottom: 1px solid rgb(var(--fg-rgb) / 0.08);
   }
   .link-glow {
     position: relative;
@@ -868,7 +883,8 @@ html[data-motion="reduce"] *::after {
 /* ---------- Liquid glass extras ---------- */
 @media (prefers-reduced-transparency: reduce) {
   .glass,
-  .glass-faux {
+  .glass-faux,
+  .nav-surface {
     background: var(--nl-panel) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;

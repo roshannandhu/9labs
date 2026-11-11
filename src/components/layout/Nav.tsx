@@ -48,10 +48,10 @@ export function Nav() {
   return (
     // Always visible: the logo lives here permanently (the landing animation lands on it).
     <header className="fixed inset-x-0 top-0 z-[80]">
-      {/* Once scrolled, the bar condenses into a floating liquid-glass pill. */}
+      {/* Flush, no card: a thin blur + hairline border fades in on scroll, nothing floats or insets. */}
       <div
-        className={`glass pointer-events-none absolute left-1/2 top-2 h-[calc(var(--nav-h)-16px)] w-[calc(100%-12px)] -translate-x-1/2 rounded-[22px] transition-[opacity,scale] duration-500 ease-[cubic-bezier(.16,1,.3,1)]  sm:w-[min(calc(100%-24px),1300px)] sm:rounded-full ${
-          scrolled || menuOpen ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
+        className={`nav-surface pointer-events-none absolute inset-0 transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)] ${
+          scrolled || menuOpen ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden="true"
       />
@@ -60,12 +60,12 @@ export function Nav() {
           <Logo />
         </a>
 
-        <ul className="hidden items-center gap-7 lg:flex">
+        <ul className="hidden items-center gap-6 lg:flex">
           {site.nav.map((item) => (
             <li key={item.id}>
               <a
                 href={item.href}
-                className="link-glow text-[14px] font-medium text-white/70 transition-colors hover:text-white data-[active=true]:text-white"
+                className="link-glow text-[13px] font-medium text-white/70 transition-colors hover:text-white data-[active=true]:text-white"
                 data-active={activeId === item.id}
                 aria-current={activeId === item.id ? "true" : undefined}
               >
@@ -78,7 +78,7 @@ export function Nav() {
         <div className="flex items-center gap-2.5">
           <span className="hidden sm:block">
             <Magnet padding={40} magnetStrength={3} maxOffset={10}>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => quiz.open()} data-cursor="Start">
+              <button type="button" className="btn btn-primary btn-nav" onClick={() => quiz.open()} data-cursor="Start">
                 Start The 9 Quiz
               </button>
             </Magnet>
