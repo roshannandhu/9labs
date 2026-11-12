@@ -1,9 +1,11 @@
-import { devLoginAllowed, googleConfigured } from "@/lib/auth/flow";
+import { demoLoginAllowed, devLoginAllowed, googleConfigured } from "@/lib/auth/flow";
 
 const ERRORS: Record<string, string> = {
   denied: "This Google account has no access to the admin. Ask an owner to add your e-mail under Admin → Admins.",
   google: "Google sign-in did not complete. Please try again.",
   "google-setup": "Google sign-in is not set up yet: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server settings.",
+  "demo-key": "That demo key is not right. Please check it and try again.",
+  locked: "Too many tries from this connection. Please wait ten minutes and try again.",
 };
 
 type Props = { searchParams?: Record<string, string | string[] | undefined> };
@@ -31,6 +33,15 @@ export function LoginButtons({ searchParams }: Props) {
         </a>
       ) : (
         !devLoginAllowed() && <p className="nl-auth__error">Google sign-in is not set up yet: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server settings.</p>
+      )}
+      {demoLoginAllowed() && (
+        <form method="post" action="/api/auth/demo" className="nl-login__dev">
+          <p>
+            <strong>Demo sign-in.</strong> This is a demo server. Enter the demo key you were given. It opens the admin with sample content; e-mails are saved, not sent.
+          </p>
+          <input type="password" name="key" required placeholder="Demo key" autoComplete="off" />
+          <button type="submit">Open the demo admin</button>
+        </form>
       )}
       {devLoginAllowed() && (
         <form method="post" action="/api/auth/dev" className="nl-login__dev">

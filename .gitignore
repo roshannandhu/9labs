@@ -44,3 +44,7 @@ next-env.d.ts
 /data/
 /uploads/
 !.env.example
+
+# static GitHub Pages demo build (scripts/build-demo.mjs)
+/.demo-build/
+/out/

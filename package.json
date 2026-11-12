@@ -10,7 +10,9 @@
     "payload": "payload",
     "generate:importmap": "payload generate:importmap",
     "generate:types": "payload generate:types",
-    "seed": "payload run src/scripts/seed.ts"
+    "seed": "payload run src/scripts/seed.ts",
+    "demo:snapshot": "DATABASE_URI=file:./data/snapshot.db tsx scripts/demo-snapshot.ts",
+    "demo:build": "node scripts/build-demo.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

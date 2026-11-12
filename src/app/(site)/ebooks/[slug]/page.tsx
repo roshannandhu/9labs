@@ -7,6 +7,12 @@ import { JsonLd } from "@/components/layout/JsonLd";
 
 type Props = { params: Promise<{ slug: string }> };
 
+/** Rendered per request on the server. The static GitHub Pages demo lists its books at build time. */
+export async function generateStaticParams() {
+  if (process.env.NEXT_PUBLIC_DEMO_STATIC !== "1") return [];
+  return (await getSite()).ebooks.map((b) => ({ slug: b.slug }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const book = (await getSite()).ebooks.find((b) => b.slug === slug);

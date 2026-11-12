@@ -10,6 +10,8 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    // the static demo's scratch copy and its build output (scripts/build-demo.mjs)
+    ".demo-build/**",
     "build/**",
     "next-env.d.ts",
     // Vendored React Bits components (copied from github.com/DavidHDev/react-bits)

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { checkLink } from "@/lib/ebooks/send";
-import { getSite, payloadClient } from "@/lib/content/getSite";
+import { getSite } from "@/lib/content/getSite";
+import { payloadClient } from "@/lib/content/db";
 import { PageHeader, PageShell } from "@/components/pages/PageShell";
 import { waLink } from "@/content/site";
 

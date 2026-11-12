@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
+import { siteHref } from "@/lib/site-href";
 import { CtaButton } from "./CtaButton";
 import { getLenis, scrollToId } from "@/lib/scroll";
 import { SocialIcon } from "@/components/icons/SocialIcon";
@@ -66,7 +67,7 @@ export function MobileMenu({ open, onClose, activeId, home }: { open: boolean; o
                   className="border-b border-white/[0.07]"
                 >
                   <a
-                    href={item.href.startsWith("#") && !home ? `/${item.href}` : item.href}
+                    href={siteHref(item.href.startsWith("#") && !home ? `/${item.href}` : item.href)}
                     onClick={(e) => {
                       e.stopPropagation();
                       onClose();

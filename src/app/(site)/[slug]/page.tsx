@@ -2,15 +2,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RichText } from "@payloadcms/richtext-lexical/react";
 import { getSite } from "@/lib/content/getSite";
-import { getFaqs, getPage } from "@/lib/content/pages";
+import { getFaqs, getPage, listPageSlugs } from "@/lib/content/pages";
 import { PageHeader, PageShell } from "@/components/pages/PageShell";
 import { PageCta } from "@/components/pages/PageCta";
 import { FaqList } from "@/components/faq/FaqList";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { JsonLd } from "@/components/layout/JsonLd";
+import { siteHref } from "@/lib/site-href";
 import type { FaqItem } from "@/content/types";
 
 type Props = { params: Promise<{ slug: string }> };
+
+/** Rendered per request on the server. The static GitHub Pages demo lists its pages at build time. */
+export async function generateStaticParams() {
+  if (process.env.NEXT_PUBLIC_DEMO_STATIC !== "1") return [];
+  return (await listPageSlugs()).map((slug) => ({ slug }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -129,7 +136,7 @@ export default async function ContentPage({ params }: Props) {
             {site.services.map((s) => (
               <li key={s.slug}>
                 <a
-                  href={`/#service-${s.slug}`}
+                  href={siteHref(`/#service-${s.slug}`)}
                   className="flex h-full items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50"
                 >
                   <ActivityIcon icon={s.icon} size={26} play={false} />

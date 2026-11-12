@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Payload } from "payload";
 import { isAdminUp } from "../access";
 import { smtpConfigured } from "../../lib/mail/transport";
-import { googleConfigured } from "../../lib/auth/flow";
+import { googleConfigured, isDemo } from "../../lib/auth/flow";
 
 type Props = { payload: Payload; user?: { name?: string | null; email?: string; role?: string } | null };
 
@@ -50,6 +50,11 @@ export async function Dashboard({ payload, user }: Props) {
   return (
     <section className="nl-dash">
       <h1>Welcome{first ? `, ${first}` : ""}</h1>
+      {isDemo() && (
+        <p className="nl-dash__warn">
+          <strong>Demo.</strong> This is a demo server with sample content. Changes are kept here, and e-mails are saved on the server instead of sent.
+        </p>
+      )}
       <p className="nl-dash__lead">Everything on the website is edited here. Changes appear on the site as soon as you press Save.</p>
 
       {n && (

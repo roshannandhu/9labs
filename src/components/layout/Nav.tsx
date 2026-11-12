@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSite } from "@/components/providers/SiteProvider";
+import { siteHref } from "@/lib/site-href";
 import { CtaButton } from "./CtaButton";
 import Magnet from "@/components/reactbits/Magnet";
 import { Logo } from "./Logo";
@@ -10,7 +11,7 @@ import { MobileMenu } from "./MobileMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
 /** On inner pages (/about, /faq…) a section link points back to the homepage: "#services" → "/#services". */
-export const navHref = (href: string, home: boolean) => (href.startsWith("#") && !home ? `/${href}` : href);
+export const navHref = (href: string, home: boolean) => siteHref(href.startsWith("#") && !home ? `/${href}` : href);
 
 export function Nav() {
   const site = useSite();
@@ -66,7 +67,7 @@ export function Nav() {
         aria-hidden="true"
       />
       <nav className="container-x relative flex h-[var(--nav-h)] items-center justify-between gap-6" aria-label="Main">
-        <a href={home ? "#home" : "/"} aria-label={`${site.name} — ${home ? "back to top" : "home"}`} className="-my-2 rounded-xl py-2" data-cursor="Home">
+        <a href={home ? "#home" : siteHref("/")} aria-label={`${site.name} — ${home ? "back to top" : "home"}`} className="-my-2 rounded-xl py-2" data-cursor="Home">
           <Logo />
         </a>
 

@@ -85,3 +85,12 @@ export async function afterIdentity(payload: Payload, req: Request, email: strin
 /** Dev sign-in exists only on a developer's machine, while no Google keys are configured. */
 export const devLoginAllowed = () => process.env.NODE_ENV !== "production" && !process.env.GOOGLE_CLIENT_ID;
 export const googleConfigured = () => Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+/**
+ * Demo sign-in: for a live demo server that has no Google keys yet. Switched on only by
+ * DEMO_MODE=1 with a DEMO_ADMIN_KEY of at least 16 characters, and never while Google keys are set.
+ * It signs in as the first ADMIN_EMAILS owner, after the shared key is checked.
+ */
+export const demoKey = () => (process.env.DEMO_ADMIN_KEY ?? "").trim();
+export const demoLoginAllowed = () => process.env.DEMO_MODE === "1" && !googleConfigured() && demoKey().length >= 16;
+export const isDemo = () => process.env.DEMO_MODE === "1";

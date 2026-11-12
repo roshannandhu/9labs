@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
+import { siteHref } from "@/lib/site-href";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 import LogoLoop from "@/components/reactbits/LogoLoop";
@@ -12,7 +13,7 @@ export function Footer() {
   const wa = useWhatsApp();
   const home = usePathname() === "/";
   // on inner pages a section link goes back to the homepage
-  const at = (href: string) => (href.startsWith("#") && !home ? `/${href}` : href);
+  const at = (href: string) => siteHref(href.startsWith("#") && !home ? `/${href}` : href);
   const f = site.footer;
 
   const logos = site.services.map((s) => ({

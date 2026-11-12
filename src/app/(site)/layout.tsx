@@ -68,6 +68,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const css = themeCss(theme);
   const look = { grid: theme.grid, whatsapp: site.contact.whatsappFab, ...(theme.colors.blue ? { blue: theme.colors.blue } : {}), ...(theme.colors.purple ? { purple: theme.colors.purple } : {}) };
 
+  const demo = process.env.NEXT_PUBLIC_DEMO_STATIC === "1";
   return (
     // suppressHydrationWarning: the pre-paint scripts set data-theme / data-intro on <html> before React loads
     <html lang="en" className={fontVariables} suppressHydrationWarning>
@@ -90,6 +91,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
                 <WhatsAppFab />
                 <ConceptLab />
                 <Tracking />
+                {demo && (
+                  <p role="note" className="fixed bottom-2 left-1/2 z-[120] -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#8c53fe,#5ce0e6)] px-4 py-1.5 text-center text-[12px] font-semibold text-[#0e0c20] shadow-lg">
+                    Live demo: sample content. Forms and the admin are not connected here — nothing is sent.
+                  </p>
+                )}
               </EnquiryProvider>
             </QuizProvider>
           </DemoSettingsProvider>
