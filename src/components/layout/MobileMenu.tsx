@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { site, whatsappHref } from "@/content/site";
-import { useQuiz } from "@/components/providers/QuizProvider";
+import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
+import { siteHref } from "@/lib/site-href";
+import { CtaButton } from "./CtaButton";
 import { getLenis, scrollToId } from "@/lib/scroll";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
-export function MobileMenu({ open, onClose, activeId }: { open: boolean; onClose: () => void; activeId: string }) {
-  const quiz = useQuiz();
+export function MobileMenu({ open, onClose, activeId, home }: { open: boolean; onClose: () => void; activeId: string; home: boolean }) {
+  const site = useSite();
+  const wa = useWhatsApp();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal target exists only on the client
   useEffect(() => setMounted(true), []);
@@ -65,11 +67,13 @@ export function MobileMenu({ open, onClose, activeId }: { open: boolean; onClose
                   className="border-b border-white/[0.07]"
                 >
                   <a
-                    href={item.href}
+                    href={siteHref(item.href.startsWith("#") && !home ? `/${item.href}` : item.href)}
                     onClick={(e) => {
-                      e.preventDefault();
                       e.stopPropagation();
                       onClose();
+                      // a section of the page we are on: smooth-scroll to it; anything else is a normal link
+                      if (!home || !item.href.startsWith("#")) return;
+                      e.preventDefault();
                       window.setTimeout(() => scrollToId(item.id), 80);
                     }}
                     className={`group flex items-baseline justify-between py-3.5 font-display text-[34px] font-semibold tracking-[-0.03em] transition-colors ${
@@ -89,18 +93,9 @@ export function MobileMenu({ open, onClose, activeId }: { open: boolean; onClose
               exit={{ opacity: 0 }}
               transition={{ delay: 0.45, duration: 0.5 }}
             >
-              <button
-                type="button"
-                className="btn btn-primary w-full"
-                onClick={() => {
-                  onClose();
-                  quiz.open();
-                }}
-              >
-                Start The 9 Quiz
-              </button>
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="btn btn-outline w-full">
-                Chat on WhatsApp
+              {site.navCta.label && <CtaButton cta={site.navCta} className="btn btn-primary w-full" onBefore={onClose} />}
+              <a href={wa()} target="_blank" rel="noopener noreferrer" className="btn btn-outline w-full">
+                {site.contact.chatLabel}
               </a>
             </motion.div>
             <div className="mt-auto flex items-center gap-2 pt-10">
@@ -108,6 +103,8 @@ export function MobileMenu({ open, onClose, activeId }: { open: boolean; onClose
                 <a
                   key={s.key}
                   href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={s.label}
                   className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-white/70 hover:border-nl-purple hover:text-white"
                 >

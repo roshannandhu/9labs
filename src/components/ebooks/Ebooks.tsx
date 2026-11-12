@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { site } from "@/content/site";
+import { fill } from "@/content/site";
+import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import ClickSpark from "@/components/reactbits/ClickSpark";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
@@ -25,6 +26,12 @@ const BH = `calc(${BW} * 1.45)`;
 
 export function Ebooks() {
   const { settings, reduced } = useDemo();
+  const site = useSite();
+  const t = site.ebooksSection;
+  const count = site.ebooks.length;
+  // the shelf holds up to four books in a row; more books make more shelves
+  const perRow = count <= 4 ? Math.max(1, count) : count <= 6 ? 3 : 4;
+  const rows = Array.from({ length: Math.ceil(count / perRow) }, (_, r) => site.ebooks.slice(r * perRow, (r + 1) * perRow));
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const shelfWide = useMediaQuery("(min-width: 768px)");
   const section = useRef<HTMLElement>(null);
@@ -46,45 +53,48 @@ export function Ebooks() {
 
   useEffect(() => {
     if (!cycling) return;
-    const t = window.setInterval(() => setAuto((a) => (a + 1) % site.ebooks.length), 4000);
-    return () => window.clearInterval(t);
-  }, [cycling]);
+    const timer = window.setInterval(() => setAuto((a) => (a + 1) % Math.max(1, count)), 4000);
+    return () => window.clearInterval(timer);
+  }, [cycling, count]);
   const openBook = site.ebooks.find((b) => b.slug === openSlug) ?? null;
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- portal target exists only on the client
   useEffect(() => setMounted(true), []);
+
+  if (!count) return null;
 
   return (
     <section id="ebooks" ref={section} aria-labelledby="ebooks-title" className="relative py-24 sm:py-32">
       <div className="container-x">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
-            <SectionLabel index="05">Free e-books</SectionLabel>
+            <SectionLabel index={sectionNo(site, "ebooks")}>{t.label}</SectionLabel>
             <SpringHeading
               id="ebooks-title"
-              text="Principles, not tricks."
-              accent="Free to read."
+              text={t.heading}
+              accent={t.accent || undefined}
               className="mt-4 text-[clamp(2rem,4.6vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em]"
             />
           </div>
-          <p className="max-w-[44ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">
-            Three short e-books that explain how growth really works — and how we work. Pick one, open it, and we’ll send it to your inbox.
-          </p>
+          {t.intro && <p className="max-w-[44ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">{t.intro}</p>}
         </div>
 
         <div className="mt-10 sm:mt-14">
           <PhoneShelf onOpen={setOpenSlug} />
         </div>
 
-        {/* tablet / laptop: the mirror shelf */}
-        <div className="relative mt-20 hidden md:grid md:grid-cols-3 md:gap-x-8">
+        {/* tablet / laptop: the mirror shelf (one per row of books) */}
+        {rows.map((row, r) => (
+        <div key={r} className="relative mx-auto mt-20 hidden md:grid md:gap-x-8" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))`, maxWidth: `${row.length * 400}px` }}>
           {/* the shelf line */}
           <div className="pointer-events-none absolute inset-x-0 top-[calc(clamp(168px,17vw,210px)*1.45+20px)] hidden h-px bg-gradient-to-r from-transparent via-white/25 to-transparent md:block" aria-hidden="true">
             <span className="absolute inset-x-[10%] -top-px h-[3px] bg-gradient-to-r from-transparent via-nl-purple/50 to-transparent blur-[2px]" />
           </div>
 
-          {site.ebooks.map((b, i) => (
-            <AnimatedContent key={b.slug} distance={60} duration={1} delay={i * 0.12} ease="expo.out">
+          {row.map((b, j) => {
+            const i = r * perRow + j;
+            return (
+            <AnimatedContent key={b.slug} distance={60} duration={1} delay={j * 0.12} ease="expo.out">
               <article
                 className="shelf-item group relative isolate flex flex-col items-center text-center"
                 data-focus={focus === i}
@@ -127,13 +137,13 @@ export function Ebooks() {
                   </span>
                 </button>
 
-                <p className="label-mono mt-20">E-book {b.n} · {b.pages} pages</p>
+                <p className="label-mono mt-20">{fill(t.cardLabel, { n: b.n, pages: b.pages })}</p>
                 <h3 className="mt-2 text-[22px] font-semibold sm:text-2xl">{b.title}</h3>
                 <p className="mt-2 max-w-[34ch] text-[15px] leading-relaxed text-nl-ink">{b.oneLiner}</p>
                 <div className="mt-6">
                   <ClickSpark sparkColor={[settings.purple, settings.blue, "#3533cb"]} sparkCount={10} sparkRadius={38} glow={0.6}>
                     <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpenSlug(b.slug)} data-cursor="Open">
-                      Get the free e-book
+                      {t.cardCta}
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path d="M8 3v8M4 8l4 4 4-4M3 13.5h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -142,9 +152,10 @@ export function Ebooks() {
                 </div>
               </article>
             </AnimatedContent>
-          ))}
+            );
+          })}
         </div>
-        <p className="label-mono mt-14 text-center !text-white/30">Working titles · final titles &amp; covers to be supplied</p>
+        ))}
       </div>
 
       {mounted &&

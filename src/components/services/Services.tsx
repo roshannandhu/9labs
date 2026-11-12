@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { site } from "@/content/site";
+import type { Service } from "@/content/site";
+import type { SiteData } from "@/content/types";
+import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
@@ -20,8 +22,6 @@ import { Scene8AI } from "./scenes/Scene8AI";
 import { Scene9IT } from "./scenes/Scene9IT";
 import { ServiceCard } from "./ServiceCard";
 
-const services = site.services;
-
 /**
  * "Our 9 labs." The nine services as a sideways carousel (`useServiceTrack`): swipe or trackpad
  * freely, the next card peeks in dimmed, it auto-advances, and the particle swarm forms each card's
@@ -30,28 +30,54 @@ const services = site.services;
  */
 export function Services() {
   const { reduced } = useDemo();
+  const site = useSite();
+  const t = site.servicesSection;
 
   const heading = (
     <div className="container-x max-w-[920px]">
-      <SectionLabel index="01">Our 9 labs</SectionLabel>
+      <SectionLabel index={sectionNo(site, "services")}>{t.label}</SectionLabel>
       <SpringHeading
         id="services-title"
-        text="Nine activities."
-        accent="One team."
+        text={t.heading}
+        accent={t.accent || undefined}
         className="mt-4 text-[clamp(2rem,4.4vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em]"
       />
-      <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">
-        Everything a brand needs to grow — from the first strategy session to the last frame of the event film — planned and delivered by one team.
-      </p>
+      {t.intro && <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">{t.intro}</p>}
     </div>
   );
 
-  if (reduced) return <ServicesList heading={heading} />;
+  if (reduced) return <ServicesList heading={heading} services={site.services} t={t} />;
 
-  return <ServicesTrack heading={heading} />;
+  return <ServicesTrack heading={heading} services={site.services} t={t} />;
 }
 
-function ServicesTrack({ heading }: { heading: React.ReactNode }) {
+type Part = { heading: React.ReactNode; services: Service[]; t: SiteData["servicesSection"] };
+
+/** "All nine. One team." + the 3×3 grid of the nine activities. */
+function Finale({ services, t, gap = "" }: Omit<Part, "heading"> & { gap?: string }) {
+  return (
+    <>
+      <h3 className={`${gap} font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]`}>
+        {t.outro} {t.outroAccent && <span className="font-accent text-gradient">{t.outroAccent}</span>}
+      </h3>
+      <ul className="mt-8 grid w-full max-w-[760px] grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
+        {services.map((s) => (
+          <li key={s.slug}>
+            <a
+              href={`#service-${s.slug}`}
+              className="finale-tile flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50 hover:bg-nl-purple/[0.06] sm:gap-3 sm:rounded-3xl sm:py-6"
+            >
+              <ActivityIcon icon={s.icon} size={30} play={false} />
+              <span className="text-[11.5px] font-medium leading-tight text-white/80 sm:text-sm">{s.short}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function ServicesTrack({ heading, services, t }: Part) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { active, goTo, running, posRef } = useServiceTrack(scrollerRef);
   const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
@@ -88,29 +114,14 @@ function ServicesTrack({ heading }: { heading: React.ReactNode }) {
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />
         </div>
-        <h3 className="mt-3 font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]">
-          All nine. <span className="font-accent text-gradient">One team.</span>
-        </h3>
-        <ul className="mt-8 grid w-full max-w-[760px] grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
-          {services.map((s) => (
-            <li key={s.slug}>
-              <a
-                href={`#service-${s.slug}`}
-                className="finale-tile flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50 hover:bg-nl-purple/[0.06] sm:gap-3 sm:rounded-3xl sm:py-6"
-              >
-                <ActivityIcon icon={s.icon} size={30} play={false} />
-                <span className="text-[11.5px] font-medium leading-tight text-white/80 sm:text-sm">{s.short}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <Finale services={services} t={t} gap="mt-3" />
       </div>
     </section>
   );
 }
 
 /** Reduced motion: nothing moving — the nine cards in a list, each with a still number. */
-function ServicesList({ heading }: { heading: React.ReactNode }) {
+function ServicesList({ heading, services, t }: Part) {
   return (
     <section id="services" aria-labelledby="services-title" className="relative pt-24 sm:pt-28">
       {heading}
@@ -127,22 +138,7 @@ function ServicesList({ heading }: { heading: React.ReactNode }) {
         </ol>
       </div>
       <div className="container-x flex flex-col items-center pb-20 pt-14 text-center sm:pb-28 sm:pt-20">
-        <h3 className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]">
-          All nine. <span className="font-accent text-gradient">One team.</span>
-        </h3>
-        <ul className="mt-8 grid w-full max-w-[760px] grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
-          {services.map((s) => (
-            <li key={s.slug}>
-              <a
-                href={`#service-${s.slug}`}
-                className="finale-tile flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50 hover:bg-nl-purple/[0.06] sm:gap-3 sm:rounded-3xl sm:py-6"
-              >
-                <ActivityIcon icon={s.icon} size={30} play={false} />
-                <span className="text-[11.5px] font-medium leading-tight text-white/80 sm:text-sm">{s.short}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <Finale services={services} t={t} />
       </div>
     </section>
   );

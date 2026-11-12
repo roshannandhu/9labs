@@ -2,6 +2,7 @@
 
 import type { Service } from "@/content/site";
 import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
+import { useSite } from "@/components/providers/SiteProvider";
 
 /**
  * The one constant every scene shares: a quiet index + name + one line, and the service's own
@@ -13,13 +14,14 @@ import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
  */
 export function SceneCaption({ s, className = "" }: { s: Service; className?: string }) {
   const enquiry = useEnquiry();
+  const { cardCta } = useSite().servicesSection;
   return (
     <div className={`scene-caption ${className}`}>
       <p className="label-mono !text-[11px]">{String(s.n).padStart(2, "0")} / 09</p>
       <h3 className="mt-1.5 text-[26px] font-semibold leading-tight sm:text-[32px]">{s.title}</h3>
       <p className="mt-1.5 max-w-[44ch] text-[14.5px] leading-relaxed text-nl-ink sm:text-[15px]">{s.description}</p>
       <button type="button" onClick={() => enquiry.open(s.slug)} className="link-glow mt-3 inline-flex items-center gap-2 py-1 text-sm font-medium text-white" data-cursor="Ask">
-        Talk to us about this
+        {cardCta}
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

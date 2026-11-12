@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { Service } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
+import { useSite } from "@/components/providers/SiteProvider";
 
 /** Reduced-motion list card: lights up (and its icon plays) once it's in view. */
 export function ServiceCard({ service: s, className = "" }: { service: Service; className?: string }) {
   const enquiry = useEnquiry();
+  const { cardCta } = useSite().servicesSection;
   const ref = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
 
@@ -63,7 +65,7 @@ export function ServiceCard({ service: s, className = "" }: { service: Service; 
 
       <div className="relative mt-auto pt-5 sm:pt-7">
         <button type="button" onClick={() => enquiry.open(s.slug)} className="link-glow -my-2 inline-flex items-center gap-2 py-2 text-sm font-medium text-white" data-cursor="Ask">
-          Talk to us about this
+          {cardCta}
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { site } from "@/content/site";
+import { useSite } from "@/components/providers/SiteProvider";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -9,8 +9,8 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SpringHeading } from "@/components/layout/SpringHeading";
 import { SplitFlap } from "./SplitFlap";
 
-const steps = site.about.steps;
-const LAST = steps.length - 1;
+/** The bridge is built in exactly three steps (the admin edits their words, not their number). */
+const LAST = 2;
 const stroke = { fill: "none", vectorEffect: "non-scaling-stroke" as const, strokeLinecap: "round" as const };
 
 /* ---------------------------------------------------------------- side view (laptop / tablet) */
@@ -18,6 +18,7 @@ const quad = (a: number, c: number, b: number, t: number) => (1 - t) * (1 - t) *
 const H = { deck: 300, top: 70, water: 380, towers: [330, 870], x0: 120, x1: 1080 };
 
 function SideBridge() {
+  const { story } = useSite().about;
   const hangers: { x: number; y: number; side: "l" | "c" | "r" }[] = [];
   for (let x = 360; x <= 840; x += 30) hangers.push({ x, y: quad(H.top, 470, H.top, (x - 330) / 540), side: "c" });
   for (let x = 150; x <= 310; x += 30) hangers.push({ x, y: quad(290, 190, H.top, (x - H.x0) / (330 - H.x0)), side: "l" });
@@ -27,8 +28,8 @@ function SideBridge() {
     <svg viewBox="0 0 1200 440" className="block h-auto w-full overflow-visible text-white" aria-hidden="true">
       <defs>
         <linearGradient id="bs-cable" x1="0" x2="1">
-          <stop offset="0" stopColor="#8c53fe" />
-          <stop offset="1" stopColor="#5ce0e6" />
+          <stop offset="0" stopColor="var(--brand-a)" />
+          <stop offset="1" stopColor="var(--brand-b)" />
         </linearGradient>
         <filter id="bs-glow" x="-50%" y="-200%" width="200%" height="500%">
           <feGaussianBlur stdDeviation="5" result="b" />
@@ -61,7 +62,7 @@ function SideBridge() {
           />
           <path className="bs-draw" d={`M${x - 18} ${H.top} H${x + 18}`} {...stroke} stroke="currentColor" strokeOpacity="0.7" strokeWidth={1.6} />
           {/* tower light */}
-          <circle className="bs-pop" cx={x} cy={H.top - 10} r="4" fill={i === 0 ? "#8c53fe" : "#5ce0e6"} filter="url(#bs-glow)" />
+          <circle className="bs-pop" cx={x} cy={H.top - 10} r="4" fill={i === 0 ? "var(--brand-a)" : "var(--brand-b)"} filter="url(#bs-glow)" />
         </g>
       ))}
 
@@ -94,15 +95,15 @@ function SideBridge() {
       {/* two-way traffic (runs once the bridge is complete) */}
       <g className="bs-traffic">
         <g className="bs-ltr" style={{ ["--run" as string]: `${H.x1 - H.x0 - 120}px` }}>
-          <rect x={H.x0 + 4} y={H.deck - 26} width="112" height="22" rx="11" fill="#8c53fe" />
+          <rect x={H.x0 + 4} y={H.deck - 26} width="112" height="22" rx="11" fill="var(--brand-a)" />
           <text x={H.x0 + 60} y={H.deck - 11} textAnchor="middle" className="bs-pill-text">
-            Your goals →
+            {story.pillOut}
           </text>
         </g>
         <g className="bs-rtl" style={{ ["--run" as string]: `${H.x1 - H.x0 - 136}px` }}>
-          <rect x={H.x1 - 140} y={H.deck + 22} width="136" height="22" rx="11" fill="#5ce0e6" />
+          <rect x={H.x1 - 140} y={H.deck + 22} width="136" height="22" rx="11" fill="var(--brand-b)" />
           <text x={H.x1 - 72} y={H.deck + 37} textAnchor="middle" className="bs-pill-text bs-pill-text--dark">
-            ← Our expertise
+            {story.pillIn}
           </text>
         </g>
       </g>
@@ -120,13 +121,14 @@ function SideBridge() {
 
 /* ---------------------------------------------------------------- the two banks (HTML, so text stays crisp and wraps) */
 function YouBank({ className = "" }: { className?: string }) {
+  const { story } = useSite().about;
   return (
     <div className={`bs-card bs-1 ${className}`}>
-      <p className="label-mono !text-[10.5px]">Your side</p>
-      <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">Your business</p>
+      <p className="label-mono !text-[10.5px]">{story.yourSideLabel}</p>
+      <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">{story.yourSideTitle}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {["Goals", "Ideas", "Feedback"].map((t) => (
-          <span key={t} className="rounded-full border border-[#8c53fe]/40 bg-[#8c53fe]/10 px-2 py-0.5 text-[11px] font-medium text-white/80">
+        {story.yourSideChips.map((t) => (
+          <span key={t} className="rounded-full border border-[color:var(--brand-a)]/40 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-[11px] font-medium text-white/80">
             {t}
           </span>
         ))}
@@ -135,10 +137,12 @@ function YouBank({ className = "" }: { className?: string }) {
   );
 }
 function UsBank({ className = "" }: { className?: string }) {
+  const site = useSite();
+  const { story } = site.about;
   return (
     <div className={`bs-card bs-2 ${className}`}>
-      <p className="label-mono !text-[10.5px]">Our side</p>
-      <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">Nine Labs</p>
+      <p className="label-mono !text-[10.5px]">{story.ourSideLabel}</p>
+      <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">{story.ourSideTitle}</p>
       <div className="mt-2 grid w-max grid-cols-3 gap-1">
         {site.services.map((s) => (
           <span key={s.slug} className="grid h-6 w-6 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-nl-blue-soft" title={s.short}>
@@ -167,11 +171,6 @@ function Skyline() {
   );
 }
 
-const STOPS = [
-  { label: "Your side", s: steps[0] },
-  { label: "The middle", s: steps[LAST] },
-  { label: "Our side", s: steps[1] },
-];
 
 /**
  * Phone: the full, detailed bridge at real size, wider than the screen. Swipe sideways along it
@@ -192,6 +191,13 @@ function PhoneBridge({
   const stageRef = useRef<HTMLDivElement>(null);
   const skylineRef = useRef<HTMLDivElement>(null);
 
+  const { story, steps } = useSite().about;
+  // left bank → the middle (the finished bridge) → right bank
+  const STOPS = [
+    { label: story.yourSideLabel, s: steps[0] },
+    { label: story.middleLabel, s: steps[LAST] },
+    { label: story.ourSideLabel, s: steps[1] },
+  ];
   const stop = Math.min(2, Math.max(0, Math.round(progress * 2)));
   const cur = STOPS[stop];
 
@@ -232,7 +238,7 @@ function PhoneBridge({
             <YouBank className="absolute left-0 top-0 w-[220px]" />
             <UsBank className="absolute right-0 top-0 w-[220px]" />
             <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
-              ✓ Results
+              {story.result}
             </p>
           </div>
         </div>
@@ -280,6 +286,7 @@ function PhoneBridge({
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
+  const { story, steps } = useSite().about;
   const wide = useMediaQuery("(min-width: 768px)", true);
   // phones held sideways: too short for cards over the bridge, so cards sit beside it
   const short = useMediaQuery("(orientation: landscape) and (max-height: 520px)");
@@ -381,11 +388,11 @@ export function BridgeStory() {
         {/* heading + the current step (laptop) */}
         <div className="grid gap-4 md:grid-cols-12 md:items-end md:gap-8">
           <div className="md:col-span-5">
-            <p className="label-mono lsp:hidden">How we work</p>
+            <p className="label-mono lsp:hidden">{story.label}</p>
             <SpringHeading
               as="h3"
-              text="Three steps"
-              accent="across the bridge."
+              text={story.heading}
+              accent={story.accent || undefined}
               className="mt-3 font-display text-[clamp(1.6rem,3.6vw,3rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white lsp:mt-0 lsp:text-[1.4rem]"
             />
           </div>
@@ -411,7 +418,7 @@ export function BridgeStory() {
             <div className="relative mx-auto min-w-0 max-w-[calc((100svh_-_var(--nav-h)_-_150px)*2.72)] flex-1">
               <SideBridge />
               <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
-                ✓ Results
+                {story.result}
               </p>
             </div>
             <UsBank className="w-[150px] shrink-0" />
@@ -422,7 +429,7 @@ export function BridgeStory() {
             <YouBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
             <UsBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
             <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
-              ✓ Results
+              {story.result}
             </p>
           </div>
         ) : (

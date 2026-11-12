@@ -43,6 +43,9 @@
      The logo, the landing animation and every particle number use it. */
   --logo-from: #030303;
   --logo-to: #3533cb;
+  /* the logo's purple → cyan pair, used for highlights in both themes (admin: Look → brand colours) */
+  --brand-a: #8c53fe;
+  --brand-b: #5ce0e6;
   --grid-alpha: 0.06;
   --nav-h: 56px;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -1472,4 +1475,73 @@ html[data-theme="dark"] .quiz-q1 {
 }
 html[data-theme="dark"] .quiz-accent {
   color: #b49bff !important;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Text written in the admin's rich-text editor (pages, FAQ answers).   */
+/* ------------------------------------------------------------------ */
+.rich > * + * {
+  margin-top: 1em;
+}
+.rich h1,
+.rich h2,
+.rich h3,
+.rich h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: rgb(var(--fg-rgb));
+  margin-top: 1.8em;
+}
+.rich h1,
+.rich h2 {
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+}
+.rich h3 {
+  font-size: 1.3rem;
+}
+.rich h4 {
+  font-size: 1.1rem;
+}
+.rich > :first-child {
+  margin-top: 0;
+}
+.rich a {
+  color: var(--nl-purple);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rich strong {
+  color: rgb(var(--fg-rgb));
+  font-weight: 600;
+}
+.rich ul,
+.rich ol {
+  padding-left: 1.3em;
+}
+.rich ul {
+  list-style: disc;
+}
+.rich ol {
+  list-style: decimal;
+}
+.rich li + li {
+  margin-top: 0.4em;
+}
+.rich blockquote {
+  border-left: 2px solid var(--nl-purple);
+  padding-left: 1rem;
+  font-style: italic;
+}
+.rich img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 20px;
+}
+.rich hr {
+  border: 0;
+  border-top: 1px solid rgb(var(--fg-rgb) / 0.12);
+  margin: 2em 0;
 }

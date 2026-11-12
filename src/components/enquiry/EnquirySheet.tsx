@@ -3,7 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { site, waHref } from "@/content/site";
+import { fill } from "@/content/site";
+import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
+import { beacon } from "@/lib/api";
 import { useModalLock } from "@/lib/useModalLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -11,7 +13,6 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
 const ease = [0.16, 1, 0.3, 1] as const;
-const e = site.enquiry;
 
 function Chips({
   label,
@@ -40,7 +41,7 @@ function Chips({
               // functional update: quick double taps never lose a choice
               onClick={() => onChange((v) => (multi ? (v.includes(o) ? v.filter((x) => x !== o) : [...v, o]) : v[0] === o ? [] : [o]))}
               className={`rounded-full border px-3.5 py-2 text-[14px] transition-colors ${
-                on ? "border-transparent bg-[linear-gradient(120deg,#8c53fe,#5a7bf0)] text-paper" : "border-white/14 bg-[var(--chip-bg)] text-white/80 hover:border-[#8c53fe]/60"
+                on ? "border-transparent bg-[linear-gradient(120deg,var(--brand-a),#5a7bf0)] text-paper" : "border-white/14 bg-[var(--chip-bg)] text-white/80 hover:border-[color:var(--brand-a)]/60"
               }`}
             >
               {on && multi ? "✓ " : ""}
@@ -54,17 +55,21 @@ function Chips({
 }
 
 const field =
-  "mt-1.5 block w-full rounded-2xl border border-white/14 bg-[var(--chip-bg)] px-4 py-3 text-[16px] text-white placeholder:text-white/35 transition-colors focus:border-[#8c53fe] focus:outline-none";
+  "mt-1.5 block w-full rounded-2xl border border-white/14 bg-[var(--chip-bg)] px-4 py-3 text-[16px] text-white placeholder:text-white/35 transition-colors focus:border-[color:var(--brand-a)] focus:outline-none";
 
 /**
  * "Talk to us about this": a quick enquiry window. Phone: a sheet that slides up from the bottom;
  * laptop: a centred card. The activity comes pre-selected; the visitor taps what they need, a
  * budget and a timeline, adds their name (and company / message if they like), and "Send on
- * WhatsApp" opens a chat with Nine Labs with all of it already written. Options are content
- * (site.enquiry + services[].needs), so the admin can add, edit or remove them later.
+ * WhatsApp" opens a chat with Nine Labs with all of it already written. Every label and choice
+ * comes from the admin (The 9 cards → Talk-to-us window, and each card's own "needs"); the enquiry
+ * is also saved for the admin just before WhatsApp opens.
  */
 export default function EnquirySheet({ open, slug, onClose }: { open: boolean; slug: string; onClose: () => void }) {
   const { reduced } = useDemo();
+  const site = useSite();
+  const wa = useWhatsApp();
+  const e = site.enquiry;
   const wide = useMediaQuery("(min-width: 640px)", true);
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -88,6 +93,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
     setTried(false);
     setDone(false);
     /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when it opens
   }, [open, slug]);
 
   useModalLock(open, panel, onClose);
@@ -96,7 +102,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
   const nameOk = name.trim().length >= 2;
 
   const text = [
-    "Hi Nine Labs! 👋",
+    e.greeting || null,
     `I'm ${name.trim() || "—"}${company.trim() ? ` from ${company.trim()}` : ""}.`,
     "",
     `Interested in: ${svc.title}`,
@@ -104,11 +110,13 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
     budget.length ? `Budget: ${budget[0]}` : null,
     when.length ? `Timeline: ${when[0]}` : null,
     message.trim() ? `\n${message.trim()}` : null,
-    "",
-    "(Sent from the Nine Labs website)",
+    e.signature ? "" : null,
+    e.signature || null,
   ]
     .filter((l) => l !== null)
     .join("\n");
+  // an activity can have its own WhatsApp number (set on the card in the admin)
+  const chat = wa(text, svc.whatsappNumber);
 
   const send = (how: "wa" | "mail") => {
     setTried(true);
@@ -116,9 +124,20 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
       panel.current?.querySelector<HTMLInputElement>(`#${CSS.escape(id)}-name`)?.focus();
       return;
     }
+    // saved for the admin first; it must not hold up WhatsApp
+    beacon("/api/public/enquiries", {
+      service: svc.slug,
+      needs,
+      budget: budget[0] ?? "",
+      timeline: when[0] ?? "",
+      name: name.trim(),
+      company: company.trim(),
+      message: message.trim(),
+      channel: how === "wa" ? "whatsapp" : "email",
+    });
     const url =
       how === "wa"
-        ? waHref(text)
+        ? chat
         : `mailto:${site.contact.email}?subject=${encodeURIComponent(`Enquiry: ${svc.title}`)}&body=${encodeURIComponent(text)}`;
     window.open(url, how === "wa" ? "_blank" : "_self", "noopener");
     setDone(true);
@@ -149,7 +168,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
               <div className="relative shrink-0 border-b border-white/10 px-5 pb-4 pt-3 sm:px-7 sm:pt-6">
                 <span className="mx-auto mb-3 block h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
                 <div className="flex items-start gap-3.5">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#8c53fe]/35 bg-[#8c53fe]/10 text-white">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white">
                     <ActivityIcon icon={svc.icon} size={26} play={false} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -173,12 +192,12 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
 
               {done ? (
                 <div className="flex flex-col items-center px-6 py-12 text-center" role="status">
-                  <span className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,#8c53fe,#5ce0e6)] text-2xl text-paper">✓</span>
-                  <p className="mt-5 font-display text-xl font-semibold text-white">Thanks, {name.trim().split(" ")[0]}!</p>
-                  <p className="mt-2 max-w-[34ch] text-[15px] text-nl-ink">Your message is ready in WhatsApp — just press send. We usually reply within a working day.</p>
+                  <span className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,var(--brand-a),var(--brand-b))] text-2xl text-paper">✓</span>
+                  <p className="mt-5 font-display text-xl font-semibold text-white">{fill(e.thanksTitle, { name: name.trim().split(" ")[0] })}</p>
+                  <p className="mt-2 max-w-[34ch] text-[15px] text-nl-ink">{e.thanksText}</p>
                   <div className="mt-6 flex gap-2">
-                    <a href={waHref(text)} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
-                      Open WhatsApp again
+                    <a href={chat} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
+                      {e.again}
                     </a>
                     <button type="button" onClick={onClose} className="btn btn-sm text-white/70 hover:text-white">
                       Close
@@ -197,7 +216,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
                     noValidate
                   >
                     <label className="block">
-                      <span className="label-mono">Activity</span>
+                      <span className="label-mono">{e.activityLabel}</span>
                       <select
                         value={service}
                         onChange={(ev) => {
@@ -213,12 +232,12 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
                         ))}
                       </select>
                     </label>
-                    <Chips label="What do you need?" options={svc.needs} value={needs} multi onChange={setNeeds} />
-                    <Chips label="Budget" options={e.budgets} value={budget} onChange={setBudget} />
-                    <Chips label="When" options={e.timelines} value={when} onChange={setWhen} />
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    {svc.needs.length > 0 && <Chips label={e.needsLabel} options={svc.needs} value={needs} multi onChange={setNeeds} />}
+                    {e.showBudget && e.budgets.length > 0 && <Chips label={e.budgetLabel} options={e.budgets} value={budget} onChange={setBudget} />}
+                    {e.showTimeline && e.timelines.length > 0 && <Chips label={e.timelineLabel} options={e.timelines} value={when} onChange={setWhen} />}
+                    <div className={`grid gap-4 ${e.showCompany ? "sm:grid-cols-2" : ""}`}>
                       <label className="block">
-                        <span className="label-mono">Your name *</span>
+                        <span className="label-mono">{e.nameLabel}</span>
                         <input
                           id={`${id}-name`}
                           value={name}
@@ -227,39 +246,43 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
                           aria-invalid={tried && !nameOk}
                           aria-describedby={tried && !nameOk ? `${id}-name-err` : undefined}
                           className={`${field} ${tried && !nameOk ? "!border-[#e5484d]" : ""}`}
-                          placeholder="Your name"
+                          placeholder={e.namePlaceholder}
                           onFocus={(ev) => ev.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
                         />
                         {tried && !nameOk && (
                           <span id={`${id}-name-err`} className="mt-1 block text-[13px] text-[#e5484d]">
-                            Please add your name.
+                            {e.nameError}
                           </span>
                         )}
                       </label>
+                      {e.showCompany && (
                       <label className="block">
-                        <span className="label-mono">Company</span>
+                        <span className="label-mono">{e.companyLabel}</span>
                         <input
                           value={company}
                           onChange={(ev) => setCompany(ev.target.value)}
                           autoComplete="organization"
                           className={field}
-                          placeholder="Optional"
+                          placeholder={e.companyPlaceholder}
                           onFocus={(ev) => ev.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
                         />
                       </label>
+                      )}
                     </div>
+                    {e.showMessage && (
                     <label className="block">
-                      <span className="label-mono">Message</span>
+                      <span className="label-mono">{e.messageLabel}</span>
                       <textarea
                         value={message}
                         onChange={(ev) => setMessage(ev.target.value)}
                         rows={3}
                         maxLength={800}
                         className={`${field} resize-none`}
-                        placeholder="Anything else we should know? (optional)"
+                        placeholder={e.messagePlaceholder}
                         onFocus={(ev) => ev.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
                       />
                     </label>
+                    )}
                     <button type="submit" className="sr-only" tabIndex={-1}>
                       Send
                     </button>
@@ -268,11 +291,13 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
                   {/* footer (always visible) */}
                   <div className="shrink-0 border-t border-white/10 px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6">
                     <button type="button" onClick={() => send("wa")} className="btn btn-primary w-full">
-                      <SocialIcon name="whatsapp" size={18} /> Send on WhatsApp
+                      <SocialIcon name="whatsapp" size={18} /> {e.whatsappCta}
                     </button>
-                    <button type="button" onClick={() => send("mail")} className="mt-1.5 block w-full py-2 text-center text-[14px] text-white/60 hover:text-white">
-                      E-mail instead
-                    </button>
+                    {e.emailEnabled && (
+                      <button type="button" onClick={() => send("mail")} className="mt-1.5 block w-full py-2 text-center text-[14px] text-white/60 hover:text-white">
+                        {e.emailCta}
+                      </button>
+                    )}
                   </div>
                 </>
               )}

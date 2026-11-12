@@ -1,8 +1,8 @@
 "use client";
 
-import { site } from "@/content/site";
+import { useSite } from "@/components/providers/SiteProvider";
+import { CtaButton } from "@/components/layout/CtaButton";
 import { useDemo } from "@/components/providers/DemoSettings";
-import { useQuiz } from "@/components/providers/QuizProvider";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 
 function splitWords(text: string, startDelay: number, step = 0.045) {
@@ -23,7 +23,7 @@ function splitWords(text: string, startDelay: number, step = 0.045) {
  */
 export function Hero() {
   const { reduced } = useDemo();
-  const quiz = useQuiz();
+  const { hero } = useSite();
 
   return (
     <section id="home" aria-labelledby="hero-title" className="relative flex min-h-[100svh] items-center pt-[var(--nav-h)]">
@@ -32,36 +32,38 @@ export function Hero() {
           <p className="label-mono rise-in mb-4 inline-flex items-center gap-2.5" style={{ animationDelay: "0.1s" }}>
             <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-nl-purple shadow-[0_0_10px_var(--nl-purple)]" />
             <span>
-              Marketing · Events · Technology<span className="hidden sm:inline"> — Dubai South</span>
+              {hero.eyebrow}
+              {hero.eyebrowExtra && <span className="hidden sm:inline">{hero.eyebrowExtra}</span>}
             </span>
           </p>
           <h1
             id="hero-title"
             className="text-[clamp(2rem,8vw,2.7rem)] font-semibold leading-[1.04] tracking-[-0.035em] sm:text-[clamp(2.6rem,5.6vw,3.4rem)] lg:text-[clamp(2.8rem,4vw,4.1rem)] lsp:text-[1.9rem]"
           >
-            {splitWords("Marketing, events and technology,", 0.18)}
-            <span className="block">
-              <span className="rise-in font-accent text-gradient inline-block pb-[0.08em]" style={{ animationDelay: "0.42s" }}>
-                built to deliver results.
+            {splitWords(hero.headline, 0.18)}
+            {hero.headlineAccent && (
+              <span className="block">
+                <span className="rise-in font-accent text-gradient inline-block pb-[0.08em]" style={{ animationDelay: "0.42s" }}>
+                  {hero.headlineAccent}
+                </span>
               </span>
-            </span>
+            )}
           </h1>
           <p
             className="rise-in mx-auto mt-4 max-w-[52ch] text-[15px] leading-relaxed text-nl-ink sm:text-[17px] lg:mx-0 lsp:mx-0 lsp:text-sm"
             style={{ animationDelay: "0.6s" }}
           >
-            {site.hero.sub}
+            {hero.sub}
           </p>
           <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start lsp:mt-4 lsp:flex-row lsp:justify-start">
-            <button type="button" className="btn btn-primary rise-in" style={{ animationDelay: "0.75s" }} onClick={() => quiz.open()} data-cursor="Start">
-              {site.hero.primaryCta}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <a href="#ebooks" className="btn btn-outline rise-in" style={{ animationDelay: "0.85s" }} data-cursor="Read">
-              {site.hero.secondaryCta}
-            </a>
+            {hero.primary.label && (
+              <CtaButton cta={hero.primary} className="btn btn-primary rise-in" style={{ animationDelay: "0.75s" }} data-cursor="Start">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </CtaButton>
+            )}
+            {hero.secondary.label && <CtaButton cta={hero.secondary} className="btn btn-outline rise-in" style={{ animationDelay: "0.85s" }} data-cursor="Read" />}
           </div>
         </div>
 
@@ -75,7 +77,7 @@ export function Hero() {
             {reduced && <StaticDigit ch="9" />}
           </div>
           <p className="label-mono rise-in mt-3 text-center" style={{ animationDelay: "1.1s" }}>
-            9 services · one team
+            {hero.caption}
           </p>
         </div>
       </div>

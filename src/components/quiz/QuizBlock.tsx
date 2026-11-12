@@ -1,6 +1,7 @@
 "use client";
 
-import { site, type QuizQuestion } from "@/content/site";
+import { fill } from "@/content/site";
+import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useQuiz } from "@/components/providers/QuizProvider";
 import { ShaderGradient } from "@/components/background/ShaderGradient";
 import StarBorder from "@/components/reactbits/StarBorder";
@@ -11,8 +12,10 @@ import { useTheme } from "@/components/layout/ThemeToggle";
 
 export function QuizBlock() {
   const quiz = useQuiz();
+  const site = useSite();
   const q = site.quiz;
-  const q1 = (q.questions as QuizQuestion[])[0];
+  const q1 = q.questions[0];
+  const count = q.questions.length;
   const dark = useTheme() === "dark";
 
   return (
@@ -34,20 +37,21 @@ export function QuizBlock() {
           />
 
           <AnimatedContent distance={60} duration={1.1} ease="expo.out" className="relative mx-auto flex max-w-3xl flex-col items-center px-5 py-20 text-center sm:px-8 sm:py-28">
-            <SectionLabel index="04" className="justify-center">
-              The 9 Quiz
+            <SectionLabel index={sectionNo(site, "quiz")} className="justify-center">
+              {q.label}
             </SectionLabel>
             <SpringHeading
               id="quiz-title"
-              text="Meet"
-              accent="The 9 Quiz."
+              text={q.heading}
+              accent={q.accent || undefined}
               className="mt-5 text-[clamp(2.6rem,8vw,6rem)] font-semibold leading-[0.95] tracking-[-0.045em]"
             />
-            <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-white/75 sm:text-lg">{q.text}</p>
+            {q.text && <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-white/75 sm:text-lg">{q.text}</p>}
 
             {/* question 1, right here: a tap starts the quiz with it answered */}
+            {q1 && (
             <div className="quiz-q1 mt-9 w-full max-w-xl rounded-3xl border border-white/15 p-4 text-left backdrop-blur-xl sm:p-5">
-              <p className="label-mono quiz-accent">Question 1 of 9</p>
+              <p className="label-mono quiz-accent">Question 1 of {count}</p>
               <p className="mt-1.5 font-display text-[18px] font-semibold text-white sm:text-xl">{q1.q}</p>
               <div className="mt-3.5 flex flex-wrap gap-2">
                 {q1.options.map((o) => (
@@ -55,13 +59,14 @@ export function QuizBlock() {
                     key={o.id}
                     type="button"
                     onClick={() => quiz.open(o.id)}
-                    className="rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-2 text-[13.5px] text-white/85 transition-colors hover:border-[#8c53fe] hover:bg-[#8c53fe]/20 hover:text-white"
+                    className="rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-2 text-[13.5px] text-white/85 transition-colors hover:border-[color:var(--brand-a)] hover:bg-[color:var(--brand-a)]/20 hover:text-white"
                   >
                     {o.label}
                   </button>
                 ))}
               </div>
             </div>
+            )}
 
             <StarBorder
               as="button"
@@ -79,7 +84,7 @@ export function QuizBlock() {
             >
               {q.cta}
             </StarBorder>
-            <p className="label-mono mt-4 text-balance !text-white/40">9 questions · about a minute · no sign-up</p>
+            {q.meta && <p className="label-mono mt-4 text-balance !text-white/40">{fill(q.meta, { count })}</p>}
           </AnimatedContent>
         </div>
       </div>

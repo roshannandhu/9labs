@@ -1,0 +1,60 @@
+# Publishes the live demo (website + /admin/ editor) to the gh-pages branch that GitHub Pages serves.
+# Runs when the branch changes: a commit from the website editor, or a code change.
+name: Publish live demo
+
+on:
+  push:
+    branches:
+      - claude/client-animation-books-plan-grtwcu-gjxlsg
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "next.config.ts"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# saves from the editor queue up instead of overwriting each other
+concurrency:
+  group: publish-demo
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the demo
+        run: pnpm demo:build
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" pages
+          cd pages
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$GITHUB_WORKSPACE/out/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing changed on the demo."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Publish demo from ${SHA:0:7}"
+          git push --quiet origin HEAD:gh-pages
+          echo "Published."

@@ -5,7 +5,14 @@
 export type Theme = "light" | "dark";
 const KEY = "nl-theme";
 
-export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem("${KEY}");if(t!=="dark"){t="light"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}`;
+/**
+ * Pre-paint script. `fallback` is the theme a new visitor sees (set in the admin); when the
+ * toggle is switched off in the admin, a remembered choice is ignored.
+ */
+export const themeBootScript = (fallback: Theme = "light", allowChoice = true) =>
+  allowChoice
+    ? `try{var t=localStorage.getItem("${KEY}");if(t!=="dark"&&t!=="light"){t="${fallback}"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="${fallback}"}`
+    : `document.documentElement.dataset.theme="${fallback}"`;
 
 export function currentTheme(): Theme {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
