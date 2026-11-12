@@ -63,6 +63,15 @@ See `.env.example` for the full list with explanations. The important ones:
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | The mailbox that sends e-mails (the one that comes with the domain) |
 | `DATABASE_URI` | SQLite file; default `file:./data/ninelabs.db` |
 
+## Live demo
+
+- **Public demo (sample content, nothing sent):** GitHub Pages, `https://roshannandhu.github.io/9labs/`,
+  built by `.github/workflows/pages.yml`. One-time setup: Settings → Pages → Source: *GitHub Actions*.
+- **Admin demo:** Render, from `render.yaml`. In Render: *New → Blueprint*, pick this repository and branch,
+  and fill in `DEMO_ADMIN_KEY` (16+ characters, shared with whoever needs the demo), `ADMIN_EMAILS`
+  (the demo owner's address), and the two `*_URL` values (the address Render gives the service). The admin
+  is at `<service address>/admin`; sign in with the demo key. Sample content is kept on the service's disk.
+
 ## Going live
 
 The app needs a normal Node server with a disk that persists (for the database file and uploads):
