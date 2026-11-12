@@ -6,7 +6,7 @@
  *
  * The same code is built from a scratch copy in .demo-build, so the server build is never touched:
  * the admin, the API routes and the dynamic download route are left out, the content comes from
- * src/content/snapshot.json, and the force-dynamic settings become static.
+ * src/content/website.json, and the force-dynamic settings become static.
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import path from "path";
@@ -17,7 +17,7 @@ const work = path.join(root, ".demo-build");
 const out = path.join(root, "out");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: "inherit", ...opts });
 
-if (!existsSync(path.join(root, "src/content/snapshot.json"))) {
+if (!existsSync(path.join(root, "src/content/website.json"))) {
   console.error("No snapshot yet: run `pnpm demo:snapshot` first.");
   process.exit(1);
 }
@@ -39,6 +39,13 @@ for (const item of ["src/app/(payload)", "src/app/api", "src/app/(site)/download
 cpSync(path.join(work, "scripts/demo/getSite.ts"), path.join(work, "src/lib/content/getSite.ts"));
 cpSync(path.join(work, "scripts/demo/pages.ts"), path.join(work, "src/lib/content/pages.ts"));
 
+// 3b. the website editor at /admin/ (demo only; it saves src/content/website.json to this repository)
+const adminDir = path.join(work, "src/app/(site)/admin");
+mkdirSync(adminDir, { recursive: true });
+for (const f of ["page.tsx", "AdminEditor.tsx", "lexical.ts"]) {
+  cpSync(path.join(work, "scripts/demo-admin", f), path.join(adminDir, f));
+}
+
 // 4. pages that are read per request on the server are built once for the demo
 const staticFiles = ["src/app/(site)/layout.tsx", "src/app/robots.ts", "src/app/sitemap.ts"];
 for (const f of staticFiles) {
@@ -58,6 +65,10 @@ run("pnpm", ["exec", "next", "build"], {
     NEXT_BASE_PATH: process.env.NEXT_BASE_PATH ?? "/9labs",
     // the address the demo is published at (GitHub Pages: https://<owner>.github.io/<repo>)
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "https://roshannandhu.github.io/9labs",
+    // where the website editor saves its changes (a commit to this branch)
+    NEXT_PUBLIC_EDIT_REPO: process.env.NEXT_PUBLIC_EDIT_REPO ?? "roshannandhu/9labs",
+    NEXT_PUBLIC_EDIT_BRANCH: process.env.NEXT_PUBLIC_EDIT_BRANCH ?? "claude/client-animation-books-plan-grtwcu-gjxlsg",
+    NEXT_PUBLIC_EDIT_PATH: "src/content/website.json",
     NEXT_PUBLIC_NOINDEX: "1",
   },
 });

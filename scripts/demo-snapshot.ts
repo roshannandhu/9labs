@@ -21,6 +21,6 @@ const { snapshotFromDb } = await import("../src/lib/content/db");
 
 const payload = await getPayload({ config }); // the first start seeds the database
 const snap = await snapshotFromDb(payload);
-fs.writeFileSync(path.resolve("src/content/snapshot.json"), JSON.stringify(snap, null, 2) + "\n");
+fs.writeFileSync(path.resolve("src/content/website.json"), JSON.stringify(snap, null, 2) + "\n");
 console.log(`Snapshot written: ${snap.pages.length} pages, ${snap.faqs.length} questions, ${snap.site.ebooks.length} books, ${snap.site.services.length} cards.`);
 process.exit(0);

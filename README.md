@@ -65,12 +65,14 @@ See `.env.example` for the full list with explanations. The important ones:
 
 ## Live demo
 
-- **Public demo (sample content, nothing sent):** GitHub Pages, `https://roshannandhu.github.io/9labs/`,
-  built by `.github/workflows/pages.yml`. One-time setup: Settings → Pages → Source: *GitHub Actions*.
-- **Admin demo:** Render, from `render.yaml`. In Render: *New → Blueprint*, pick this repository and branch,
-  and fill in `DEMO_ADMIN_KEY` (16+ characters, shared with whoever needs the demo), `ADMIN_EMAILS`
-  (the demo owner's address), and the two `*_URL` values (the address Render gives the service). The admin
-  is at `<service address>/admin`; sign in with the demo key. Sample content is kept on the service's disk.
+- **Public demo (sample content, nothing sent):** https://roshannandhu.github.io/9labs/
+- **Website editor (same demo, second URL):** https://roshannandhu.github.io/9labs/admin/
+  Paste a GitHub fine-grained token with *Contents: Read and write* on this repository (kept only in
+  that browser tab). Edit the text, cards, quiz, books, FAQ and pages, then press **Save to the website**.
+  Each save is a commit on the branch; the demo republishes in a few minutes (`.github/workflows/publish-demo.yml`).
+  The editor does not handle sign-in, e-mail, book requests or PDFs; those belong to the full admin.
+- **Full admin:** the Payload admin needs a server. `render.yaml` describes one (Render Blueprint); it is not deployed yet.
+- The content the demo shows lives in `src/content/website.json`. Rebuild it from a fresh database with `pnpm demo:snapshot`.
 
 ## Going live
 

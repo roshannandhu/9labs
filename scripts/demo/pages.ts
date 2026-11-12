@@ -1,5 +1,5 @@
 // Static GitHub Pages demo only: copied over src/lib/content/pages.ts by scripts/build-demo.mjs.
-import snapshot from "@/content/snapshot.json";
+import snapshot from "@/content/website.json";
 import type { Page } from "@/payload-types";
 import type { FaqItem } from "@/content/types";
 
