@@ -7,6 +7,6 @@
 :HL["/9labs/_next/static/media/abc90e3a599e849c-s.p.2y2uoi4t910qy.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/9labs/_next/static/media/f24fbafb5d1fcd83-s.p.1nft4zud2zk37.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 3:[["children",{"s":"__PAGE__","h":160}]]
-2:[["children",{"s":{"n":"slug","t":"d","k":"faq","s":["ebooks"]},"h":64,"c":"$Q3"}]]
+2:[["children",{"s":{"n":"slug","t":"d","k":"faq","s":["admin","ebooks"]},"h":64,"c":"$Q3"}]]
 1:[["children",{"s":"(site)","h":48,"c":"$Q2"}]]
-0:{"b":"mxcsA4DzOutdN6qEXaaAo","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"BXlu9ljNrBcK5iCnctJpF","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
