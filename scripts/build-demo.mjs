@@ -39,12 +39,12 @@ for (const item of ["src/app/(payload)", "src/app/api", "src/app/(site)/download
 cpSync(path.join(work, "scripts/demo/getSite.ts"), path.join(work, "src/lib/content/getSite.ts"));
 cpSync(path.join(work, "scripts/demo/pages.ts"), path.join(work, "src/lib/content/pages.ts"));
 
-// 3b. the website editor at /admin/ (demo only; it saves src/content/website.json to this repository)
-const adminDir = path.join(work, "src/app/(site)/admin");
-mkdirSync(adminDir, { recursive: true });
-for (const f of ["page.tsx", "AdminEditor.tsx", "lexical.ts"]) {
-  cpSync(path.join(work, "scripts/demo-admin", f), path.join(adminDir, f));
-}
+// 3b. the website editor at /admin/ (demo only; it saves src/content/website.json to this repository).
+//     It gets its own page frame, so none of the public site's animation or buttons appear in it.
+const editorDir = path.join(work, "src/app/(editor)");
+mkdirSync(path.join(editorDir, "admin"), { recursive: true });
+for (const f of ["layout.tsx", "editor.css"]) cpSync(path.join(work, "scripts/demo-admin", f), path.join(editorDir, f));
+for (const f of ["page.tsx", "AdminEditor.tsx", "lexical.ts"]) cpSync(path.join(work, "scripts/demo-admin", f), path.join(editorDir, "admin", f));
 
 // 4. pages that are read per request on the server are built once for the demo
 const staticFiles = ["src/app/(site)/layout.tsx", "src/app/robots.ts", "src/app/sitemap.ts"];
@@ -76,4 +76,10 @@ run("pnpm", ["exec", "next", "build"], {
 // 6. the result
 rmSync(out, { recursive: true, force: true });
 cpSync(path.join(work, "out"), out, { recursive: true });
+// GitHub Pages runs Jekyll by default, and Jekyll skips folders that start with "_": without this
+// marker the whole _next/ folder (every style and script) is missing from the published site.
+writeFileSync(path.join(out, ".nojekyll"), "");
+for (const must of [".nojekyll", "_next", "index.html", "admin/index.html"]) {
+  if (!existsSync(path.join(out, must))) throw new Error(`The demo build is incomplete: ${must} is missing from out/.`);
+}
 console.log(`\nDemo built into ${path.relative(root, out)}/ (base path ${process.env.NEXT_BASE_PATH ?? "/9labs"}).`);

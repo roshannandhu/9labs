@@ -169,7 +169,16 @@ function Pick<T extends string>({ label, value, options, onChange }: { label: st
   );
 }
 
-function Box({ title, children }: { title: string; children: React.ReactNode }) {
+/** A titled card. With `fold` it opens and closes, so long lists (cards, questions, books…) stay scannable on a phone. */
+function Box({ title, children, fold = false }: { title: string; children: React.ReactNode; fold?: boolean }) {
+  if (fold) {
+    return (
+      <details className="ed-box">
+        <summary>{title}</summary>
+        {children}
+      </details>
+    );
+  }
   return (
     <section className="ed-box">
       <h3>{title}</h3>
@@ -363,11 +372,27 @@ export function AdminEditor({ initial }: { initial: Snap }) {
             <label className="ed-field">
               <span className="ed-label">GitHub token (kept only in this browser tab)</span>
               <input name="token" type="password" autoComplete="off" placeholder="github_pat_…" />
-              <span className="ed-hint">A fine-grained token for this repository with Contents: Read and write. Create it at GitHub → Settings → Developer settings.</span>
+              <span className="ed-hint">You can look around without one. A token is only needed to save.</span>
             </label>
             <button type="submit" disabled={busy}>
               Connect
             </button>
+            <details className="ed-help">
+              <summary>How do I get a token?</summary>
+              <ol>
+                <li>
+                  Open{" "}
+                  <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">
+                    GitHub → New fine-grained token
+                  </a>{" "}
+                  (sign in as the owner of the repository).
+                </li>
+                <li>Name it, and choose when it expires (for example 90 days).</li>
+                <li>Repository access: “Only select repositories” → {REPO || "this repository"}.</li>
+                <li>Permissions → Repository permissions → Contents: “Read and write”.</li>
+                <li>Generate the token, copy it, and paste it above.</li>
+              </ol>
+            </details>
           </form>
         ) : (
           <div className="ed-connected">
@@ -544,7 +569,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               </Row>
             </Box>
             {s.services.map((c, i) => (
-              <Box key={c.slug} title={`Card ${c.n} — ${c.short}`}>
+              <Box fold key={c.slug} title={`Card ${c.n} — ${c.short}`}>
                 <p className="ed-hint">The number, animation and order are fixed. Their words are editable.</p>
                 <Row>
                   <Text label="Title" value={c.title} onChange={(v) => edit((d) => { d.site.services[i].title = v; })} />
@@ -602,7 +627,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
                 <Text label="Result badge" value={s.about.story.result} onChange={(v) => edit((d) => { d.site.about.story.result = v; })} />
               </Row>
               {s.about.steps.map((st, i) => (
-                <Box key={i} title={`Step ${i + 1}`}>
+                <Box fold key={i} title={`Step ${i + 1}: ${st.title}`}>
                   <Row>
                     <Text label="Number" value={st.n} onChange={(v) => edit((d) => { d.site.about.steps[i].n = v; })} />
                     <Text label="Title" value={st.title} onChange={(v) => edit((d) => { d.site.about.steps[i].title = v; })} />
@@ -620,7 +645,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               <p className="ed-hint">The icon for each value is fixed; the words are editable.</p>
             </Box>
             {s.values.map((v, i) => (
-              <Box key={v.key + i} title={`${i + 1}. ${v.key}`}>
+              <Box fold key={v.key + i} title={`${i + 1}. ${v.title}`}>
                 <Text label="Title" value={v.title} onChange={(x) => edit((d) => { d.site.values[i].title = x; })} />
                 <Text label="Text" value={v.line} rows={2} onChange={(x) => edit((d) => { d.site.values[i].line = x; })} />
               </Box>
@@ -655,7 +680,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               </p>
             </Box>
             {q.questions.map((qu, qi) => (
-              <Box key={qu.id + qi} title={`Question ${qi + 1}: ${qu.label}`}>
+              <Box fold key={qu.id + qi} title={`${qi + 1}. ${qu.q}`}>
                 <Move
                   index={qi}
                   length={q.questions.length}
@@ -697,7 +722,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
                     )}
                   </div>
                 ))}
-                <button type="button" onClick={() => edit((d) => {
+                <button type="button" className="ed-add" onClick={() => edit((d) => {
                   const id = `${d.site.quiz.questions[qi].id}-${Date.now().toString(36)}`;
                   d.site.quiz.questions[qi].options.push({ id, label: "New answer", weights: {} });
                 })}>
@@ -705,7 +730,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
                 </button>
               </Box>
             ))}
-            <button type="button" onClick={() => edit((d) => {
+            <button type="button" className="ed-add" onClick={() => edit((d) => {
               const n = d.site.quiz.questions.length + 1;
               d.site.quiz.questions.push({
                 id: `q${Date.now().toString(36)}`,
@@ -730,7 +755,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               <Text label="“Why” line ({answers})" value={q.result.why} onChange={(v) => edit((d) => { d.site.quiz.result.why = v; })} />
               <Num label="How many activities to recommend" min={1} max={5} value={q.result.matches} onChange={(v) => edit((d) => { d.site.quiz.result.matches = v; })} />
               {q.result.steps.map((st, i) => (
-                <Box key={i} title={`Plan step ${i + 1}`}>
+                <Box fold key={i} title={`Plan step ${i + 1}: ${st.title}`}>
                   <Text label="Title ({first} {next})" value={st.title} onChange={(v) => edit((d) => { d.site.quiz.result.steps[i].title = v; })} />
                   <Text label="Text ({firstDescription} {next})" value={st.text} rows={2} onChange={(v) => edit((d) => { d.site.quiz.result.steps[i].text = v; })} />
                 </Box>
@@ -844,7 +869,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               <p className="ed-hint">Books are edited here; adding or deleting a book, and PDFs, are done in the full admin. Each book keeps its own page.</p>
             </Box>
             {s.ebooks.map((b, i) => (
-              <Box key={b.slug} title={`${b.n} — ${b.title}`}>
+              <Box fold key={b.slug} title={`${b.n} — ${b.title}`}>
                 <Move index={i} length={s.ebooks.length} onMove={(to) => edit((d) => {
                   const list = d.site.ebooks;
                   [list[i], list[to]] = [list[to], list[i]];
@@ -874,7 +899,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               <p className="ed-hint">Leave an empty line between paragraphs in an answer. Questions with the same group are shown together.</p>
             </Box>
             {snap.faqs.map((f, i) => (
-              <Box key={f.id} title={`${i + 1}. ${f.question}`}>
+              <Box fold key={f.id} title={`${i + 1}. ${f.question}`}>
                 <Move index={i} length={snap.faqs.length} onMove={(to) => edit((d) => {
                   const list = d.faqs;
                   [list[i], list[to]] = [list[to], list[i]];
@@ -884,7 +909,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
                 <Text label="Group (optional)" value={f.category ?? ""} onChange={(v) => edit((d) => { d.faqs[i].category = v || undefined; })} />
               </Box>
             ))}
-            <button type="button" onClick={() => edit((d) => { d.faqs.push({ id: `f${Date.now().toString(36)}`, question: "New question", answerText: "Answer", answerHtml: "", category: "" }); })}>
+            <button type="button" className="ed-add" onClick={() => edit((d) => { d.faqs.push({ id: `f${Date.now().toString(36)}`, question: "New question", answerText: "Answer", answerHtml: "", category: "" }); })}>
               Add a question
             </button>
           </>
@@ -896,7 +921,7 @@ export function AdminEditor({ initial }: { initial: Snap }) {
               <p className="ed-hint">Paragraphs are separated by an empty line. The extra blocks show parts of the homepage on that page.</p>
             </Box>
             {snap.pages.map((p, i) => (
-              <Box key={p.slug} title={`/${p.slug}`}>
+              <Box fold key={p.slug} title={`${p.title} (/${p.slug})`}>
                 <Row>
                   <Text label="Title" value={p.title} onChange={(v) => edit((d) => { d.pages[i].title = v; })} />
                   <Text label="Small label above the title" value={p.eyebrow ?? ""} onChange={(v) => edit((d) => { d.pages[i].eyebrow = v; })} />
