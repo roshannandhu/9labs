@@ -1,4 +1,4 @@
-:HL["/9labs/_next/static/chunks/0h2kotm1liew9.css","style"]
+:HL["/9labs/_next/static/chunks/3nxjwd_9719xl.css","style"]
 :HL["/9labs/_next/static/chunks/0i1lr4g19h_8o.css","style"]
 :HL["/9labs/_next/static/media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/9labs/_next/static/media/24b194041b9b37de-s.p.3a2a4weh7ixm0.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
@@ -8,6 +8,6 @@
 :HL["/9labs/_next/static/media/f24fbafb5d1fcd83-s.p.1nft4zud2zk37.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 4:[["children",{"s":"__PAGE__","h":160}]]
 3:[["children",{"s":{"n":"slug","t":"d","k":"the-nine-labs-method","s":[]},"h":96,"c":"$Q4"}]]
-2:[["children",{"s":"ebooks","h":64,"c":"$Q3"}]]
-1:[["children",{"s":"(site)","h":48,"c":"$Q2"}]]
-0:{"b":"ur0Bp251xtSU-CHuBAQB4","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+2:[["children",{"s":"ebooks","h":96,"c":"$Q3"}]]
+1:[["children",{"s":"(site)","h":112,"c":"$Q2"}]]
+0:{"b":"8tL0xsnsLU4dXLN1Nl_Z_","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
