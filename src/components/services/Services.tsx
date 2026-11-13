@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { Service } from "@/content/site";
+import type { IconKey, Service } from "@/content/site";
 import type { SiteData } from "@/content/types";
 import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -21,6 +21,23 @@ import { Scene7Strategy } from "./scenes/Scene7Strategy";
 import { Scene8AI } from "./scenes/Scene8AI";
 import { Scene9IT } from "./scenes/Scene9IT";
 import { ServiceCard } from "./ServiceCard";
+
+/**
+ * Each activity's scene (and its own flourish — the ad echoes, the PR headline…) is tied to
+ * its icon, not to a fixed slot, so a card dragged to a new position in the admin (The 9 cards)
+ * takes its whole scene with it.
+ */
+const SCENES: Record<IconKey, (p: { s: Service; active: boolean }) => React.ReactElement> = {
+  social: Scene1Social,
+  advertising: Scene2Advertising,
+  content: Scene3Content,
+  photo: Scene4Photo,
+  events: Scene5Events,
+  pr: Scene6PR,
+  strategy: Scene7Strategy,
+  ai: Scene8AI,
+  it: Scene9IT,
+};
 
 /**
  * "Our 9 labs." The nine services as a sideways carousel (`useServiceTrack`): swipe or trackpad
@@ -79,8 +96,7 @@ function Finale({ services, t, gap = "" }: Omit<Part, "heading"> & { gap?: strin
 
 function ServicesTrack({ heading, services, t }: Part) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { active, goTo, running, posRef } = useServiceTrack(scrollerRef);
-  const [s1, s2, s3, s4, s5, s6, s7, s8, s9] = services;
+  const { active, goTo, running, posRef } = useServiceTrack(scrollerRef, services);
 
   return (
     <section id="services" aria-labelledby="services-title" className="relative py-16 sm:py-24">
@@ -97,19 +113,14 @@ function ServicesTrack({ heading, services, t }: Part) {
           aria-label="Our nine services"
           className="svc-scroller"
         >
-          <Scene1Social s={s1} />
-          <Scene2Advertising s={s2} active={active === 1} />
-          <Scene3Content s={s3} active={active === 2} />
-          <Scene4Photo s={s4} />
-          <Scene5Events s={s5} active={active === 4} />
-          <Scene6PR s={s6} />
-          <Scene7Strategy s={s7} />
-          <Scene8AI s={s8} active={active === 7} />
-          <Scene9IT s={s9} />
+          {services.map((s, i) => {
+            const Scene = SCENES[s.icon];
+            return <Scene key={s.slug} s={s} active={active === i} />;
+          })}
         </div>
         <OrbitGear services={services} active={active} goTo={goTo} posRef={posRef} />
       </div>
-      <OrbitArc services={services} active={active} goTo={goTo} running={running} />
+      <OrbitArc services={services} active={active} goTo={goTo} running={running} posRef={posRef} />
       <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />

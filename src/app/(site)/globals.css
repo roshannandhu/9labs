@@ -1159,7 +1159,66 @@ html[data-intro="playing"] [data-logo-9] {
   stroke-width: 1;
   stroke-dasharray: 2 7;
 }
-/* ---- phone: a shallow arc of icons under the card ---- */
+/* ---- phone / touch: convex semi-circular dome dial dock under the card ---- */
+.orbit-dial {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 12px auto 0;
+  height: 122px;
+  overflow: visible;
+  touch-action: pan-y;
+  user-select: none;
+}
+.orbit-dial-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.dial-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--surface-1);
+  border: 1px solid rgb(var(--fg-rgb) / 0.1);
+  color: rgb(var(--fg-rgb) / 0.65);
+  cursor: pointer;
+  will-change: transform, opacity;
+  transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.dial-node--on {
+  background: var(--nl-indigo);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  box-shadow: 0 0 22px -2px rgba(80, 70, 229, 0.65), 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+.dial-label-wrap {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+}
+.dial-label {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgb(var(--fg-rgb));
+  margin: 0;
+}
 .orbit-arc-row {
   display: flex;
   align-items: center;
