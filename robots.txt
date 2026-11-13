@@ -1,5 +1,0 @@
-User-Agent: *
-Disallow: /
-
-Host: https://www.ninelabs.example
-Sitemap: https://www.ninelabs.example/sitemap.xml
