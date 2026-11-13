@@ -254,7 +254,8 @@ export function OrbitArc({
       const dx = e.touches[0].clientX - startX;
       if (Math.abs(dx) > 6) hasMoved = true;
       const deltaVis = -dx / 70;
-      const targetVis = Math.max(0, Math.min(n - 1, startVis + deltaVis));
+      const rawVis = startVis + deltaVis;
+      const targetVis = ((rawVis % n) + n) % n;
       if (posRef) posRef.current = targetVis;
     };
 
@@ -262,7 +263,7 @@ export function OrbitArc({
       if (!isTouching) return;
       isTouching = false;
       if (hasMoved && posRef) {
-        const finalTarget = Math.round(posRef.current);
+        const finalTarget = ((Math.round(posRef.current) % n) + n) % n;
         goTo(finalTarget);
       }
     };

@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { navOffset, registerAnchorPrefix } from "@/lib/scroll";
-import { site } from "@/content/site";
+import type { Service } from "@/content/site";
 import { particleBus, heroTarget, picTarget, allNineTarget } from "@/components/particles/bus";
 
-const services = site.services;
-const N = services.length; // 9
+const N = 9; // the nine cards are reorderable (The 9 cards), but there are always exactly nine
 const AUTOPLAY_MS = 5000;
 const HOLD_MS = 6000; // autoplay waits this long after a swipe, tap or click
 const PEEK_OPACITY = 0.45; // a card one step away from centre
@@ -46,7 +45,7 @@ const posOf = (el: HTMLElement, step: number) => {
  * every few seconds (pausable, holds while the visitor is interacting, fades back to the first card
  * after the last), and resolves `#service-<slug>` links to the right card.
  */
-export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
+export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, services: Service[]) {
   const { reduced } = useDemo();
   const [active, setActive] = useState(0);
   const [held, setHeld] = useState(false);
@@ -200,7 +199,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
         },
       });
     },
-    [scrollerRef],
+    [scrollerRef, services],
   );
 
   useGSAP(() => {
@@ -399,15 +398,14 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     let dragAnchorIdx = 0;
     let lastMoveX = 0;
 
-    // laptop/tablet horizontal track: pushing on past the last card wraps smoothly to the first (and back again)
+    // Pushing on past the last card wraps smoothly to the first (and back again) across all devices
     const loopFromEdge = (anchor: number, push: number, threshold: number) => {
-      if (!wide) return false;
       const cur = posOf(el, step);
-      if (anchor >= N - 1 && push > threshold && cur > N - 1.12) {
+      if ((anchor >= N - 1 || cur >= N - 1.05) && push > threshold && cur > N - 1.15) {
         goTo(0);
         return true;
       }
-      if (anchor <= 0 && push < -threshold && cur < 0.12) {
+      if ((anchor <= 0 || cur <= 0.05) && push < -threshold && cur < 0.15) {
         goTo(N - 1);
         return true;
       }
@@ -507,9 +505,9 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       if (!isMouseDown) return;
       isMouseDown = false;
       // dragging left is moving forward, so the "push" is the opposite sign of the drag
-      if (hasDragged && wide) {
+      if (hasDragged) {
         el.style.scrollSnapType = ""; // first, so goTo saves (and later restores) the clean value
-        if (loopFromEdge(dragAnchorIdx, startX - lastMoveX, 70)) return;
+        if (loopFromEdge(dragAnchorIdx, startX - lastMoveX, 50)) return;
       }
       if (hasDragged) {
         const currentPos = el.scrollLeft / step;
@@ -544,27 +542,29 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
 
-    // Touch edge wrap on tablets (native CSS horizontal scroll-snap handles normal settling)
+    // Touch edge wrap across all devices (phones & tablets)
     let touching = false;
     let touchX = 0;
     let touchY = 0;
     let touchAnchor = 0;
     const onTouchStart = (e: TouchEvent) => {
-      if (!wide) return;
+      cancelActiveLoop();
+      const t = e.touches?.[0];
+      if (!t) return;
       touching = true;
-      const t = e.touches[0];
       touchX = t.clientX;
       touchY = t.clientY;
       touchAnchor = Math.round(posOf(el, step));
     };
     const onTouchEnd = (e: TouchEvent) => {
-      if (!wide || !touching) return;
+      if (!touching) return;
       touching = false;
-      const t = e.changedTouches[0];
+      const t = e.changedTouches?.[0] || e.touches?.[0];
+      if (!t) return;
       const dx = t.clientX - touchX;
       const dy = t.clientY - touchY;
-      const sideways = Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4;
-      if (sideways) loopFromEdge(touchAnchor, -dx, 50);
+      const sideways = Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.15;
+      if (sideways) loopFromEdge(touchAnchor, -dx, 30);
     };
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -600,7 +600,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>) {
       window.removeEventListener("resize", onResize);
       unregisterAnchor();
     };
-  }, [reduced]);
+  }, [reduced, services]);
 
   // autoplay only while the carousel is mostly on screen and the tab is showing; it holds while
   // keyboard focus is inside, and for a few seconds after any swipe, tap or click on it
