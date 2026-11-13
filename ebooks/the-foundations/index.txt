@@ -1,0 +1,61 @@
+1:"$Sreact.fragment"
+2:"/9labs/_next/static/chunks/3oai7s4h2yur4.js"
+3:I[98540,["$2"],"default"]
+4:I[17335,["$2"],"default"]
+7:"/9labs/_next/static/chunks/3ugt3rwptykuk.js"
+8:"/9labs/_next/static/chunks/1ypoi-122oo72.js"
+9:"/9labs/_next/static/chunks/205c28f64m_-f.js"
+a:"/9labs/_next/static/chunks/2e6l328_sut96.js"
+b:I[29544,["$7","$8","$9","$a"],"SiteProvider"]
+c:I[84222,["$7","$8","$9","$a"],"ThemeColors"]
+d:"DemoSettingsProvider"
+e:I[68841,["$7","$8","$9","$a"],"$d"]
+f:I[60178,["$7","$8","$9","$a"],"QuizProvider"]
+10:I[92141,["$7","$8","$9","$a"],"EnquiryProvider"]
+11:I[2847,["$7","$8","$9","$a"],"SmoothScroll"]
+12:I[74021,["$7","$8","$9","$a"],"LogoIntro"]
+13:"/9labs/_next/static/chunks/23fo9chm5m3gd.js"
+14:"/9labs/_next/static/chunks/3lyvjl1jo4sht.js"
+15:I[15939,["$7","$8","$9","$a","$13","$14"],"Nav"]
+21:"ViewportBoundary"
+22:I[54681,["$2"],"$21"]
+24:"MetadataBoundary"
+25:I[54681,["$2"],"$24"]
+26:"$Sreact.suspense"
+28:I[74406,[],"default",1]
+:HL["/9labs/_next/static/chunks/29kq_kzcedl5l.css","style"]
+:HL["/9labs/_next/static/chunks/0i1lr4g19h_8o.css","style"]
+:HL["/9labs/_next/static/media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/9labs/_next/static/media/24b194041b9b37de-s.p.3a2a4weh7ixm0.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/9labs/_next/static/media/55ac2f18ff0e0c0d-s.p.09i3n67yu55ey.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/9labs/_next/static/media/9a321a2c78eff0b5-s.p.1bkzbscqrt8rl.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/9labs/_next/static/media/abc90e3a599e849c-s.p.2y2uoi4t910qy.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/9labs/_next/static/media/f24fbafb5d1fcd83-s.p.1nft4zud2zk37.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+5:X
+1f:[["children",{"s":"__PAGE__","h":512,"d":{"r":"$L20","p":false,"v":null}}]]
+1d:[["children",{"s":{"n":"slug","t":"d","k":"the-foundations","s":[]},"h":512,"d":{"r":"$L1e","p":false,"v":"$5"},"c":"$Q1f"}]]
+1b:[["children",{"s":"ebooks","h":512,"d":{"r":"$L1c","p":false,"v":"$5"},"c":"$Q1d"}]]
+6:[["children",{"s":"(site)","h":528,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/29kq_kzcedl5l.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"/9labs/_next/static/chunks/0i1lr4g19h_8o.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/9labs/_next/static/chunks/3ugt3rwptykuk.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/9labs/_next/static/chunks/1ypoi-122oo72.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"/9labs/_next/static/chunks/205c28f64m_-f.js","async":true,"nonce":"$undefined"}],["$","script","script-3",{"src":"/9labs/_next/static/chunks/2e6l328_sut96.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","className":"O8mbuW_variable Gm-xzG_variable -_8H8W_variable ucDktq_variable LT3uIa_variable _4Mb7Ha_variable","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var t=localStorage.getItem(\"nl-theme\");if(t!==\"dark\"&&t!==\"light\"){t=\"light\"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme=\"light\"}try{if((/[?&]intro\\b/.test(location.search)||!sessionStorage.getItem(\"nl-intro-seen\"))&&!matchMedia(\"(prefers-reduced-motion: reduce)\").matches&&!/[?&]motion=reduce/.test(location.search)){document.documentElement.dataset.intro=\"playing\"}}catch(e){}"}}]}],["$","body",null,{"children":[["$","a",null,{"href":"#main","className":"sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4","children":"Skip to content"}],["$","$Lb",null,{"children":[["$","$Lc",null,{}],["$","$Le",null,{"children":["$","$Lf",null,{"children":["$","$L10",null,{"children":[["$","$L11",null,{}],["$","$L12",null,{}],["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","$L15",null,{}],["$","main",null,{"id":"main","className":"relative z-10 overflow-x-clip pb-24 pt-[calc(var(--nav-h)+56px)] sm:pb-32 sm:pt-[calc(var(--nav-h)+88px)]","children":[["$","header",null,{"className":"container-x max-w-[920px]","children":[["$","p",null,{"className":"label-mono flex items-center gap-3","children":[["$","span",null,{"className":"relative h-px w-10 bg-gradient-to-r from-nl-purple/80 to-white/10"}],["$","span",null,{"children":"404"}]]}],["$","h1",null,{"className":"mt-4 font-display text-[clamp(2.2rem,5.4vw,4.2rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white","children":"This page does not exist."}],["$","p",null,{"className":"mt-5 max-w-[60ch] text-[17px] leading-relaxed text-nl-ink sm:text-lg","children":"The link may be old, or the page may have moved."}]]}],["$","div",null,{"className":"container-x mt-8 max-w-[920px]","children":"$L16"}]]}],"$L17"],[]],"forbidden":"$undefined","unauthorized":"$undefined"}],"$L18","$L19","$L1a"]}]}]}]]}]]}]]}]]}],"p":false,"v":null},"c":"$Q1b"}]]
+0:{"P":null,"c":["","ebooks","the-foundations",""],"q":"","i":false,"t":{"t":{"s":"","h":528,"d":{"r":["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":false,"v":"$5"},"c":"$Q6"},"h":{"r":["$","$1","h",{"children":[null,["$","$L22",null,{"children":"$L23"}],["$","$L25",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$26",null,{"name":"Next.Metadata","children":"$L27"}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":false,"v":null}},"m":"$undefined","G":["$28",[]],"S":true,"r":"$undefined","s":"$undefined","a":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"urnprvFO4ly3peS8SXWbN"}
+29:I[58234,["$7","$8","$9","$a","$13","$14"],"Footer"]
+2a:I[14167,["$7","$8","$9","$a"],"WhatsAppFab"]
+2b:I[23054,["$7","$8","$9","$a"],"ConceptLab"]
+2c:I[60243,["$7","$8","$9","$a"],"Tracking"]
+2e:I[54681,["$2"],"OutletBoundary"]
+5:C
+16:["$","a",null,{"href":"/9labs/","className":"btn btn-primary","children":"Back to the homepage"}]
+17:["$","$L29",null,{}]
+18:["$","$L2a",null,{}]
+19:["$","$L2b",null,{}]
+1a:["$","$L2c",null,{}]
+1c:["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+1e:["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+20:["$","$1","c",{"children":["$L2d",[["$","script","script-0",{"src":"/9labs/_next/static/chunks/1gyk_2d-882gv.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/9labs/_next/static/chunks/1nqt_4_avedd0.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"/9labs/_next/static/chunks/3lyvjl1jo4sht.js","async":true,"nonce":"$undefined"}]],["$","$L2e",null,{"children":["$","$26",null,{"name":"Next.MetadataOutlet","children":"$@2f"}]}]]}]
+30:"/9labs/_next/static/chunks/1gyk_2d-882gv.js"
+31:"/9labs/_next/static/chunks/1nqt_4_avedd0.js"
+32:I[4794,["$7","$8","$9","$a","$30","$31","$14"],"BookPageView"]
+2d:["$","$L32",null,{"slug":"the-foundations"}]
+23:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#e9ddeb"}],["$","meta","3",{"name":"color-scheme","content":"dark"}]]
+33:I[74407,["$2"],"IconMark"]
+27:[["$","title","0",{"children":"The Foundations — free e-book · Nine Labs Solutions"}],["$","meta","1",{"name":"description","content":"The foundations every business should know before spending a dirham on marketing."}],["$","meta","2",{"name":"application-name","content":"Nine Labs Solutions"}],["$","meta","3",{"name":"keywords","content":"marketing agency Dubai,digital marketing Dubai,social media marketing UAE,events and trade shows Dubai,AI consultancy Dubai,IT consultancy UAE,video production Dubai,PR agency Dubai,Dubai South"}],["$","meta","4",{"name":"robots","content":"noindex, nofollow"}],["$","link","5",{"rel":"canonical","href":"https://www.ninelabs.example/ebooks/the-foundations/"}],["$","meta","6",{"name":"format-detection","content":"telephone=no"}],["$","meta","7",{"property":"og:title","content":"The Foundations"}],["$","meta","8",{"property":"og:description","content":"The foundations every business should know before spending a dirham on marketing."}],["$","meta","9",{"property":"og:url","content":"https://www.ninelabs.example/ebooks/the-foundations/"}],["$","meta","10",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","11",{"name":"twitter:title","content":"Nine Labs Solutions — Marketing, Events & Technology in Dubai"}],["$","meta","12",{"name":"twitter:description","content":"From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes."}],["$","link","13",{"rel":"icon","href":"/9labs/icon.svg?icon.1683i-wv8hzs8.svg","sizes":"any","type":"image/svg+xml"}],["$","$L33","14",{}]]
+2f:null
