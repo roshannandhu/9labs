@@ -57,9 +57,13 @@ export function Services() {
         id="services-title"
         text={t.heading}
         accent={t.accent || undefined}
-        className="mt-4 text-[clamp(2rem,4.4vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em]"
+        className="mt-2 text-[clamp(1.75rem,4.4vw,3.6rem)] font-semibold leading-[1.04] tracking-[-0.035em] sm:mt-4 sm:leading-[1.02]"
       />
-      {t.intro && <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-nl-ink sm:text-base">{t.intro}</p>}
+      {t.intro && (
+        <p className="mt-2 max-w-[60ch] text-[13.5px] leading-snug text-nl-ink line-clamp-2 sm:mt-4 sm:text-base sm:leading-relaxed sm:line-clamp-none">
+          {t.intro}
+        </p>
+      )}
     </div>
   );
 
@@ -99,8 +103,8 @@ function ServicesTrack({ heading, services, t }: Part) {
   const { active, goTo, running, posRef } = useServiceTrack(scrollerRef, services);
 
   return (
-    <section id="services" aria-labelledby="services-title" className="relative py-16 sm:py-24">
-      <div className="pb-8 sm:pb-12">{heading}</div>
+    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-12 sm:pb-16 lg:pt-12 lg:pb-20">
+      <div className="pb-3 sm:pb-6 lg:pb-8">{heading}</div>
       {/* laptop/tablet: the icon wheel (left) and the card wheel (the scroller) turn together */}
       <div className="svc-stage">
         <div

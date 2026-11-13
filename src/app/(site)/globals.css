@@ -984,11 +984,11 @@ html[data-intro="playing"] [data-logo-9] {
 /* native sideways scroll + snap; padding centres the first and last card so neighbours peek in */
 /* card height leaves room under the nav for the controls row above the floating corner buttons */
 .svc-scroller {
-  --card-w: 82vw;
-  --card-h: clamp(440px, calc(100svh - 220px), 720px);
+  --card-w: min(84vw, 360px);
+  --card-h: clamp(340px, calc(100svh - 270px), 480px);
   position: relative; /* the particle swarm's carousel canvas is placed inside, in the scrolled content */
   display: flex;
-  gap: 16px;
+  gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -1007,8 +1007,8 @@ html[data-intro="playing"] [data-logo-9] {
 @media (min-width: 640px) {
   .svc-scroller {
     --card-w: min(76vw, 1080px);
-    --card-h: clamp(540px, calc(100svh - 230px), 760px);
-    gap: 28px;
+    --card-h: clamp(480px, calc(100svh - 240px), 720px);
+    gap: 24px;
   }
 }
 @media (min-width: 640px) and (pointer: fine) {
@@ -1027,10 +1027,10 @@ html[data-intro="playing"] [data-logo-9] {
   align-items: center;
   justify-content: center;
   height: var(--card-h);
-  padding: 1.5rem 1.25rem;
+  padding: 1.125rem 1rem;
   overflow: hidden;
   border: none;
-  border-radius: 28px;
+  border-radius: 24px;
   background: var(--surface-1);
   scroll-snap-align: center;
   scroll-snap-stop: always;
@@ -1041,7 +1041,7 @@ html[data-intro="playing"] [data-logo-9] {
 }
 @media (min-width: 640px) {
   .scene-card {
-    padding: 2.5rem;
+    padding: 2.25rem 2rem;
     border-radius: 32px;
   }
 }
@@ -1063,9 +1063,9 @@ html[data-intro="playing"] [data-logo-9] {
 @media (min-width: 768px) and (min-height: 560px) {
   .svc-stage,
   .svc-scroller {
-    --gear-w: clamp(150px, 19vw, 290px);
-    --card-w: min(calc(100vw - 2 * var(--gear-w) - 56px), 980px);
-    --card-h: clamp(500px, calc(100svh - 240px), 740px);
+    --gear-w: clamp(140px, 18vw, 280px);
+    --card-w: min(calc(100vw - 2 * var(--gear-w) - 48px), 980px);
+    --card-h: clamp(420px, calc(100svh - 260px), 680px);
   }
   .svc-scroller {
     /* fade cards cleanly along the OrbitGear margin so left-exiting cards never cross under the icons */
@@ -1164,8 +1164,8 @@ html[data-intro="playing"] [data-logo-9] {
   position: relative;
   width: 100%;
   max-width: 440px;
-  margin: 12px auto 0;
-  height: 122px;
+  margin: 8px auto 0;
+  height: 104px;
   overflow: visible;
   touch-action: pan-y;
   user-select: none;
@@ -1182,12 +1182,12 @@ html[data-intro="playing"] [data-logo-9] {
   position: absolute;
   left: 0;
   top: 0;
-  width: 38px;
-  height: 38px;
-  margin: -19px 0 0 -19px;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 12px;
   background: var(--surface-1);
   border: 1px solid rgb(var(--fg-rgb) / 0.1);
   color: rgb(var(--fg-rgb) / 0.65);
@@ -1199,7 +1199,7 @@ html[data-intro="playing"] [data-logo-9] {
   background: var(--nl-indigo);
   border-color: rgba(255, 255, 255, 0.22);
   color: #fff;
-  box-shadow: 0 0 22px -2px rgba(80, 70, 229, 0.65), 0 4px 14px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 0 20px -2px rgba(80, 70, 229, 0.65), 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 .dial-label-wrap {
   position: absolute;
@@ -1212,8 +1212,8 @@ html[data-intro="playing"] [data-logo-9] {
 .dial-label {
   position: relative;
   display: inline-block;
-  padding-bottom: 4px;
-  font-size: 13px;
+  padding-bottom: 3px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgb(var(--fg-rgb));

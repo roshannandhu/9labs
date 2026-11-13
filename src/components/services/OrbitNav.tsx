@@ -166,9 +166,9 @@ export function OrbitArc({
     const measure = () => {
       const w = zone.clientWidth || 360;
       cx = w / 2;
-      cy = 84;
-      rx = Math.max(120, Math.min(w * 0.44, 168));
-      ry = Math.max(34, Math.min(46, rx * 0.3));
+      cy = w < 380 ? 66 : 72;
+      rx = Math.max(105, Math.min(w * 0.42, 156));
+      ry = Math.max(26, Math.min(w < 380 ? 30 : 35, rx * 0.25));
 
       const path = trackRef.current;
       if (path) {
@@ -304,7 +304,7 @@ export function OrbitArc({
           title={s.short}
           className="dial-node"
         >
-          <ActivityIcon icon={s.icon} size={18} play={i === active} />
+          <ActivityIcon icon={s.icon} size={16} play={i === active} />
         </button>
       ))}
       <div className="dial-label-wrap">

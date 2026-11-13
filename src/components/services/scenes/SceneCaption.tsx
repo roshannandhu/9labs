@@ -17,10 +17,17 @@ export function SceneCaption({ s, className = "" }: { s: Service; className?: st
   const { cardCta } = useSite().servicesSection;
   return (
     <div className={`scene-caption ${className}`}>
-      <p className="label-mono !text-[11px]">{String(s.n).padStart(2, "0")} / 09</p>
-      <h3 className="mt-1.5 text-[26px] font-semibold leading-tight sm:text-[32px]">{s.title}</h3>
-      <p className="mt-1.5 max-w-[44ch] text-[14.5px] leading-relaxed text-nl-ink sm:text-[15px]">{s.description}</p>
-      <button type="button" onClick={() => enquiry.open(s.slug)} className="link-glow mt-3 inline-flex items-center gap-2 py-1 text-sm font-medium text-white" data-cursor="Ask">
+      <p className="label-mono !text-[10.5px] sm:!text-[11px]">{String(s.n).padStart(2, "0")} / 09</p>
+      <h3 className="mt-1 text-[21px] font-semibold leading-tight sm:mt-1.5 sm:text-[32px]">{s.title}</h3>
+      <p className="mt-1 max-w-[44ch] text-[13px] leading-snug text-nl-ink line-clamp-2 sm:mt-1.5 sm:text-[15px] sm:leading-relaxed sm:line-clamp-none">
+        {s.description}
+      </p>
+      <button
+        type="button"
+        onClick={() => enquiry.open(s.slug)}
+        className="link-glow mt-2 inline-flex items-center gap-2 py-1 text-xs font-medium text-white sm:mt-3 sm:text-sm"
+        data-cursor="Ask"
+      >
         {cardCta}
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
