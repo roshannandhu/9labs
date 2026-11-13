@@ -2,7 +2,7 @@ import type { Service } from "@/content/site";
 import { SceneCaption } from "./SceneCaption";
 
 /** 06 · PR & communications — a short headline leads, the swarm forms the picture below it. */
-export function Scene6PR({ s }: { s: Service }) {
+export function Scene6PR({ s }: { s: Service; active?: boolean }) {
   return (
     <section id={`service-${s.slug}`} aria-roledescription="slide" aria-label={`${s.n} of 9: ${s.title}`} className="scene-section scene-card">
       <h3 className="mx-auto max-w-[16ch] text-center font-display text-[clamp(1.5rem,5vw,3.2rem)] font-semibold leading-[1.02] tracking-[-0.03em]">

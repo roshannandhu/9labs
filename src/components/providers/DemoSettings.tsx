@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { getState, subscribe } from "@/lib/store";
 
 export type MotionPref = "system" | "full" | "reduce";
 
@@ -71,6 +72,19 @@ export function DemoSettingsProvider({ children, initial }: { children: React.Re
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, [base]);
+
+  // The grid strength, brand colours and WhatsApp-button toggle follow the published site (Look,
+  // SEO & tracking), live — every save re-applies this. The Concept Lab, when it's on, keeps its
+  // own stored choices instead.
+  useEffect(() => {
+    if (LAB_ENABLED) return;
+    const apply = () => {
+      const s = getState().published.site;
+      setSettings((cur) => ({ ...cur, grid: s.theme.grid, blue: s.theme.colors.blue || DEFAULT_SETTINGS.blue, purple: s.theme.colors.purple || DEFAULT_SETTINGS.purple, whatsapp: s.contact.whatsappFab }));
+    };
+    apply();
+    return subscribe(apply);
+  }, []);
 
   const reduced = settings.motion === "reduce" || (settings.motion === "system" && systemReduced);
 

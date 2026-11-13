@@ -1,3 +1,5 @@
+"use client";
+
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/hero/Hero";
@@ -10,7 +12,7 @@ import { FaqPreview } from "@/components/faq/FaqPreview";
 import { ParticleStage } from "@/components/particles/ParticleStage";
 import { JsonLd } from "@/components/layout/JsonLd";
 import { buildJsonLd } from "@/lib/seo/jsonld";
-import { getSite } from "@/lib/content/getSite";
+import { useSite } from "@/components/providers/SiteProvider";
 import type { SectionKey } from "@/content/types";
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
@@ -18,12 +20,13 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
   about: <About key="about" />,
   quiz: <QuizBlock key="quiz" />,
   ebooks: <Ebooks key="ebooks" />,
+  faq: <FaqPreview key="faq" />,
   contact: <ClosingCta key="contact" />,
 };
 
-export default async function Home() {
-  const site = await getSite();
-  // sections as switched on and ordered in the admin (Website → Homepage → Sections)
+/** The homepage's section order follows Website → Sections in the admin (`site.sections`). */
+export default function Home() {
+  const site = useSite();
   const sections = site.sections.filter((s, i, all) => s in SECTIONS && all.indexOf(s) === i);
   return (
     <>
@@ -32,8 +35,7 @@ export default async function Home() {
       <main id="main" className="relative z-10 overflow-x-clip">
         <ParticleStage />
         <Hero />
-        {sections.map((s) => (s === "contact" && site.faqPreview.enabled ? [<FaqPreview key="faq" />, SECTIONS[s]] : SECTIONS[s]))}
-        {site.faqPreview.enabled && !sections.includes("contact") && <FaqPreview />}
+        {sections.map((s) => SECTIONS[s])}
       </main>
       <Footer />
     </>

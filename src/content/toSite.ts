@@ -1,0 +1,15 @@
+import type { SiteData, Workspace } from "./types";
+
+/**
+ * What the public site shows, derived from a workspace: only enabled books, and the FAQ preview
+ * filled from the authoritative FAQ list when "faq" is one of the shown sections.
+ */
+export function toSite(ws: Workspace): SiteData {
+  const count = Math.max(1, Math.min(10, ws.site.faqPreview.count || 4));
+  const items = ws.faqs.filter((f) => f.enabled).slice(0, count);
+  return {
+    ...ws.site,
+    ebooks: ws.site.ebooks.filter((b) => b.enabled),
+    faqPreview: { ...ws.site.faqPreview, enabled: ws.site.sections.includes("faq") && items.length > 0, items },
+  };
+}

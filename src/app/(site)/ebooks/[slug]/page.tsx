@@ -1,54 +1,23 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getSite } from "@/lib/content/getSite";
-import { PageShell } from "@/components/pages/PageShell";
-import { BookLanding } from "@/components/ebooks/BookLanding";
-import { JsonLd } from "@/components/layout/JsonLd";
+import { site } from "@/content/site";
+import { BookPageView } from "@/components/ebooks/BookPageView";
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** Rendered per request on the server. The static GitHub Pages demo lists its books at build time. */
-export async function generateStaticParams() {
-  if (process.env.NEXT_PUBLIC_DEMO_STATIC !== "1") return [];
-  return (await getSite()).ebooks.map((b) => ({ slug: b.slug }));
+/** Only the built-in books get a clean file at build time; the shelf itself needs none of this. */
+export function generateStaticParams() {
+  return site.ebooks.map((b) => ({ slug: b.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const book = (await getSite()).ebooks.find((b) => b.slug === slug);
+  const book = site.ebooks.find((b) => b.slug === slug);
   if (!book) return { title: "Book not found" };
   const description = book.oneLiner || book.subtitle;
-  return {
-    title: `${book.title} — free e-book`,
-    description,
-    alternates: { canonical: `/ebooks/${slug}` },
-    openGraph: { title: book.title, description, url: `/ebooks/${slug}`, ...(book.cover ? { images: [{ url: book.cover }] } : {}) },
-  };
+  return { title: `${book.title} — free e-book`, description, alternates: { canonical: `/ebooks/${slug}` }, openGraph: { title: book.title, description, url: `/ebooks/${slug}` } };
 }
 
-/** A shareable page for one e-book: details and the request form. Books come from the admin (Books → Books). */
 export default async function BookPage({ params }: Props) {
   const { slug } = await params;
-  const site = await getSite();
-  const book = site.ebooks.find((b) => b.slug === slug);
-  if (!book) notFound();
-  return (
-    <PageShell>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Book",
-          name: book.title,
-          alternativeHeadline: book.subtitle,
-          description: book.oneLiner,
-          bookFormat: "https://schema.org/EBook",
-          numberOfPages: book.pages || undefined,
-          isAccessibleForFree: true,
-          url: `${site.url}/ebooks/${book.slug}`,
-          publisher: { "@type": "Organization", name: site.name, url: site.url },
-        }}
-      />
-      <BookLanding book={book} />
-    </PageShell>
-  );
+  return <BookPageView slug={slug} />;
 }

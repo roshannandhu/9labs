@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { beacon, newRef, postJson } from "@/lib/api";
+import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/lib/local/backend";
+import { opaqueRef } from "@/lib/text";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
 import { scrollToId } from "@/lib/scroll";
 import { useModalLock } from "@/lib/useModalLock";
@@ -127,8 +128,8 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
   const done = Boolean(result);
   useEffect(() => {
     if (!done || !open) return;
-    ref.current = newRef();
-    void postJson("/api/public/quiz-submissions", { ref: ref.current, answers });
+    ref.current = opaqueRef();
+    submitQuizResult(ref.current, answers);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished quiz
   }, [done, open]);
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
@@ -319,7 +320,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-primary w-full"
-                          onClick={() => beacon("/api/public/quiz-submissions", { ref: ref.current, action: "whatsapp" })}
+                          onClick={() => submitQuizAction(ref.current, "whatsapp")}
                         >
                           <SocialIcon name="whatsapp" size={18} /> {t.whatsappCta}
                         </a>
@@ -330,11 +331,11 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         ) : (
                           <form
                             className="mt-3 flex flex-col gap-2.5 sm:flex-row"
-                            onSubmit={async (e) => {
+                            onSubmit={(e) => {
                               e.preventDefault();
                               if (!/^\S+@\S+\.\S+$/.test(email) || sending) return;
                               setSending(true);
-                              const res = await postJson("/api/public/quiz-email", { ref: ref.current, email, answers });
+                              const res = submitQuizEmail(ref.current, email, answers);
                               setSending(false);
                               if (res.ok) setSent(true);
                             }}

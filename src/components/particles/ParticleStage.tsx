@@ -9,14 +9,11 @@ import { palette, colorKey, KEY_HEX, COLOR_KEYS } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
 import { particleBus, heroTarget, allNineTarget, picTarget, sameTarget, targetKey, type ParticleTarget } from "./bus";
-import { site, type IconKey } from "@/content/site";
+import type { IconKey } from "@/content/site";
+import { useSite } from "@/components/providers/SiteProvider";
 
 const SLOTS = ["hero", "stage-1", "stage-2", "stage-3", "stage-4", "stage-5", "stage-6", "stage-7", "stage-8", "stage-9", "finale"] as const;
 type SlotName = (typeof SLOTS)[number];
-/** each service card has its own slot (`stage-<n>`) */
-const STAGES = site.services.map((s) => ({ name: `stage-${s.n}` as SlotName, pic: picTarget(s.icon) }));
-const ICON_SLOT = new Map<IconKey, SlotName>(site.services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
-const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : t.kind === "all9" ? "finale" : (ICON_SLOT.get(t.icon) ?? "stage-1"));
 const isDark = () => document.documentElement.dataset.theme === "dark";
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smooth = (v: number) => {
@@ -54,10 +51,16 @@ const ASM_MS = 1700;
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
+  const { services } = useSite();
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    /** each service card has its own slot (`stage-<n>`); a card reordered in the admin keeps its icon's picture */
+    const STAGES = services.map((s) => ({ name: `stage-${s.n}` as SlotName, pic: picTarget(s.icon) }));
+    const ICON_SLOT = new Map<IconKey, SlotName>(services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
+    const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : t.kind === "all9" ? "finale" : (ICON_SLOT.get(t.icon) ?? "stage-1"));
+
     if (reduced) return;
     const wrap = wrapRef.current;
     const cv = ref.current;
@@ -688,7 +691,7 @@ export function ParticleStage() {
       for (const s of rest.values()) s.c.remove();
       tcv.remove();
     };
-  }, [reduced]);
+  }, [reduced, services]);
 
   if (reduced) return null;
   // rendered inside <main> and clipped to it: the dust canvas scrolls with the page (see `page`)

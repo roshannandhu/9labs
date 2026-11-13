@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useSite } from "@/components/providers/SiteProvider";
+import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { FaqList } from "./FaqList";
 
-/** The first few questions on the homepage, switched on in the admin (Website → Homepage → FAQ on the homepage). */
+/** The first few questions on the homepage, shown when "faq" is one of the sections (Website → Sections). */
 export function FaqPreview() {
-  const { faqPreview: f } = useSite();
+  const site = useSite();
+  const f = site.faqPreview;
   if (!f.enabled || !f.items.length) return null;
   return (
     <section id="faq" aria-labelledby="faq-title" className="relative py-20 sm:py-28">
       <div className="container-x max-w-[920px]">
-        <SectionLabel index="?">{f.label}</SectionLabel>
+        <SectionLabel index={sectionNo(site, "faq")}>{f.label}</SectionLabel>
         <SpringHeading id="faq-title" text={f.heading} accent={f.accent || undefined} className="mt-4 text-[clamp(1.8rem,3.6vw,2.8rem)] font-semibold leading-[1.05] tracking-[-0.03em]" />
         <AnimatedContent distance={40} duration={0.9} ease="expo.out" className="mt-8">
           <FaqList items={f.items} />

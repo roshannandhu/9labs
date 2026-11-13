@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { fontVariables } from "@/lib/fonts";
-import { getSite } from "@/lib/content/getSite";
+import { site } from "@/content/site";
 import { SiteProvider } from "@/components/providers/SiteProvider";
+import { ThemeColors } from "@/components/providers/ThemeColors";
 import { DemoSettingsProvider } from "@/components/providers/DemoSettings";
 import { QuizProvider } from "@/components/providers/QuizProvider";
 import { SmoothScroll } from "@/components/providers/SmoothScroll";
@@ -13,38 +14,24 @@ import { INTRO_BOOT_SCRIPT } from "@/components/intro/introBus";
 import { EnquiryProvider } from "@/components/enquiry/EnquiryProvider";
 import { Tracking } from "@/components/layout/Tracking";
 import { themeBootScript } from "@/lib/theme";
-import type { SiteData } from "@/content/types";
 
-// Content comes from the database and changes whenever the admin saves, so pages are rendered
-// per request; the content itself is cached (see getSite) and refreshed on every save.
-export const dynamic = "force-dynamic";
-
-export async function generateMetadata(): Promise<Metadata> {
-  const site = await getSite();
-  const { seo } = site;
-  return {
-    metadataBase: new URL(site.url),
-    title: { default: seo.title, template: seo.titleTemplate.includes("%s") ? seo.titleTemplate : `%s · ${site.name}` },
-    description: seo.description,
-    applicationName: site.name,
-    keywords: seo.keywords,
-    alternates: { canonical: "/" },
-    openGraph: {
-      type: "website",
-      url: "/",
-      siteName: site.name,
-      title: seo.title,
-      description: seo.description,
-      locale: "en_AE",
-      ...(seo.ogImage ? { images: [{ url: seo.ogImage }] } : {}),
-    },
-    twitter: { card: "summary_large_image", title: seo.title, description: seo.description, ...(seo.ogImage ? { images: [seo.ogImage] } : {}) },
-    robots: seo.index && process.env.NEXT_PUBLIC_NOINDEX !== "1" ? { index: true, follow: true } : { index: false, follow: false },
-    verification: seo.googleVerification ? { google: seo.googleVerification } : undefined,
-    icons: site.favicon ? { icon: site.favicon } : undefined,
-    formatDetection: { telephone: false },
-  };
-}
+/**
+ * Fully static export: there is no server at request time to read the admin's saved content, so
+ * SEO metadata and the pre-paint boot scripts use the built-in defaults (`src/content/site.ts`).
+ * The page itself is admin-content-driven once it reaches the browser (`SiteProvider`).
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
+  title: { default: site.seo.title, template: site.seo.titleTemplate.includes("%s") ? site.seo.titleTemplate : `%s · ${site.name}` },
+  description: site.seo.description,
+  applicationName: site.name,
+  keywords: site.seo.keywords,
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", url: "/", siteName: site.name, title: site.seo.title, description: site.seo.description, locale: "en_AE" },
+  twitter: { card: "summary_large_image", title: site.seo.title, description: site.seo.description },
+  robots: site.seo.index && process.env.NEXT_PUBLIC_NOINDEX !== "1" ? { index: true, follow: true } : { index: false, follow: false },
+  formatDetection: { telephone: false },
+};
 
 export const viewport: Viewport = {
   themeColor: "#e9ddeb",
@@ -53,36 +40,21 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/** Brand colours set in the admin, written over the stylesheet's own (Website → Look, SEO & tracking). */
-function themeCss({ colors: c }: SiteData["theme"]) {
-  const light = [c.indigo && `--nl-indigo:${c.indigo}`, c.bg && `--nl-bg:${c.bg};--nl-lavender:${c.bg}`].filter(Boolean).join(";");
-  const dark = [c.darkBg && `--nl-bg:${c.darkBg}`, c.logoFrom && `--logo-from:${c.logoFrom}`, c.logoTo && `--logo-to:${c.logoTo}`].filter(Boolean).join(";");
-  // the highlight pair (quiz, enquiry window, bridge) follows the same two colours in both themes
-  const pair = [c.logoFrom && `--brand-a:${c.logoFrom}`, c.logoTo && `--brand-b:${c.logoTo}`].filter(Boolean).join(";");
-  return `${light || pair ? `:root{${[light, pair].filter(Boolean).join(";")}}` : ""}${dark ? `html[data-theme="dark"]{${dark}}` : ""}`;
-}
-
-export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const site = await getSite();
-  const { theme } = site;
-  const css = themeCss(theme);
-  const look = { grid: theme.grid, whatsapp: site.contact.whatsappFab, ...(theme.colors.blue ? { blue: theme.colors.blue } : {}), ...(theme.colors.purple ? { purple: theme.colors.purple } : {}) };
-
-  const demo = process.env.NEXT_PUBLIC_DEMO_STATIC === "1";
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: the pre-paint scripts set data-theme / data-intro on <html> before React loads
     <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         {/* Pre-paint: the theme, and whether the logo landing animation plays (first visit this session). */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript(theme.default, theme.toggle) + (theme.intro ? INTRO_BOOT_SCRIPT : "") }} />
-        {css && <style dangerouslySetInnerHTML={{ __html: css }} />}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript(site.theme.default, site.theme.toggle) + (site.theme.intro ? INTRO_BOOT_SCRIPT : "") }} />
       </head>
       <body>
         <a href="#main" className="sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
           Skip to content
         </a>
-        <SiteProvider value={site}>
-          <DemoSettingsProvider initial={look}>
+        <SiteProvider>
+          <ThemeColors />
+          <DemoSettingsProvider>
             <QuizProvider>
               <EnquiryProvider>
                 <SmoothScroll />
@@ -91,11 +63,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
                 <WhatsAppFab />
                 <ConceptLab />
                 <Tracking />
-                {demo && (
-                  <p role="note" className="fixed bottom-2 left-1/2 z-[120] -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#8c53fe,#5ce0e6)] px-4 py-1.5 text-center text-[12px] font-semibold text-[#0e0c20] shadow-lg">
-                    Live demo: sample content. Forms and the admin are not connected here — nothing is sent.
-                  </p>
-                )}
               </EnquiryProvider>
             </QuizProvider>
           </DemoSettingsProvider>

@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import type { FaqItem } from "@/content/types";
+import { textToHtml } from "@/lib/richtext";
 
 /** Questions that open and close. Answers are rich text written in the admin (Content → FAQ). */
 export function FaqList({ items, openFirst = false }: { items: FaqItem[]; openFirst?: boolean }) {
@@ -31,8 +32,7 @@ export function FaqList({ items, openFirst = false }: { items: FaqItem[]; openFi
               </button>
             </h3>
             <div id={`${uid}-a-${f.id}`} role="region" aria-labelledby={`${uid}-q-${f.id}`} hidden={!on} className="rich px-5 pb-5 text-[15px] leading-relaxed text-nl-ink sm:px-6 sm:pb-6">
-              {/* written by signed-in admins in the rich-text editor and converted to HTML on the server */}
-              <div dangerouslySetInnerHTML={{ __html: f.answerHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: textToHtml(f.answerText) }} />
             </div>
           </li>
         );

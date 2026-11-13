@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* The Bridge — the admin's own stylesheet. Same brand tokens as the public site (so it feels like
+   the same product), but purpose-built: none of the site's component classes leak in here. */
+:root {
+  color-scheme: light;
+  --st-bg: #e9ddeb;
+  --st-panel: #ffffff;
+  --st-panel-2: #f6f1f7;
+  --st-ink: #0e0c20;
+  --st-sub: #5b5468;
+  --st-dim: #8c8495;
+  --st-border: rgb(14 12 32 / 0.1);
+  --st-border-strong: rgb(14 12 32 / 0.18);
+  --st-purple: #6f55e8;
+  --st-indigo: #3530d0;
+  --st-cyan: #5ce0e6;
+  --st-danger: #c23b3b;
+  --st-danger-bg: #fbeaea;
+  --st-warn: #9a6b12;
+  --st-warn-bg: #fbf1dd;
+  --st-good: #1f8a5a;
+  --st-good-bg: #e6f5ee;
+  --st-grad: linear-gradient(120deg, var(--st-purple), #5a7bf0);
+  --logo-from: #030303;
+  --logo-to: #3533cb;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --st-bg: #0b0a12;
+  --st-panel: #15141f;
+  --st-panel-2: #1b1a27;
+  --st-ink: #f3f1fb;
+  --st-sub: #b3aec3;
+  --st-dim: #847e97;
+  --st-border: rgb(255 255 255 / 0.1);
+  --st-border-strong: rgb(255 255 255 / 0.18);
+  --st-purple: #8c6bff;
+  --st-indigo: #6a5bff;
+  --st-cyan: #5ce0e6;
+  --st-danger: #ef6a6a;
+  --st-danger-bg: #3a1c1c;
+  --st-warn: #e0ad4e;
+  --st-warn-bg: #352909;
+  --st-good: #4fd1a0;
+  --st-good-bg: #0f2c22;
+  --logo-from: #8c53fe;
+  --logo-to: #5ce0e6;
+}
+
+@theme inline {
+  --color-st-bg: var(--st-bg);
+  --color-st-panel: var(--st-panel);
+  --color-st-panel-2: var(--st-panel-2);
+  --color-st-ink: var(--st-ink);
+  --color-st-sub: var(--st-sub);
+  --color-st-dim: var(--st-dim);
+  --color-st-purple: var(--st-purple);
+  --color-st-indigo: var(--st-indigo);
+  --color-st-cyan: var(--st-cyan);
+  --color-st-danger: var(--st-danger);
+  --color-st-good: var(--st-good);
+  --font-display: var(--font-display-src), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans-src), ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-accent-src), ui-serif, Georgia, serif;
+  --font-digits: var(--font-digits-src), ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--st-bg);
+  color: var(--st-ink);
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--st-border-strong) transparent;
+}
+:focus-visible {
+  outline: 2px solid var(--st-purple);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@utility st-card {
+  background: var(--st-panel);
+  border: 1px solid var(--st-border);
+  border-radius: 16px;
+}
+@utility st-field {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--st-border-strong);
+  background: var(--st-panel);
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--st-ink);
+  transition: border-color 0.15s;
+  &:focus {
+    border-color: var(--st-purple);
+    outline: none;
+  }
+}
+@utility st-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--st-sub);
+}
+@utility st-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--st-dim);
+}
+@utility st-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border: 1px solid var(--st-border-strong);
+  background: var(--st-panel);
+  color: var(--st-ink);
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+@utility st-btn-primary {
+  border-color: transparent;
+  background: var(--st-grad);
+  color: #fff;
+}
+@utility st-btn-danger {
+  border-color: transparent;
+  background: var(--st-danger);
+  color: #fff;
+}
+
+.st-scrollbox {
+  overflow-y: auto;
+}

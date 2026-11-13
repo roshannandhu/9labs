@@ -59,6 +59,7 @@ export type QuizQuestion = {
 export type Value = { key: string; title: string; line: string };
 
 export type Ebook = {
+  id: string;
   slug: string;
   n: string;
   title: string;
@@ -68,6 +69,18 @@ export type Ebook = {
   pages: number;
   readTime: string;
   chapters: string[];
+  /** Shown on the shelf/carousel. Switched off without deleting. */
+  enabled: boolean;
+  /** The file in IndexedDB (src/lib/files.ts); required before a request can be sent. */
+  pdfFileId?: string;
+  pdfName?: string;
+  pdfSize?: number;
+  /** Per-book override of the general Book settings ("inherit" = use the general setting). */
+  approvalMode: "inherit" | "manual" | "auto";
+  deliveryMode: "inherit" | "link" | "attachment" | "both";
+  requests: number;
+  sent: number;
+  downloads: number;
   /** Cover image (uploaded in the admin). Without one, a designed cover is drawn from `tone`. */
   cover?: string;
 };
@@ -434,10 +447,6 @@ export const site: SiteData = {
     companyPlaceholder: "Optional",
     messageLabel: "Message",
     messagePlaceholder: "Anything else we should know? (optional)",
-    showBudget: true,
-    showTimeline: true,
-    showCompany: true,
-    showMessage: true,
     whatsappCta: "Send on WhatsApp",
     emailEnabled: true,
     emailCta: "E-mail instead",
@@ -448,6 +457,25 @@ export const site: SiteData = {
     again: "Open WhatsApp again",
     budgets: ["Under AED 5k", "AED 5–20k", "AED 20–50k", "AED 50k+", "Not sure yet"],
     timelines: ["As soon as possible", "Within a month", "In 1–3 months", "Just exploring"],
+    fields: ["needs", "budget", "timeline", "company", "message"],
+    required: [],
+    refCode: true,
+    emailSubject: "Enquiry: {service}",
+    redirect: { mode: "direct", seconds: 3, newTab: true },
+    template: [
+      "Hi Nine Labs! 👋",
+      "I'm {name}[ from {company}].",
+      "",
+      "Interested in: {service}",
+      "[What we need: {needs}]",
+      "[Budget: {budget}]",
+      "[Timeline: {timeline}]",
+      "",
+      "{message}",
+      "",
+      "[Ref: {ref}]",
+      "(Sent from the Nine Labs website)",
+    ].join("\n"),
   },
 
   ebooksSection: {
@@ -497,6 +525,7 @@ export const site: SiteData = {
 
   ebooks: [
     {
+      id: "book-1",
       slug: "the-foundations",
       n: "01",
       title: "The Foundations",
@@ -506,8 +535,15 @@ export const site: SiteData = {
       pages: 42,
       readTime: "35 min read",
       chapters: ["Know your customer", "Position before you promote", "The message that sticks", "Measuring what matters"],
+      enabled: true,
+      approvalMode: "inherit",
+      deliveryMode: "inherit",
+      requests: 0,
+      sent: 0,
+      downloads: 0,
     },
     {
+      id: "book-2",
       slug: "why-digital-why-now",
       n: "02",
       title: "Why Digital, Why Now",
@@ -517,8 +553,15 @@ export const site: SiteData = {
       pages: 38,
       readTime: "30 min read",
       chapters: ["Where attention lives now", "Search, social and the new funnel", "Content that compounds", "Data without the jargon"],
+      enabled: true,
+      approvalMode: "inherit",
+      deliveryMode: "inherit",
+      requests: 0,
+      sent: 0,
+      downloads: 0,
     },
     {
+      id: "book-3",
       slug: "the-nine-labs-method",
       n: "03",
       title: "The Nine Labs Method",
@@ -528,6 +571,12 @@ export const site: SiteData = {
       pages: 46,
       readTime: "40 min read",
       chapters: ["The bridge philosophy", "Nine activities, one team", "From brief to results", "Case notes from the field"],
+      enabled: true,
+      approvalMode: "inherit",
+      deliveryMode: "inherit",
+      requests: 0,
+      sent: 0,
+      downloads: 0,
     },
   ] satisfies Ebook[],
 
@@ -556,7 +605,7 @@ export const site: SiteData = {
     ],
   },
 
-  faqPreview: { enabled: false, label: "FAQ", heading: "Questions,", accent: "answered.", cta: "See all questions", items: [] },
+  faqPreview: { enabled: false, label: "FAQ", heading: "Questions,", accent: "answered.", cta: "See all questions", count: 4, items: [] },
 
   theme: { default: "light", toggle: true, intro: true, grid: 0.06, colors: {} },
 

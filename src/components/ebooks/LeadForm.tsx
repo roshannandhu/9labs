@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { fill, type Ebook } from "@/content/site";
 import type { SiteData } from "@/content/types";
 import { useSite } from "@/components/providers/SiteProvider";
-import { postJson } from "@/lib/api";
+import { submitEbookRequest } from "@/lib/local/backend";
 
 export type LeadValues = {
   name: string;
@@ -78,24 +78,24 @@ export function LeadForm({ book, onDone, compact = false }: { book: Ebook; onDon
         }
         setSubmitting(true);
         setFailed("");
-        const res = await postJson<{ status?: string; error?: string }>("/api/public/ebook-requests", {
-          book: book.slug,
+        const res = await submitEbookRequest({
+          bookSlug: book.slug,
           name: v.name.trim(),
           email: v.email.trim(),
           code: v.code,
           phone: v.phone.trim(),
           company: v.company.trim(),
           consent: v.consent,
-          website: trap,
-          elapsed: opened.current ? Date.now() - opened.current : 0,
+          trap,
+          elapsedMs: opened.current ? Date.now() - opened.current : 0,
           source: window.location.pathname,
         });
         setSubmitting(false);
-        if (!res.ok) {
-          setFailed(res.data?.error || f.error);
+        if (res.status === "error") {
+          setFailed(res.error || f.error);
           return;
         }
-        onDone({ ...v, sent: res.data?.status === "sent" });
+        onDone({ ...v, sent: res.status === "sent" });
       }}
     >
       <p className="label-mono !text-[11px] !text-nl-purple">{fill(f.eyebrow, { n: book.n })}</p>

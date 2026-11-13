@@ -2,10 +2,11 @@ import type { Ebook, QuizQuestion, Service, Value } from "./site";
 
 /**
  * The full shape of the website's content. `site.ts` holds the built-in defaults; the admin
- * (Payload) overrides any of it, and `getSite()` merges the two into one object of this type.
+ * (The Bridge, `src/studio`) overrides any of it in the browser's own storage
+ * (`src/lib/store.ts`), and `getSite()` merges the two into one object of this type.
  */
 export type SocialKey = "instagram" | "linkedin" | "x" | "facebook" | "tiktok" | "youtube";
-export type SectionKey = "services" | "about" | "quiz" | "ebooks" | "contact";
+export type SectionKey = "services" | "about" | "quiz" | "ebooks" | "faq" | "contact";
 
 /** What a button does: open the quiz, open WhatsApp, or go to a section / page / URL. */
 export type Cta = { label: string; action: "quiz" | "whatsapp" | "link"; href?: string };
@@ -24,7 +25,7 @@ export type ThemeColors = {
   logoTo: string;
 };
 
-export type FaqItem = { id: string; question: string; answerHtml: string; answerText: string; category?: string };
+export type FaqItem = { id: string; question: string; answerText: string; category?: string; enabled: boolean };
 export type FooterLink = { label: string; href: string };
 
 export interface SiteData {
@@ -150,10 +151,6 @@ export interface SiteData {
     companyPlaceholder: string;
     messageLabel: string;
     messagePlaceholder: string;
-    showBudget: boolean;
-    showTimeline: boolean;
-    showCompany: boolean;
-    showMessage: boolean;
     budgets: string[];
     timelines: string[];
     whatsappCta: string;
@@ -164,6 +161,21 @@ export interface SiteData {
     thanksTitle: string;
     thanksText: string;
     again: string;
+    /** Which blocks are asked, and in what order: a subset/order of EnquiryFieldKey. */
+    fields: EnquiryFieldKey[];
+    /** Which of `fields` must be filled before the visitor can send. */
+    required: EnquiryFieldKey[];
+    /**
+     * The WhatsApp message, one template. `{token}` is replaced; `[... {token} ...]` (a whole
+     * line or bracketed run) disappears if every token inside it is empty. See `src/lib/enquiry.ts`.
+     */
+    template: string;
+    /** Adds a short reference code to the message and to the saved enquiry, e.g. "Ref: NL-7K2Q". */
+    refCode: boolean;
+    /** Subject used if "e-mail instead" is chosen. */
+    emailSubject: string;
+    /** What happens right after Send. */
+    redirect: { mode: "direct" | "thanks"; seconds: number; newTab: boolean };
   };
 
   ebooksSection: {
@@ -227,7 +239,7 @@ export interface SiteData {
     links: FooterLink[];
   };
 
-  faqPreview: { enabled: boolean; label: string; heading: string; accent: string; cta: string; items: FaqItem[] };
+  faqPreview: { enabled: boolean; label: string; heading: string; accent: string; cta: string; count: number; items: FaqItem[] };
 
   theme: {
     default: "light" | "dark";
@@ -256,3 +268,147 @@ export interface SiteData {
     cookieDecline: string;
   };
 }
+
+/** The "Talk to us" blocks, in the order they can be arranged (name is always asked and always first). */
+export const ENQUIRY_FIELDS = ["needs", "budget", "timeline", "company", "message"] as const;
+export type EnquiryFieldKey = (typeof ENQUIRY_FIELDS)[number];
+
+/* ------------------------------------------------------------------ */
+/*  Pages written in the admin (About, FAQ intro, Privacy, custom…)    */
+/* ------------------------------------------------------------------ */
+
+export type Page = {
+  id: string;
+  slug: string;
+  title: string;
+  eyebrow: string;
+  intro: string;
+  /** Plain text: blank line = new paragraph. `**bold**`, `[text](url)`, lines starting "- " for a list. */
+  body: string;
+  showStats: boolean;
+  showSteps: boolean;
+  showValues: boolean;
+  showServices: boolean;
+  showCta: boolean;
+  seo: { title: string; description: string };
+  updatedAt: string;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Book delivery (global rules + the e-mail visitors receive)         */
+/* ------------------------------------------------------------------ */
+
+export type ApprovalMode = "manual" | "auto";
+export type DeliveryMode = "link" | "attachment" | "both";
+
+export type DeliverySettings = {
+  approvalMode: ApprovalMode;
+  deliveryMode: DeliveryMode;
+  attachmentMaxMb: number;
+  linkDays: number;
+  maxDownloads: number;
+  senderName: string;
+  replyTo: string;
+  adminAlert: boolean;
+  adminAlertTo: string;
+};
+
+export type EbookEmailSettings = {
+  subject: string;
+  body: string;
+  buttonLabel: string;
+  footer: string;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Leads — what visitors send, saved for the admin                    */
+/* ------------------------------------------------------------------ */
+
+export type FollowUp = "new" | "contacted" | "won" | "lost";
+export const FOLLOW_UP_STATUSES: FollowUp[] = ["new", "contacted", "won", "lost"];
+
+export type Enquiry = {
+  id: string;
+  ref: string;
+  name: string;
+  company: string;
+  service: string;
+  serviceTitle: string;
+  needs: string[];
+  budget: string;
+  timeline: string;
+  message: string;
+  channel: "whatsapp" | "email";
+  status: FollowUp;
+  notes: string;
+  createdAt: string;
+};
+
+export type BookRequestStatus = "pending" | "sent" | "failed" | "rejected";
+
+export type BookRequest = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  bookSlug: string;
+  status: BookRequestStatus;
+  deliveryUsed: string;
+  sentAt: string | null;
+  expiresAt: string | null;
+  downloads: number;
+  linkDownloads: number;
+  tokenVersion: number;
+  error: string;
+  notes: string;
+  consent: boolean;
+  source: string;
+  createdAt: string;
+};
+
+export type QuizAction = "none" | "whatsapp" | "email";
+
+export type QuizResult = {
+  id: string;
+  ref: string;
+  top: string;
+  matches: string;
+  summary: string;
+  answers: Record<string, string[]>;
+  action: QuizAction;
+  email: string;
+  status: FollowUp;
+  notes: string;
+  createdAt: string;
+};
+
+export type OutboxKind = "ebook" | "ebook-alert" | "quiz-plan";
+export type OutboxMail = {
+  id: string;
+  kind: OutboxKind;
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  createdAt: string;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Admin / The Bridge                                                 */
+/* ------------------------------------------------------------------ */
+
+export type AdminRole = "owner" | "admin" | "editor";
+export type AdminUser = { id: string; email: string; name: string; role: AdminRole; active: boolean; lastLoginAt: string | null };
+
+/** Everything an admin edits in one place: the published copy is what the public site shows. */
+export type Workspace = {
+  schema: number;
+  site: SiteData;
+  pages: Page[];
+  faqs: FaqItem[];
+  delivery: DeliverySettings;
+  email: EbookEmailSettings;
+};
+
+export type Version = { id: string; at: string; summary: string[]; workspace: Workspace };
