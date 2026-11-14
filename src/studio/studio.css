@@ -1,40 +1,60 @@
 @import "tailwindcss";
 
-/* The Bridge — the admin's own stylesheet. Same brand tokens as the public site (so it feels like
-   the same product), but purpose-built: none of the site's component classes leak in here. */
+/*
+ * The Bridge — "Command Center". The admin's own stylesheet: dark by default (an admin tool, used
+ * mostly at a desk), a "blueprint" light mode, and a grid+aurora backdrop. None of the public
+ * site's component classes leak in here, and none of this leaks into the public site.
+ */
 :root {
+  /* light ("blueprint") */
   color-scheme: light;
-  --st-bg: #e9ddeb;
+  --st-bg: #f5f2fa;
+  --st-grid: rgb(53 48 208 / 0.06);
   --st-panel: #ffffff;
-  --st-panel-2: #f6f1f7;
+  --st-panel-2: #f6f3fb;
+  --st-panel-3: #ece7f6;
   --st-ink: #0e0c20;
-  --st-sub: #5b5468;
-  --st-dim: #8c8495;
-  --st-border: rgb(14 12 32 / 0.1);
-  --st-border-strong: rgb(14 12 32 / 0.18);
+  --st-sub: #554e66;
+  --st-dim: #8a8399;
+  --st-border: rgb(14 12 32 / 0.08);
+  --st-border-strong: rgb(14 12 32 / 0.15);
   --st-purple: #6f55e8;
   --st-indigo: #3530d0;
-  --st-cyan: #5ce0e6;
+  --st-cyan: #0e9aa7;
   --st-danger: #c23b3b;
   --st-danger-bg: #fbeaea;
   --st-warn: #9a6b12;
   --st-warn-bg: #fbf1dd;
   --st-good: #1f8a5a;
   --st-good-bg: #e6f5ee;
-  --st-grad: linear-gradient(120deg, var(--st-purple), #5a7bf0);
+  --st-grad: linear-gradient(120deg, #6f55e8, #3530d0 50%, #0e9aa7);
+  --st-glow: 0 0 0 1px rgb(111 85 232 / 0.3), 0 8px 24px -12px rgb(111 85 232 / 0.35);
+  --st-shadow: 0 1px 2px rgb(14 12 32 / 0.05), 0 8px 24px -12px rgb(14 12 32 / 0.15);
+  --st-series-enquiry: #6f55e8;
+  --st-series-ebook: #0e9aa7;
+  --st-series-quiz: #eb6834;
   --logo-from: #030303;
   --logo-to: #3533cb;
+
+  /* the public site's own tokens — only so BookCover (shared with the admin's Books preview)
+     renders with the right colours and mono labels in here */
+  --nl-blue: #5a48f5;
+  --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 82%, #000);
+  --nl-purple: #6f55e8;
+  --nl-indigo: #3530d0;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --st-bg: #0b0a12;
-  --st-panel: #15141f;
-  --st-panel-2: #1b1a27;
+  --st-bg: #07060d;
+  --st-grid: rgb(140 107 255 / 0.07);
+  --st-panel: #0e0c18;
+  --st-panel-2: #151325;
+  --st-panel-3: #1c1a30;
   --st-ink: #f3f1fb;
-  --st-sub: #b3aec3;
-  --st-dim: #847e97;
-  --st-border: rgb(255 255 255 / 0.1);
-  --st-border-strong: rgb(255 255 255 / 0.18);
+  --st-sub: #a9a3bd;
+  --st-dim: #6f6987;
+  --st-border: rgb(255 255 255 / 0.07);
+  --st-border-strong: rgb(255 255 255 / 0.13);
   --st-purple: #8c6bff;
   --st-indigo: #6a5bff;
   --st-cyan: #5ce0e6;
@@ -44,14 +64,23 @@
   --st-warn-bg: #352909;
   --st-good: #4fd1a0;
   --st-good-bg: #0f2c22;
+  --st-grad: linear-gradient(120deg, #8c6bff, #6a5bff 45%, #5ce0e6);
+  --st-glow: 0 0 0 1px rgb(140 107 255 / 0.35), 0 8px 30px -12px rgb(140 107 255 / 0.55);
+  --st-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 30px -15px rgb(0 0 0 / 0.6);
+  --st-series-enquiry: #8c6bff;
+  --st-series-ebook: #169ca8;
+  --st-series-quiz: #d95926;
   --logo-from: #8c53fe;
   --logo-to: #5ce0e6;
+
+  --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 58%, #fff);
 }
 
 @theme inline {
   --color-st-bg: var(--st-bg);
   --color-st-panel: var(--st-panel);
   --color-st-panel-2: var(--st-panel-2);
+  --color-st-panel-3: var(--st-panel-3);
   --color-st-ink: var(--st-ink);
   --color-st-sub: var(--st-sub);
   --color-st-dim: var(--st-dim);
@@ -60,10 +89,12 @@
   --color-st-cyan: var(--st-cyan);
   --color-st-danger: var(--st-danger);
   --color-st-good: var(--st-good);
+  --color-st-warn: var(--st-warn);
   --font-display: var(--font-display-src), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-sans-src), ui-sans-serif, system-ui, sans-serif;
   --font-accent: var(--font-accent-src), ui-serif, Georgia, serif;
   --font-digits: var(--font-digits-src), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), ui-monospace, SFMono-Regular, monospace;
 }
 
 html,
@@ -85,28 +116,88 @@ h3 {
   scrollbar-color: var(--st-border-strong) transparent;
 }
 :focus-visible {
-  outline: 2px solid var(--st-purple);
+  outline: 3px solid var(--st-purple);
   outline-offset: 2px;
   border-radius: 6px;
 }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
+/* ------------------------------------------------------------------ backdrop */
+
+/** The shell's own root: a faint grid plus two soft colour pools, fixed behind everything. */
+.st-canvas {
+  position: relative;
+  background: var(--st-bg);
+}
+.st-canvas::before,
+.st-canvas::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.st-canvas::before {
+  background-image: linear-gradient(var(--st-grid) 1px, transparent 1px), linear-gradient(90deg, var(--st-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+.st-canvas::after {
+  background-image: radial-gradient(600px 320px at 85% -10%, rgb(140 107 255 / 0.16), transparent 70%), radial-gradient(520px 280px at 5% -15%, rgb(92 224 230 / 0.09), transparent 70%);
+}
+:root:not([data-theme="dark"]) .st-canvas::after {
+  opacity: 0.5;
+}
+.st-canvas > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ------------------------------------------------------------------ surfaces */
+
+@utility st-panel {
+  background: var(--st-panel);
+  border: 1px solid var(--st-border);
+  border-radius: 14px;
+  box-shadow: var(--st-shadow);
+}
+/* kept as an alias: older markup still uses st-card */
 @utility st-card {
   background: var(--st-panel);
   border: 1px solid var(--st-border);
-  border-radius: 16px;
+  border-radius: 14px;
+  box-shadow: var(--st-shadow);
 }
+@utility st-glass {
+  background: color-mix(in oklab, var(--st-panel) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 @utility st-field {
   width: 100%;
+  min-height: 40px;
   border-radius: 10px;
   border: 1px solid var(--st-border-strong);
-  background: var(--st-panel);
-  padding: 9px 12px;
+  background: var(--st-panel-2);
+  padding: 9px 13px;
   font-size: 14px;
   color: var(--st-ink);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   &:focus {
     border-color: var(--st-purple);
     outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--st-purple) 22%, transparent);
   }
 }
 @utility st-label {
@@ -120,33 +211,100 @@ h3 {
   line-height: 1.45;
   color: var(--st-dim);
 }
+@utility st-micro {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-dim);
+}
+@utility st-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 @utility st-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  height: 40px;
+  padding: 0 16px;
   border-radius: 999px;
   font-size: 13.5px;
   font-weight: 600;
   border: 1px solid var(--st-border-strong);
-  background: var(--st-panel);
+  background: var(--st-panel-2);
   color: var(--st-ink);
-  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s, box-shadow 0.15s, transform 0.1s;
   white-space: nowrap;
+  &:hover {
+    border-color: color-mix(in oklab, var(--st-purple) 45%, var(--st-border-strong));
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--st-purple) 25%, transparent);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 }
 @utility st-btn-primary {
   border-color: transparent;
   background: var(--st-grad);
   color: #fff;
+  &:hover {
+    box-shadow: var(--st-glow);
+  }
 }
 @utility st-btn-danger {
   border-color: transparent;
   background: var(--st-danger);
   color: #fff;
 }
+@utility st-btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--st-sub);
+  &:hover {
+    color: var(--st-ink);
+    background: var(--st-panel-2);
+    border-color: transparent;
+  }
+}
 
 .st-scrollbox {
   overflow-y: auto;
+}
+
+/* a slow drifting aurora for the sign-in screen's brand panel, static under reduced motion */
+@keyframes st-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-3%, 2%) scale(1.06);
+  }
+}
+.st-drift {
+  animation: st-drift 20s ease-in-out infinite;
+}
+
+/* the pulsing "live" dot */
+@keyframes st-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 7px color-mix(in oklab, currentColor 0%, transparent);
+  }
+}
+.st-pulse {
+  animation: st-pulse-ring 2s ease-out infinite;
 }
