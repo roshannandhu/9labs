@@ -138,19 +138,30 @@ function ServicesTrack({ heading, services, t }: Part) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goTo((active - 1 + 9) % 9);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goTo((active + 1) % 9);
+    }
+  };
+
   return (
     <section id="services" aria-labelledby="services-title" className="relative pt-4 pb-10 sm:pt-6 sm:pb-12 lg:pt-8 lg:pb-12 scroll-mt-16">
       <div className="pb-2 sm:pb-3">{heading}</div>
       {/* 3D orbital stage: floor track, chevrons and centered carousel */}
       <div className="svc-stage">
         <OrbitFloorTrack />
-        <OrbitChevrons active={active} goTo={goTo} />
+        <OrbitChevrons active={active} goTo={goTo} services={services} />
         <div
           ref={scrollerRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onClick={handleScrollerClick}
+          onKeyDown={handleKeyDown}
           data-lenis-prevent-horizontal
           data-particle-track
           tabIndex={0}

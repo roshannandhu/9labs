@@ -161,8 +161,6 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
             isLoopingRef.current = false;
             loopMetaRef.current = null;
             cards.forEach((c) => {
-              c.style.transform = "";
-              c.style.opacity = "";
               c.style.pointerEvents = "";
             });
             el.scrollTo({ left: target * step, behavior: "instant" });
@@ -266,7 +264,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       const peekOpacity = phone ? 0.52 : PEEK_OPACITY;
 
       cards.forEach((c, i) => {
-        const offset = i - pos;
+        const offset = phone ? i - pos : ringOffset(i - pos);
         const absOffset = Math.abs(offset);
         if (absOffset > 2.2) {
           if (c.style.opacity !== "0") {
@@ -286,9 +284,13 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
         const opacity = Math.max(0.18, 1 - clampedAbs * (1 - peekOpacity));
         const rotY = phone ? 0 : Math.max(-14, Math.min(14, -offset * 12));
 
+        // On desktop/laptop: shift wrapped cards along the circular ring so Card 9 peeks left of Card 1
+        // and Card 1 peeks right of Card 9, eliminating empty space on either side
+        const dx = phone ? 0 : (offset - (i - pos)) * step;
+
         const transformStr = phone
           ? `translate3d(0, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`
-          : `translate3d(0, ${yArc.toFixed(1)}px, 0) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
+          : `translate3d(${dx.toFixed(1)}px, ${yArc.toFixed(1)}px, 0) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
         const opacityStr = opacity.toFixed(2);
 
         if (c.style.transform !== transformStr) c.style.transform = transformStr;

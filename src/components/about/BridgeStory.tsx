@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useSite } from "@/components/providers/SiteProvider";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -173,124 +173,115 @@ function Skyline() {
 
 
 /**
- * Phone: the full, detailed bridge at real size, wider than the screen. Swipe sideways along it
- * (the page still scrolls normally up and down); it snaps to three stops (your side, the middle
- * with the 9 and two-way traffic, our side), each with its caption. The skyline moves slower than
- * the bridge for depth.
+ * Phone: smooth cinematic camera across the bridge.
+ * Sequence:
+ *   1. Stop 1 (Left bank): focused on "Your business" card and left suspension tower (Quote 1).
+ *   2. Pan from Left to Right: smooth glide across the suspension cables.
+ *   3. Stop 2 (Right bank): focused on "Nine Labs" card with 9 service icons and right tower (Quote 2).
+ *   4. Pan from Right to Center: reveals the joined deck, glowing "9" medallion, and "Results" badge (Quote 3).
+ *   5. Zoom Out: smoothly pulls back from center to reveal the glorious full bridge spanning from bank to bank!
+ * All camera transforms and crossfades run natively via GSAP ScrollTrigger for 60/120fps fluid scrolling.
  */
 function PhoneBridge({
-  progress,
+  stop,
+  flap,
   onGo,
   reduced,
 }: {
-  progress: number;
+  stop: number;
+  flap: { cur: number; prev: number; k: number };
   onGo: (index: number) => void;
   reduced: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const skylineRef = useRef<HTMLDivElement>(null);
-
   const { story, steps } = useSite().about;
-  // Left bank (Quote 1) -> Right bank (Quote 2) -> Center result & zoom out full bridge (Quote 3)
+
   const STOPS = [
     { label: story.yourSideLabel, s: steps[0] },
     { label: story.ourSideLabel, s: steps[1] },
     { label: story.result || "Results", s: steps[LAST] },
   ];
-  const stop = progress < 0.33 ? 0 : progress < 0.66 ? 1 : 2;
-  const cur = STOPS[stop];
-
-  useEffect(() => {
-    if (reduced) return;
-    const containerWidth = containerRef.current?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 390);
-    // Stage base width is 1250px.
-    // Calculate full bridge fit scale so the 1200px SVG + padding fits cleanly across the mobile screen:
-    const sFull = Math.min(0.85, (containerWidth - 20) / 1200);
-
-    const p = Math.min(1, Math.max(0, progress));
-    let currentX: number;
-    let currentScale: number;
-
-    if (p <= 0.5) {
-      // Phase 1 -> 2: Camera pans from Left side (Quote 1) to Right side (Quote 2)
-      const t = p / 0.5;
-      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      currentX = 385 + (-355 - 385) * ease;
-      currentScale = 1.0;
-    } else {
-      // Phase 2 -> 3: Camera pans to Center and Zooms Out to reveal the full bridge (Quote 3)
-      const t = (p - 0.5) / 0.5;
-      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const target3X = 25 * sFull;
-      currentX = -355 + (target3X - (-355)) * ease;
-      currentScale = 1.0 + (sFull - 1.0) * ease;
-    }
-
-    if (stageRef.current) {
-      stageRef.current.style.transform = `translate3d(${currentX.toFixed(1)}px, 0, 0) scale(${currentScale.toFixed(3)})`;
-    }
-    if (skylineRef.current) {
-      skylineRef.current.style.transform = `translate3d(${(-currentX * 0.35).toFixed(1)}px, 0, 0)`;
-    }
-  }, [progress, reduced]);
 
   return (
-    <div className="mt-3 pb-2 sm:mt-6">
+    <div className="bs-phone mt-2 pb-6 sm:mt-4">
+      {/* Bridge camera stage */}
       <div
-        ref={containerRef}
         role="region"
         aria-label="The bridge between your business and Nine Labs. Scroll down to cross it."
-        className="relative -mx-4 overflow-hidden touch-pan-y sm:-mx-8 h-[270px] sm:h-[310px] flex items-center justify-center"
+        className="relative -mx-4 overflow-hidden touch-pan-y sm:-mx-8 h-[330px] flex items-start justify-start select-none"
       >
         <div
-          ref={stageRef}
-          className="bs-stage relative w-[1250px] px-4 pt-2 will-change-transform shrink-0"
-          style={{ transformOrigin: "50% 50%", transition: "none" }}
+          className="bs-phone-stage relative w-[1200px] h-[440px] will-change-transform shrink-0"
+          style={{ transformOrigin: "0 0" }}
         >
+          {/* Skyline parallax layer */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-            <div ref={skylineRef} className="absolute inset-0 will-change-transform">
+            <div className="bs-skyline absolute inset-0 will-change-transform">
               <Skyline />
             </div>
           </div>
-          <div className="relative">
+
+          {/* Bridge SVG & bank cards */}
+          <div className="relative w-[1200px] h-[440px]">
             <SideBridge />
-            <YouBank className="absolute left-0 top-0 w-[220px]" />
-            <UsBank className="absolute right-0 top-0 w-[220px]" />
-            <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
+            <div className="bs-card-1 absolute left-[28px] top-[24px] w-[224px]">
+              <YouBank />
+            </div>
+            <div className="bs-card-2 absolute left-[948px] top-[24px] w-[224px]">
+              <UsBank />
+            </div>
+            <p className="bs-result absolute left-[600px] top-[180px] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
               {story.result}
             </p>
           </div>
         </div>
       </div>
 
-      {/* stops: tap to travel there */}
-      <div className="mt-4 flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[var(--chip-bg)] p-1 shadow-[0_14px_34px_-24px_rgba(53,51,203,.5)]">
-        {STOPS.map((st, i) => (
-          <button
-            key={st.label}
-            type="button"
-            onClick={() => onGo(i)}
-            aria-pressed={i === stop}
-            className={`flex-1 rounded-full px-2 py-2 text-[12.5px] font-semibold transition-colors duration-300 ${
-              i === stop ? "bg-[linear-gradient(120deg,var(--nl-purple),var(--nl-blue))] text-paper" : "text-white/60"
-            }`}
-          >
-            {st.label}
-          </button>
-        ))}
+      {/* SplitFlap Counter & Stops Tabs */}
+      <div className="mt-2 flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 pl-1" aria-hidden="true">
+          <SplitFlap
+            value={String(stop + 1).padStart(2, "0")}
+            prev={String(flap.prev + 1).padStart(2, "0")}
+            k={reduced ? 0 : flap.k}
+            className="font-digits text-[26px] font-black leading-none text-white"
+          />
+          <span className="font-digits text-xs font-black text-white/30">/ 0{steps.length}</span>
+        </div>
+
+        {/* stops: tap to travel there */}
+        <div className="relative flex-1 flex items-center justify-between rounded-full border border-white/10 bg-[var(--chip-bg)] p-1 shadow-[0_14px_34px_-24px_rgba(53,51,203,.5)]">
+          <div
+            className="bs-tab-pill absolute bottom-1 top-1 rounded-full bg-[linear-gradient(120deg,var(--nl-purple),var(--nl-blue))] shadow-sm will-change-transform pointer-events-none"
+            style={{ width: "calc(33.333% - 2.67px)", left: 4 }}
+          />
+          {STOPS.map((st, i) => (
+            <button
+              key={st.label}
+              type="button"
+              onClick={() => onGo(i)}
+              className="relative z-10 flex-1 rounded-full py-1.5 text-center text-[12px] font-semibold text-white/70 hover:text-white transition-colors"
+            >
+              {st.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="mt-3 min-h-[90px] text-center" aria-live="polite">
-        <p key={`a${stop}`} className="bs-step-in font-display text-[18px] font-semibold leading-tight text-white">
-          {cur.s.title}
-        </p>
-        <p key={`b${stop}`} className="bs-step-in mx-auto mt-1 max-w-[36ch] text-[14px] leading-snug text-nl-ink">
-          {cur.s.text}
-        </p>
-        <p className="label-mono mt-2 text-white/40" aria-hidden="true">
-          Scroll down to cross the bridge ↓
-        </p>
+      {/* Quote text crossfade stack: continuous scroll opacity, no unmounting voids */}
+      <div className="relative mt-3 min-h-[82px] text-center" aria-live="polite">
+        {STOPS.map((st, i) => (
+          <div
+            key={st.label}
+            className={`bs-quote-${i} absolute inset-x-0 top-0 will-change-transform`}
+          >
+            <p className="font-display text-[17px] font-semibold leading-tight text-white">
+              {st.s.title}
+            </p>
+            <p className="mx-auto mt-1 max-w-[34ch] text-[13.5px] leading-snug text-nl-ink">
+              {st.s.text}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -311,60 +302,139 @@ export function BridgeStory() {
   const short = useMediaQuery("(orientation: landscape) and (max-height: 520px)");
   const root = useRef<HTMLDivElement>(null);
   const stRef = useRef<ScrollTrigger | null>(null);
-  const [phoneProgress, setPhoneProgress] = useState(0);
   const [flap, setFlap] = useState({ cur: 0, prev: 0, k: 0 });
   const step = reduced ? LAST : flap.cur;
 
   useGSAP(
     () => {
       const el = root.current;
-      const stage = el?.querySelector(".bs-stage");
-      if (!el || !stage || reduced) return;
+      if (!el || reduced) return;
       const q = gsap.utils.selector(el);
-      const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
-      tl.from(q(".bs-1.bs-card, .bs-1 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 0)
-        .from(q(".bs-1.bs-draw, .bs-1 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.01 }, 0.05)
-        .from(q(".bs-1 .bs-pop, .bs-1.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 0.6)
-        .from(q(".bs-2.bs-card, .bs-2 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 1.0)
-        .from(q(".bs-2.bs-draw, .bs-2 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.008 }, 1.05)
-        .from(q(".bs-2 .bs-pop, .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 1.6)
-        .from(q(".bs-deck"), { drawSVG: "50% 50%", duration: 0.45 }, 2.0)
-        .from(q(".bs-nine"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25 }, 2.35)
-        .from(q(".bs-result"), { autoAlpha: 0, y: 10, duration: 0.2 }, 2.45)
-        .to({}, { duration: 0.55 });
 
-      const setStep = (p: number) => {
-        const i = p < 0.33 ? 0 : p < 0.66 ? 1 : 2;
-        setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
-        el.dataset.live = p >= 0.72 ? "true" : "false";
-      };
+      if (wide) {
+        // Desktop timeline
+        const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+        tl.from(q(".bs-stage .bs-1.bs-card, .bs-stage .bs-1 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 0)
+          .from(q(".bs-stage .bs-1.bs-draw, .bs-stage .bs-1 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.01 }, 0.05)
+          .from(q(".bs-stage .bs-1 .bs-pop, .bs-stage .bs-1.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 0.6)
+          .from(q(".bs-stage .bs-2.bs-card, .bs-stage .bs-2 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 1.0)
+          .from(q(".bs-stage .bs-2.bs-draw, .bs-stage .bs-2 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.008 }, 1.05)
+          .from(q(".bs-stage .bs-2 .bs-pop, .bs-stage .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 1.6)
+          .from(q(".bs-stage .bs-deck"), { drawSVG: "50% 50%", duration: 0.45 }, 2.0)
+          .from(q(".bs-stage .bs-nine"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25 }, 2.35)
+          .from(q(".bs-stage .bs-result"), { autoAlpha: 0, y: 10, duration: 0.2 }, 2.45)
+          .to({}, { duration: 0.55 });
 
-      const st = ScrollTrigger.create({
-        trigger: el,
-        start: "top 72px",
-        end: () => `+=${Math.round(window.innerHeight * 1.8)}`,
-        pin: true,
-        anticipatePin: 1,
-        scrub: wide ? 0.3 : true,
-        animation: wide ? tl : undefined,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          setStep(self.progress);
-          setPhoneProgress(self.progress);
-          if (!wide) {
-            tl.progress(self.progress);
-          }
-        },
-      });
-      stRef.current = st;
-      setStep(st.progress);
-      setPhoneProgress(st.progress);
-      if (!wide) {
-        tl.progress(st.progress);
+        const setStep = (p: number) => {
+          const i = p < 0.33 ? 0 : p < 0.66 ? 1 : 2;
+          setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
+          el.dataset.live = p >= 0.72 ? "true" : "false";
+        };
+
+        const st = ScrollTrigger.create({
+          trigger: el,
+          start: "top 72px",
+          end: () => `+=${Math.round(window.innerHeight * 1.8)}`,
+          pin: true,
+          anticipatePin: 1,
+          scrub: 0.3,
+          animation: tl,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => setStep(self.progress),
+        });
+        stRef.current = st;
+        setStep(st.progress);
+        return () => {
+          stRef.current = null;
+        };
+      } else {
+        // Mobile phone timeline:
+        // Left (Quote 1) -> Right (Quote 2) -> Center (Quote 3) -> Zoom Out (Full bridge)
+        const containerWidth = el.querySelector(".bs-phone")?.clientWidth || window.innerWidth;
+        const W = containerWidth;
+        const sFull = Math.min(0.85, (W - 24) / 1200);
+        const tyCenter = Math.max(20, (330 - 440 * sFull) / 2);
+
+        const tx1 = W / 2 - 180;
+        const tx2 = W / 2 - 1020;
+        const tx3a = W / 2 - 600;
+        const tx3b = W / 2 - 600 * sFull;
+
+        // Stop 1 (Left bank + "Your business") is fully drawn and visible from the start
+        gsap.set(q(".bs-phone-stage"), { x: tx1, y: 8, scale: 1.0, transformOrigin: "0 0" });
+        gsap.set(q(".bs-skyline"), { x: 0 });
+        gsap.set(q(".bs-phone .bs-1.bs-card, .bs-phone .bs-1 .bs-card"), { autoAlpha: 1, y: 0 });
+        gsap.set(q(".bs-phone .bs-1.bs-draw, .bs-phone .bs-1 .bs-draw"), { drawSVG: "100%" });
+        gsap.set(q(".bs-phone .bs-1 .bs-pop, .bs-phone .bs-1.bs-pop"), { autoAlpha: 1, scale: 1 });
+
+        gsap.set(q(".bs-phone .bs-2.bs-card, .bs-phone .bs-2 .bs-card"), { autoAlpha: 0, y: 15 });
+        gsap.set(q(".bs-phone .bs-2.bs-draw, .bs-phone .bs-2 .bs-draw"), { drawSVG: "0%" });
+        gsap.set(q(".bs-phone .bs-2 .bs-pop, .bs-phone .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3 });
+
+        gsap.set(q(".bs-phone .bs-deck"), { drawSVG: "50% 50%", autoAlpha: 0 });
+        gsap.set(q(".bs-phone .bs-nine"), { autoAlpha: 0, scale: 0.4 });
+        gsap.set(q(".bs-phone .bs-result"), { autoAlpha: 0, y: 10 });
+
+        gsap.set(q(".bs-quote-0"), { autoAlpha: 1, y: 0 });
+        gsap.set(q(".bs-quote-1"), { autoAlpha: 0, y: 12 });
+        gsap.set(q(".bs-quote-2"), { autoAlpha: 0, y: 12 });
+        gsap.set(q(".bs-tab-pill"), { xPercent: 0 });
+
+        const phoneTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+        // Phase 1 -> 2: (time 18 to 38) Pan from Left to Right
+        phoneTl
+          .to(q(".bs-phone-stage"), { x: tx2, y: 8, scale: 1.0, duration: 20, ease: "power2.inOut" }, 18)
+          .to(q(".bs-skyline"), { x: -tx2 * 0.25, duration: 20, ease: "power2.inOut" }, 18)
+          .to(q(".bs-quote-0"), { autoAlpha: 0, y: -10, duration: 8 }, 18)
+          .to(q(".bs-quote-1"), { autoAlpha: 1, y: 0, duration: 10 }, 28)
+          .to(q(".bs-tab-pill"), { xPercent: 100, duration: 20, ease: "power2.inOut" }, 18)
+          .to(q(".bs-phone .bs-2.bs-draw, .bs-phone .bs-2 .bs-draw"), { drawSVG: "100%", duration: 16, stagger: 0.008 }, 20)
+          .to(q(".bs-phone .bs-2.bs-card, .bs-phone .bs-2 .bs-card"), { autoAlpha: 1, y: 0, duration: 12 }, 22)
+          .to(q(".bs-phone .bs-2 .bs-pop, .bs-phone .bs-2.bs-pop"), { autoAlpha: 1, scale: 1, duration: 8 }, 28);
+
+        // Phase 2 -> 3a: (time 54 to 72) Pan from Right to Center ("going to centre")
+        phoneTl
+          .to(q(".bs-phone-stage"), { x: tx3a, y: 8, scale: 1.0, duration: 18, ease: "power2.inOut" }, 54)
+          .to(q(".bs-skyline"), { x: -tx3a * 0.25, duration: 18, ease: "power2.inOut" }, 54)
+          .to(q(".bs-quote-1"), { autoAlpha: 0, y: -10, duration: 8 }, 54)
+          .to(q(".bs-quote-2"), { autoAlpha: 1, y: 0, duration: 10 }, 62)
+          .to(q(".bs-tab-pill"), { xPercent: 200, duration: 18, ease: "power2.inOut" }, 54)
+          .to(q(".bs-phone .bs-deck"), { autoAlpha: 1, drawSVG: "0% 100%", duration: 14 }, 56)
+          .to(q(".bs-phone .bs-nine"), { autoAlpha: 1, scale: 1, duration: 10 }, 62)
+          .to(q(".bs-phone .bs-result"), { autoAlpha: 1, y: 0, duration: 8 }, 64);
+
+        // Phase 3a -> 3b: (time 72 to 88) Zoom Out from Center to reveal Full Bridge
+        phoneTl
+          .to(q(".bs-phone-stage"), { x: tx3b, y: tyCenter, scale: sFull, duration: 16, ease: "power2.inOut" }, 72)
+          .to(q(".bs-skyline"), { x: 0, duration: 16, ease: "power2.inOut" }, 72);
+
+        // Dwell on full bridge until unpinning (time 88 to 100)
+        phoneTl.to({}, { duration: 12 }, 88);
+
+        const setPhoneStep = (p: number) => {
+          const i = p < 0.36 ? 0 : p < 0.63 ? 1 : 2;
+          setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
+          el.dataset.live = p >= 0.65 ? "true" : "false";
+        };
+
+        const st = ScrollTrigger.create({
+          trigger: el,
+          start: "top 72px",
+          end: () => `+=${Math.round(window.innerHeight * 1.8)}`,
+          pin: true,
+          anticipatePin: 1,
+          scrub: true,
+          animation: phoneTl,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => setPhoneStep(self.progress),
+        });
+        stRef.current = st;
+        setPhoneStep(st.progress);
+        return () => {
+          stRef.current = null;
+        };
       }
-      return () => {
-        stRef.current = null;
-      };
     },
     { scope: root, dependencies: [reduced, wide, short], revertOnUpdate: true },
   );
@@ -372,7 +442,7 @@ export function BridgeStory() {
   const handleGoToStop = (i: number) => {
     const st = stRef.current;
     if (st) {
-      const progressTarget = i === 0 ? 0 : i === 1 ? 0.5 : 0.95;
+      const progressTarget = i === 0 ? 0.08 : i === 1 ? 0.46 : 0.94;
       const target = st.start + (st.end - st.start) * progressTarget;
       window.scrollTo({ top: target, behavior: "smooth" });
     }
@@ -442,7 +512,7 @@ export function BridgeStory() {
             </p>
           </div>
         ) : (
-          <PhoneBridge progress={phoneProgress} onGo={handleGoToStop} reduced={reduced} />
+          <PhoneBridge stop={step} flap={flap} onGo={handleGoToStop} reduced={reduced} />
         )}
 
         {/* reduced motion: every step, plainly */}

@@ -17,31 +17,56 @@ export function OrbitFloorTrack() {
   );
 }
 
-/** Desktop: Floating circular glass chevron buttons flanking the carousel */
-export function OrbitChevrons({ active, goTo }: { active: number; goTo: (i: number) => void }) {
+/** Desktop: Floating circular glass chevron buttons flanking the carousel with premium hover effect */
+export function OrbitChevrons({
+  active,
+  goTo,
+  services,
+}: {
+  active: number;
+  goTo: (i: number) => void;
+  services?: Service[];
+}) {
+  const prevIdx = (active - 1 + 9) % 9;
+  const nextIdx = (active + 1) % 9;
+  const prevTitle = services?.[prevIdx]?.short || "Previous";
+  const nextTitle = services?.[nextIdx]?.short || "Next";
+
   return (
-    <div className="pointer-events-none absolute inset-y-0 inset-x-4 lg:inset-x-8 z-30 hidden md:flex items-center justify-between">
+    <div className="pointer-events-none absolute inset-y-0 inset-x-3 lg:inset-x-6 z-30 hidden md:flex items-center justify-between">
       <button
         type="button"
-        onClick={() => goTo((active - 1 + 9) % 9)}
-        aria-label="Previous service"
-        className="orbit-chev orbit-chev--left pointer-events-auto"
+        onClick={() => goTo(prevIdx)}
+        aria-label={`Previous service: ${prevTitle}`}
+        className="orbit-chev orbit-chev--left pointer-events-auto group"
         data-cursor="Prev"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m15 18-6-6 6-6" />
-        </svg>
+        <span className="orbit-chev-arrow orbit-chev-arrow--left">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="6" y2="12" className="orbit-arrow-stem" />
+            <polyline points="12 18 6 12 12 6" />
+          </svg>
+        </span>
+        <span className="orbit-chev-badge pointer-events-none">
+          {prevTitle}
+        </span>
       </button>
       <button
         type="button"
-        onClick={() => goTo((active + 1) % 9)}
-        aria-label="Next service"
-        className="orbit-chev orbit-chev--right pointer-events-auto"
+        onClick={() => goTo(nextIdx)}
+        aria-label={`Next service: ${nextTitle}`}
+        className="orbit-chev orbit-chev--right pointer-events-auto group"
         data-cursor="Next"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
+        <span className="orbit-chev-arrow orbit-chev-arrow--right">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="18" y2="12" className="orbit-arrow-stem" />
+            <polyline points="12 6 18 12 12 18" />
+          </svg>
+        </span>
+        <span className="orbit-chev-badge pointer-events-none">
+          {nextTitle}
+        </span>
       </button>
     </div>
   );

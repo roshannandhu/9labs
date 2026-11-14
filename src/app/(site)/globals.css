@@ -1144,34 +1144,82 @@ html[data-intro="playing"] [data-logo-9] {
   }
 }
 .orbit-chev {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--nl-panel) 85%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgb(var(--fg-rgb) / 0.1);
-  color: rgb(var(--fg-rgb) / 0.75);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+  background: color-mix(in srgb, var(--nl-panel) 84%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(var(--fg-rgb) / 0.12);
+  color: rgb(var(--fg-rgb) / 0.85);
+  box-shadow:
+    0 10px 28px -6px rgba(0, 0, 0, 0.09),
+    0 2px 6px -1px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .orbit-chev--left {
   position: absolute;
-  left: max(16px, calc(50% - var(--card-w) / 2 - 36px));
+  left: max(14px, calc(50% - var(--card-w) / 2 - 38px));
 }
 .orbit-chev--right {
   position: absolute;
-  right: max(16px, calc(50% - var(--card-w) / 2 - 36px));
+  right: max(14px, calc(50% - var(--card-w) / 2 - 38px));
 }
 .orbit-chev:hover {
   background: var(--nl-indigo);
   color: #ffffff;
   border-color: var(--nl-indigo);
-  transform: scale(1.08);
-  box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--nl-indigo) 50%, transparent);
+  transform: scale(1.1) translateY(-1px);
+  box-shadow:
+    0 14px 36px -4px color-mix(in srgb, var(--nl-indigo) 45%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--nl-indigo) 16%, transparent);
+}
+.orbit-chev:active {
+  transform: scale(0.92);
+  transition-duration: 0.1s;
+}
+.orbit-chev-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.orbit-arrow-stem {
+  transition: stroke-dashoffset 0.25s ease, opacity 0.25s ease;
+}
+.orbit-chev:hover .orbit-chev-arrow--left {
+  transform: translateX(-3px);
+}
+.orbit-chev:hover .orbit-chev-arrow--right {
+  transform: translateX(3px);
+}
+.orbit-chev-badge {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nl-panel) 90%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(var(--fg-rgb) / 0.1);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--fg-rgb) / 0.9);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.orbit-chev:hover .orbit-chev-badge {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .orbital-floor-track {
   perspective: 1400px;
