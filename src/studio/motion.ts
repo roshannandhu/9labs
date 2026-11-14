@@ -23,6 +23,7 @@ export function useCountUp(value: number, ms = 900): number {
 
   useEffect(() => {
     if (reduced) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reduced motion skips the animation and jumps straight to the final value
       setShown(value);
       return;
     }
@@ -37,7 +38,6 @@ export function useCountUp(value: number, ms = 900): number {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- animates from the previous shown value, not a dep
   }, [value, ms, reduced]);
 
   return shown;

@@ -6,12 +6,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/layout/ThemeToggle";
 import { useModalLock } from "@/lib/useModalLock";
+import { autoLabel, diffDeep, humanizeDiff } from "@/lib/diff";
 import { publish } from "@/lib/store";
 import { setAdminTheme } from "./theme";
 import { Icon, type IconName } from "./Icon";
 import { KIND_LABEL, toFeed } from "./leads";
 import { ROOMS } from "./rooms";
-import { useBookRequests, useDraft, useEnquiries, usePendingChanges, useQuizResults } from "./state";
+import { useBookRequests, useDraft, useEnquiries, usePendingChanges, usePublished, useQuizResults } from "./state";
 import { useToast } from "./ui";
 
 type Hit = { key: string; label: string; sub?: string; icon: IconName; go: () => void };
@@ -31,6 +32,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const theme = useTheme();
   const pending = usePendingChanges();
   const draft = useDraft();
+  const published = usePublished();
   const enquiries = useEnquiries();
   const bookRequests = useBookRequests();
   const quizResults = useQuizResults();
@@ -43,9 +45,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the search box fresh each time the palette opens
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the search box and keyboard selection fresh each time the palette opens
       setQ("");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets keyboard selection for the new query
       setIndex(0);
       window.setTimeout(() => inputRef.current?.focus(), 30);
     }
@@ -67,15 +68,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ? toFeed(enquiries, bookRequests, quizResults, draft.site.ebooks)
           .filter((f) => f.search.includes(query) || f.title.toLowerCase().includes(query))
           .slice(0, 8)
-          .map((f) => ({ key: `lead_${f.kind}_${f.id}`, label: f.title, sub: `${KIND_LABEL[f.kind]} · ${f.sub}`, icon: f.kind === "enquiry" ? "mail" : f.kind === "book" ? "books" : "quiz", go: go(f.href) }))
+          .map((f): Hit => ({ key: `lead_${f.kind}_${f.id}`, label: f.title, sub: `${KIND_LABEL[f.kind]} · ${f.sub}`, icon: f.kind === "enquiry" ? "mail" : f.kind === "book" ? "books" : "quiz", go: go(f.href) }))
       : [];
 
-    const actions: Hit[] = [
+    const actionList: Hit[] = [
       { key: "action_theme", label: theme === "dark" ? "Switch to light theme" : "Switch to dark theme", icon: theme === "dark" ? "sun" : "moon", go: () => { setAdminTheme(theme === "dark" ? "light" : "dark"); onClose(); } },
-      ...(pending > 0 ? [{ key: "action_publish", label: "Publish changes", icon: "check" as const, go: () => { publish(); toast("ok", "Published. The website is up to date."); onClose(); } }] : []),
       { key: "action_new_book", label: "New book", icon: "plus", go: go("/admin/books?new=1") },
       { key: "action_export", label: "Export the inbox as CSV", icon: "download", go: go("/admin/inbox?export=1") },
-    ].filter((a) => !query || a.label.toLowerCase().includes(query));
+    ];
+    if (pending > 0) actionList.unshift({ key: "action_publish", label: "Publish changes", icon: "check", go: () => { publish(humanizeDiff(diffDeep(published, draft), autoLabel).slice(0, 40)); toast("ok", "Published — the website is up to date."); onClose(); } });
+    const actions = actionList.filter((a) => !query || a.label.toLowerCase().includes(query));
 
     return [
       { label: "Go to", hits: goTo },
@@ -83,7 +85,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { label: "Actions", hits: actions },
     ].filter((g) => g.hits.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `go`/`router`/`onClose` are stable enough for a palette's lifetime
-  }, [q, enquiries, bookRequests, quizResults, draft, theme, pending]);
+  }, [q, enquiries, bookRequests, quizResults, draft, published, theme, pending]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.hits), [groups]);
 

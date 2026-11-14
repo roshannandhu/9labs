@@ -302,7 +302,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const isDesktop = useMediaQuery("(min-width: 1024px)", true);
   const isTabletUp = useMediaQuery("(min-width: 640px)", true);
 
-  useEffect(() => setMobileOpen(false), [pathname]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- closes the mobile drawer on every navigation, not a derived render value
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     try {
