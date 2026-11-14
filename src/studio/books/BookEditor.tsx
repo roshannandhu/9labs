@@ -35,9 +35,13 @@ const SWATCHES: { value: Ebook["tone"]; label: string; style: React.CSSPropertie
 /** The books editor's content — rendered inside the page's wide drawer. */
 export function BookEditor({ index, onDelete }: { index: number; onDelete: () => void }) {
   const [book] = useField<Ebook>(["site", "ebooks", index]);
-  const [coverMode, setCoverMode] = useState<"designed" | "own">(book.cover ? "own" : "designed");
+  const [coverMode, setCoverMode] = useState<"designed" | "own">(book?.cover ? "own" : "designed");
   const confirm = useConfirm();
   const toast = useToast();
+
+  // `book` is briefly undefined while this drawer animates closed after its own delete (the array has
+  // already shrunk below `index`, but this instance hasn't unmounted yet).
+  if (!book) return null;
 
   const path = (...rest: (string | number)[]): Path => ["site", "ebooks", index, ...rest];
 
