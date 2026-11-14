@@ -1,4 +1,4 @@
-:HL["/9labs /_next/static/chunks/0brtwlall5tu0.css","style"]
+:HL["/9labs /_next/static/chunks/3-wffz_8owuq8.css","style"]
 :HL["/9labs /_next/static/chunks/0i1lr4g19h_8o.css","style"]
 :HL["/9labs /_next/static/media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/9labs /_next/static/media/24b194041b9b37de-s.p.3a2a4weh7ixm0.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
@@ -10,4 +10,4 @@
 3:[["children",{"s":{"n":"slug","t":"d","k":"why-digital-why-now","s":[]},"h":96,"c":"$Q4"}]]
 2:[["children",{"s":"ebooks","h":96,"c":"$Q3"}]]
 1:[["children",{"s":"(site)","h":112,"c":"$Q2"}]]
-0:{"b":"TBafMmyA5YOW5HdDbe-Pn","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"lip8J66Jepu6cBAkosKCn","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
