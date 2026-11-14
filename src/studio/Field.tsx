@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import type { Path } from "@/lib/path";
-import { fileUrl, resizeImage, saveFile } from "@/lib/files";
-import { idbRef, isIdbRef } from "@/lib/resolveFiles";
+import { resizeImage, saveFile } from "@/lib/files";
+import { idbRef } from "@/lib/resolveFiles";
 import { checkpoint } from "@/lib/store";
+import { Icon } from "./Icon";
 import { useField } from "./state";
+import { useFileUrl } from "./useFileUrl";
 
 type Base = { path: Path; label: string; help?: string; placeholder?: string; required?: boolean };
 
@@ -18,7 +20,7 @@ export function TextField({ path, label, help, placeholder, required, mono, disa
   return (
     <label className="block" htmlFor={id}>
       <span className="st-label">
-        {label} {required && <span className="text-st-danger">*</span>}
+        {label} {required && <span className="text-st-purple">*</span>}
       </span>
       <input id={id} disabled={disabled} className={`st-field mt-1.5 ${mono ? "font-mono" : ""} ${disabled ? "opacity-60" : ""}`} value={value ?? ""} placeholder={placeholder} onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
       {help && <span className="st-help mt-1 block">{help}</span>}
@@ -45,6 +47,23 @@ export function NumField({ path, label, help, min, max, step = 1 }: Base & { min
     <label className="block" htmlFor={id}>
       <span className="st-label">{label}</span>
       <input id={id} type="number" min={min} max={max} step={step} className="st-field mt-1.5" value={value ?? 0} onFocus={onFocusCheckpoint} onChange={(e) => setValue(Number(e.target.value))} />
+      {help && <span className="st-help mt-1 block">{help}</span>}
+    </label>
+  );
+}
+
+/** A labelled range slider with a live, formattable value readout. */
+export function Slider({ path, label, help, min, max, step = 1, format }: Base & { min: number; max: number; step?: number; format?: (v: number) => string }) {
+  const [value, setValue] = useField<number>(path);
+  const id = useId();
+  const v = value ?? min;
+  return (
+    <label className="block" htmlFor={id}>
+      <span className="flex items-center justify-between">
+        <span className="st-label">{label}</span>
+        <span className="st-num text-[12.5px] text-st-ink">{format ? format(v) : v}</span>
+      </span>
+      <input id={id} type="range" min={min} max={max} step={step} value={v} onFocus={onFocusCheckpoint} onChange={(e) => setValue(Number(e.target.value))} className="mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-st-panel-2 accent-[var(--st-purple)]" />
       {help && <span className="st-help mt-1 block">{help}</span>}
     </label>
   );
@@ -81,7 +100,9 @@ export function SelectField<T extends string>({ path, label, help, options }: Ba
   );
 }
 
-/** A colour (hex) field with a live swatch. Empty = "use the built-in colour". */
+const expand3 = (hex: string) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex);
+
+/** A colour (hex) field: a native picker swatch, a hex input, and a reset to the built-in colour. */
 export function ColorField({ path, label, help }: Base) {
   const [value, setValue] = useField<string>(path);
   const id = useId();
@@ -90,8 +111,20 @@ export function ColorField({ path, label, help }: Base) {
     <label className="block" htmlFor={id}>
       <span className="st-label">{label}</span>
       <div className="mt-1.5 flex items-center gap-2">
-        <span className="h-9 w-9 shrink-0 rounded-lg border border-st-border-strong" style={{ background: valid && value ? value : "repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0/10px 10px" }} />
+        <input
+          type="color"
+          aria-label={`${label} — pick a colour`}
+          value={valid && value ? expand3(value) : "#6f55e8"}
+          onFocus={onFocusCheckpoint}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-st-border-strong bg-transparent p-0.5"
+        />
         <input id={id} className={`st-field ${valid ? "" : "!border-st-danger"}`} value={value ?? ""} placeholder="#6f55e8" onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
+        {value && (
+          <button type="button" title="Reset to the built-in colour" aria-label="Reset to the built-in colour" onClick={() => { checkpoint(); setValue(""); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-st-dim hover:bg-st-panel-2 hover:text-st-ink">
+            <Icon name="close" size={13} />
+          </button>
+        )}
       </div>
       {help && <span className="st-help mt-1 block">{help}</span>}
     </label>
@@ -151,62 +184,93 @@ export function ListField({ path, label, help }: Omit<Base, "placeholder"> & { p
   );
 }
 
-/** An uploaded image (logo, favicon, a book cover). Stores `idb:<fileId>`; empty = the built-in look. */
-export function ImageField({ path, label, help, maxSide = 1400 }: Base & { maxSide?: number }) {
-  const [value, setValue] = useField<string>(path);
-  const [preview, setPreview] = useState<string | undefined>();
-  const [busy, setBusy] = useState(false);
+/** A drag & drop (or click) file picker. The general-purpose shell `ImageField`, `PdfField` and the Settings backup restore all render through. */
+export function Dropzone({ accept, label, hint, onFile, current, busy }: { accept: string; label: string; hint?: string; onFile: (file: File | undefined) => void; current?: React.ReactNode; busy?: boolean }) {
+  const [dragOver, setDragOver] = useState(false);
   const id = useId();
+  return (
+    <div>
+      <span className="st-label">{label}</span>
+      <label
+        htmlFor={id}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          onFile(e.dataTransfer.files?.[0]);
+        }}
+        className={`mt-1.5 flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${dragOver ? "border-st-purple bg-st-panel-3" : "border-st-border-strong bg-st-panel-2 hover:border-st-purple/50"}`}
+        style={dragOver ? { boxShadow: "var(--st-glow)" } : undefined}
+      >
+        <span className="text-st-dim">
+          <Icon name="upload" size={20} />
+        </span>
+        <span className="text-[13px] font-medium text-st-ink">{busy ? "Uploading…" : "Drop a file, or click to choose"}</span>
+        {hint && <span className="text-[11.5px] text-st-dim">{hint}</span>}
+        <input id={id} type="file" accept={accept} className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
+      </label>
+      {current && <div className="mt-2.5">{current}</div>}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!isIdbRef(value)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- the preview mirrors an id that can only be resolved against IndexedDB, after mount
-      setPreview(undefined);
-      return;
-    }
-    let cancelled = false;
-    void fileUrl(value.slice(4)).then((u) => !cancelled && setPreview(u));
-    return () => {
-      cancelled = true;
-    };
-  }, [value]);
+/**
+ * An uploaded image (a book cover, a cover logo). Stores `idb:<fileId>`; empty = the built-in look.
+ * A JPEG photo over 400KB is re-encoded to fit `maxSide`; with `keepFormat`, PNG/SVG/WebP are
+ * never re-encoded, so an uploaded logo keeps its transparency.
+ */
+export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Base & { maxSide?: number; keepFormat?: boolean }) {
+  const [value, setValue] = useField<string>(path);
+  const { url: preview } = useFileUrl(value);
+  const [busy, setBusy] = useState(false);
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
     checkpoint();
-    const blob = file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
+    const skip = keepFormat && /^image\/(png|svg\+xml|webp)$/.test(file.type);
+    const blob = !skip && file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
     const fileId = await saveFile(blob, file.name);
     setValue(idbRef(fileId));
     setBusy(false);
   };
 
   return (
-    <div>
-      <span className="st-label">{label}</span>
-      <div className="mt-1.5 flex items-center gap-3">
-        <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-st-border-strong bg-st-panel-2">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a blob: URL from IndexedDB; next/image can't load it
-            <img src={preview} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-[10px] text-st-dim">None</span>
-          )}
-        </span>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={id} className="st-btn w-fit cursor-pointer">
-            {busy ? "Uploading…" : "Choose image"}
-          </label>
-          <input id={id} type="file" accept="image/*" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} />
+    <Dropzone
+      accept="image/*"
+      label={label}
+      hint={help}
+      busy={busy}
+      onFile={(f) => void onFile(f)}
+      current={
+        <div className="flex items-center gap-3">
+          <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-st-border-strong bg-st-panel">
+            {preview ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a blob: URL from IndexedDB; next/image can't load it
+              <img src={preview} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-[10px] text-st-dim">None</span>
+            )}
+          </span>
           {value && (
-            <button type="button" onClick={() => { checkpoint(); setValue(""); }} className="text-left text-[12px] text-st-dim hover:text-st-danger">
+            <button
+              type="button"
+              onClick={() => {
+                checkpoint();
+                setValue("");
+              }}
+              className="text-[12px] text-st-dim hover:text-st-danger"
+            >
               Remove
             </button>
           )}
         </div>
-      </div>
-      {help && <span className="st-help mt-1.5 block">{help}</span>}
-    </div>
+      }
+    />
   );
 }
 
@@ -216,7 +280,6 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
   const [name, setName] = useField<string | undefined>(namePath);
   const [, setSize] = useField<number | undefined>(sizePath);
   const [busy, setBusy] = useState(false);
-  const id = useId();
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
@@ -230,26 +293,24 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
   };
 
   return (
-    <div>
-      <span className="st-label">{label}</span>
-      <div className="mt-1.5 flex items-center gap-3">
-        <label htmlFor={id} className="st-btn w-fit cursor-pointer">
-          {busy ? "Uploading…" : fileId ? "Replace PDF" : "Choose PDF"}
-        </label>
-        <input id={id} type="file" accept="application/pdf" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} />
-        {fileId ? <span className="truncate text-[12.5px] text-st-ink">{name}</span> : <span className="text-[12.5px] text-st-danger">No PDF yet — requests will wait</span>}
-      </div>
-      {help && <span className="st-help mt-1.5 block">{help}</span>}
-    </div>
-  );
-}
-
-/** A heading + its highlighted gradient ending, side by side — the site's recurring pattern. */
-export function HighlightField({ headingPath, accentPath, label = "Heading" }: { headingPath: Path; accentPath: Path; label?: string }) {
-  return (
-    <div className="grid gap-3.5 sm:grid-cols-2">
-      <TextField path={headingPath} label={label} />
-      <TextField path={accentPath} label={`${label} — highlighted ending`} help="The last words, shown in italic gradient style." />
-    </div>
+    <Dropzone
+      accept="application/pdf"
+      label={label}
+      hint={help}
+      busy={busy}
+      onFile={(f) => void onFile(f)}
+      current={
+        fileId ? (
+          <span className="flex items-center justify-center gap-1.5 text-[12.5px] text-st-ink">
+            <span className="text-st-good">
+              <Icon name="check" size={13} />
+            </span>
+            {name}
+          </span>
+        ) : (
+          <span className="text-[12.5px] text-st-danger">No PDF yet — requests will wait</span>
+        )
+      }
+    />
   );
 }
