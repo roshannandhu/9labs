@@ -7,7 +7,9 @@ import { DragHandle, MoveButtons } from "./ui";
 /**
  * A drag-reorderable list, backed by `motion`'s `Reorder` — drag the handle, or use the
  * ↑/↓ buttons (keyboard and touch both work without a drag gesture). One undo checkpoint per
- * grab, not per frame, so Ctrl/⌘ Z undoes a whole drag in one step.
+ * grab, not per frame, so Ctrl/⌘ Z undoes a whole drag in one step. The drag handle and the
+ * move/remove buttons only show on hover or keyboard focus — always visible on touch, where
+ * there's no hover to reveal them.
  */
 export function SortableList<T>({
   items,
@@ -46,10 +48,14 @@ function Row<T>({ item, index, length, items, onReorder, onRemove, children }: {
     onReorder(next);
   };
   return (
-    <Reorder.Item value={item} dragListener={false} dragControls={controls} className="flex items-start gap-1.5 rounded-xl border border-st-border bg-st-panel p-3">
-      <DragHandle onPointerDown={(e) => { checkpoint(); controls.start(e); }} />
+    <Reorder.Item value={item} dragListener={false} dragControls={controls} className="group flex items-start gap-1.5 rounded-xl border border-st-border bg-st-panel p-3 transition-colors hover:border-st-border-strong">
+      <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100" onPointerDown={(e) => { checkpoint(); controls.start(e); }}>
+        <DragHandle />
+      </div>
       <div className="min-w-0 flex-1">{children}</div>
-      <MoveButtons index={index} length={length} onMove={move} onRemove={onRemove} />
+      <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+        <MoveButtons index={index} length={length} onMove={move} onRemove={onRemove} />
+      </div>
     </Reorder.Item>
   );
 }
