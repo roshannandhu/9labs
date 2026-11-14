@@ -112,9 +112,13 @@ export function BookCover({ book }: { book: Ebook }) {
       )}
 
       {/* typography */}
-      <text x="20" y="26" fontSize="6" fill="white" fillOpacity="0.55" fontFamily="var(--font-mono)" letterSpacing="1.6">
-        NINE LABS · E-BOOK {book.n}
-      </text>
+      {book.coverLogo ? (
+        <image href={book.coverLogo} x="20" y="12" width="84" height="18" preserveAspectRatio="xMinYMid meet" />
+      ) : (
+        <text x="20" y="26" fontSize="6" fill="white" fillOpacity="0.55" fontFamily="var(--font-mono)" letterSpacing="1.6">
+          NINE LABS · E-BOOK {book.n}
+        </text>
+      )}
       <path d="M20 32 H62" stroke={accent} strokeWidth="1" />
       <text x="20" y={top} fontFamily="var(--font-display)" fontWeight="700" fontSize="19" fill="#fff" letterSpacing="-0.4">
         {lines.map((l, i) => (

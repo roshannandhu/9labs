@@ -15,6 +15,6 @@ async function resolve(v?: string): Promise<string | undefined> {
 /** Swaps every `idb:` reference (logo, favicon, OG image, book covers) for a usable object URL. */
 export async function resolveSiteFiles(site: SiteData): Promise<SiteData> {
   const [logo, favicon, ogImage] = await Promise.all([resolve(site.logo), resolve(site.favicon), resolve(site.seo.ogImage)]);
-  const ebooks = await Promise.all(site.ebooks.map(async (b) => ({ ...b, cover: await resolve(b.cover) })));
+  const ebooks = await Promise.all(site.ebooks.map(async (b) => ({ ...b, cover: await resolve(b.cover), coverLogo: await resolve(b.coverLogo) })));
   return { ...site, logo, favicon, seo: { ...site.seo, ogImage }, ebooks };
 }

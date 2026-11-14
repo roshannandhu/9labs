@@ -83,6 +83,8 @@ export type Ebook = {
   downloads: number;
   /** Cover image (uploaded in the admin). Without one, a designed cover is drawn from `tone`. */
   cover?: string;
+  /** A logo placed on the designed cover (ignored once `cover` is set). */
+  coverLogo?: string;
 };
 
 export const site: SiteData = {
