@@ -1056,6 +1056,7 @@ html[data-intro="playing"] [data-logo-9] {
    query matches `ORBIT_MQ` in useServiceTrack.ts — keep the two in step. */
 .svc-stage {
   position: relative;
+  perspective: 1400px;
 }
 .orbit-gear {
   display: none;
@@ -1063,102 +1064,117 @@ html[data-intro="playing"] [data-logo-9] {
 @media (min-width: 768px) and (min-height: 560px) {
   .svc-stage,
   .svc-scroller {
-    --gear-w: clamp(140px, 18vw, 280px);
-    --card-w: min(calc(100vw - 2 * var(--gear-w) - 48px), 980px);
-    --card-h: clamp(420px, calc(100svh - 260px), 680px);
-  }
-  .svc-scroller {
-    /* fade cards cleanly along the OrbitGear margin so left-exiting cards never cross under the icons */
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent calc(50% - var(--card-w) / 2 - 22px),
-      #000 calc(50% - var(--card-w) / 2 - 2px)
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent calc(50% - var(--card-w) / 2 - 22px),
-      #000 calc(50% - var(--card-w) / 2 - 2px)
-    );
-  }
-  .orbit-gear {
-    display: block;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: calc(50% + var(--card-w) / 2 + 14px);
-    width: var(--gear-w);
-    z-index: 30;
-    pointer-events: none;
+    --card-w: min(calc(100vw - 80px), 640px);
+    --card-h: clamp(400px, calc(100svh - 320px), 480px);
   }
   .orbit-arc {
     display: none;
   }
 }
-.orbit-icon {
+/* ---- 3B Frosted Capsule Dock (Laptop / Desktop) -------------------------------------------- */
+.orbit-dock-wrap {
+  position: relative;
+  justify-content: center;
+  margin-top: 1rem;
+  z-index: 30;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.orbit-capsule-dock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nl-panel) 75%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgb(var(--fg-rgb) / 0.08);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.08);
+}
+.orbit-capsule-node {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgb(var(--fg-rgb) / 0.035);
+  border: 1px solid rgb(var(--fg-rgb) / 0.07);
+  color: rgb(var(--fg-rgb) / 0.65);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.orbit-capsule-node:hover {
+  background: rgb(var(--fg-rgb) / 0.07);
+  color: rgb(var(--fg-rgb));
+  transform: translateY(-2px);
+}
+.orbit-capsule-node--active {
+  width: 50px;
+  height: 50px;
+  background: var(--nl-indigo);
+  color: #ffffff !important;
+  border-color: var(--nl-indigo);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--nl-indigo) 20%, transparent),
+    0 8px 22px -4px color-mix(in srgb, var(--nl-indigo) 65%, transparent);
+  transform: translateY(-1px);
+}
+.timing-ring {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: -5px;
+  width: 60px;
+  height: 60px;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.timing-ring--running circle {
+  animation: orbit-countdown 3.5s linear infinite;
+}
+.timing-ring--paused circle {
+  animation-play-state: paused;
+}
+@keyframes orbit-countdown {
+  from {
+    stroke-dashoffset: 163.36;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.orbit-chev {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  margin: -22px 0 0 -22px; /* JS writes the centre point; this re-centres the box on it */
-  border-radius: 14px;
-  background: var(--surface-1);
-  border: 1px solid rgb(var(--fg-rgb) / 0.08);
-  box-shadow: 0 4px 14px -3px rgba(0, 0, 0, 0.07);
-  color: rgb(var(--fg-rgb) / 0.62);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--nl-panel) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(var(--fg-rgb) / 0.1);
+  color: rgb(var(--fg-rgb) / 0.75);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
   cursor: pointer;
-  pointer-events: auto;
-  will-change: transform, opacity;
-  transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.25s ease;
 }
-/* active: solid brand fill + a tight ring. No blurred halo — blur(6px) on an inset:-10px layer
-   spread the old glow to about twice the icon's size, which read as a blob touching the card */
-.orbit-icon--on {
+.orbit-chev--left {
+  position: absolute;
+  left: max(16px, calc(50% - var(--card-w) / 2 - 22px));
+}
+.orbit-chev--right {
+  position: absolute;
+  right: max(16px, calc(50% - var(--card-w) / 2 - 22px));
+}
+.orbit-chev:hover {
   background: var(--nl-indigo);
-  border-color: transparent;
-  color: #fff;
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--nl-indigo) 16%, transparent),
-    0 10px 22px -12px color-mix(in srgb, var(--nl-indigo) 70%, transparent);
+  color: #ffffff;
+  border-color: var(--nl-indigo);
+  transform: scale(1.08);
+  box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--nl-indigo) 50%, transparent);
 }
-/* every icon has a caption under it (riding its transform), shown near the front of the wheel */
-.orbit-cap {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 6px;
-  width: max-content;
-  max-width: 104px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 10.5px;
-  font-weight: 500;
-  text-align: center;
-  color: rgb(var(--fg-rgb));
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-.orbit-cap[data-show="true"] {
-  opacity: 1;
-}
-.orbit-track {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.orbit-track ellipse {
-  stroke: rgb(var(--fg-rgb));
-  stroke-opacity: 0.22;
-  stroke-width: 1.2;
-  stroke-dasharray: 3 6;
+.orbital-floor-track {
+  perspective: 1400px;
 }
 /* ---- phone / touch: convex semi-circular dome dial dock under the card ---- */
 .orbit-dial {

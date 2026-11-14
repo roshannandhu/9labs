@@ -10,7 +10,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
-import { OrbitArc, OrbitGear } from "./OrbitNav";
+import { OrbitArc, OrbitFloorTrack, OrbitChevrons, OrbitCapsuleDock } from "./OrbitNav";
 import { Scene1Social } from "./scenes/Scene1Social";
 import { Scene2Advertising } from "./scenes/Scene2Advertising";
 import { Scene3Content } from "./scenes/Scene3Content";
@@ -102,13 +102,27 @@ function ServicesTrack({ heading, services, t }: Part) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { active, goTo, running, posRef } = useServiceTrack(scrollerRef, services);
 
+  // Allow clicking a peeking adjacent card on laptop/desktop to navigate directly to it
+  const handleScrollerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const cardEl = (e.target as HTMLElement).closest<HTMLElement>(".scene-card");
+    if (!cardEl || !scrollerRef.current) return;
+    const cards = Array.from(scrollerRef.current.querySelectorAll<HTMLElement>(":scope > .scene-card"));
+    const idx = cards.indexOf(cardEl);
+    if (idx !== -1 && idx !== active) {
+      goTo(idx);
+    }
+  };
+
   return (
-    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-14 sm:pb-16 lg:pt-24 lg:pb-20 scroll-mt-20">
-      <div className="pb-3 sm:pb-6 lg:pb-8">{heading}</div>
-      {/* laptop/tablet: the icon wheel (left) and the card wheel (the scroller) turn together */}
+    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-12 sm:pb-14 lg:pt-16 lg:pb-16 scroll-mt-16">
+      <div className="pb-2 sm:pb-4 lg:pb-5">{heading}</div>
+      {/* 3D orbital stage: floor track, chevrons and centered carousel */}
       <div className="svc-stage">
+        <OrbitFloorTrack />
+        <OrbitChevrons active={active} goTo={goTo} />
         <div
           ref={scrollerRef}
+          onClick={handleScrollerClick}
           data-lenis-prevent-horizontal
           data-particle-track
           tabIndex={0}
@@ -122,8 +136,10 @@ function ServicesTrack({ heading, services, t }: Part) {
             return <Scene key={s.slug} s={s} active={active === i} />;
           })}
         </div>
-        <OrbitGear services={services} active={active} goTo={goTo} posRef={posRef} />
       </div>
+      {/* Laptop / desktop (>= 768px): 3B Frosted Capsule Dock with 3.5s countdown ring and counter */}
+      <OrbitCapsuleDock services={services} active={active} goTo={goTo} running={running} />
+      {/* Phone / touch (< 768px): The convex dome dial dock — 100% untouched */}
       <OrbitArc services={services} active={active} goTo={goTo} running={running} posRef={posRef} />
       <div className="container-x flex flex-col items-center pb-20 pt-24 text-center sm:pb-28 sm:pt-32">
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">

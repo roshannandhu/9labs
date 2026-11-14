@@ -4,133 +4,113 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { Service } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { gsap, useGSAP } from "@/lib/gsap";
-import { NOTCH, ringOffset } from "./useServiceTrack";
+import { ringOffset } from "./useServiceTrack";
 
-/**
- * Laptop/tablet: the icon wheel. Nine icons on an ellipse, turning one notch per card — the
- * same notch as the card wheel beside it (useServiceTrack's orbit), and the same direction at
- * the point where they meet, so the two read as a pair of gears: the active icon sits at the
- * wheel's front edge, a fixed gap from the active card. It lives in the page beside the cards
- * (not fixed to the screen), so it scrolls with them on the compositor instead of trailing a
- * frame behind. Positions come from `posRef` — continuous, and still turning across 9 → 1 —
- * written every frame, which is why there's no CSS transition on transform/opacity here.
- */
-export function OrbitGear({
+/** Desktop: A subtle 3D floor ellipse orbit track behind the cards */
+export function OrbitFloorTrack() {
+  return (
+    <div className="orbital-floor-track pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[520px] overflow-hidden -z-10 hidden md:block" aria-hidden="true">
+      <svg className="mx-auto h-full w-[1180px] max-w-full" viewBox="0 0 1180 520" fill="none">
+        <ellipse cx="590" cy="260" rx="560" ry="175" stroke="currentColor" strokeOpacity="0.14" strokeWidth="1.5" strokeDasharray="4 7" className="text-nl-purple dark:text-nl-purple/50" />
+      </svg>
+    </div>
+  );
+}
+
+/** Desktop: Floating circular glass chevron buttons flanking the carousel */
+export function OrbitChevrons({ active, goTo }: { active: number; goTo: (i: number) => void }) {
+  return (
+    <div className="pointer-events-none absolute inset-y-0 inset-x-4 lg:inset-x-8 z-30 hidden md:flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => goTo((active - 1 + 9) % 9)}
+        aria-label="Previous service"
+        className="orbit-chev orbit-chev--left pointer-events-auto"
+        data-cursor="Prev"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => goTo((active + 1) % 9)}
+        aria-label="Next service"
+        className="orbit-chev orbit-chev--right pointer-events-auto"
+        data-cursor="Next"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/** Laptop / Desktop: 3B Frosted capsule dock with countdown ring and 02/09 counter */
+export function OrbitCapsuleDock({
   services,
   active,
   goTo,
-  posRef,
+  running,
 }: {
   services: Service[];
   active: number;
   goTo: (i: number) => void;
-  posRef: RefObject<number>;
+  running: boolean;
 }) {
-  const zoneRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<SVGEllipseElement>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const capRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  useGSAP(() => {
-    const zone = zoneRef.current;
-    if (!zone) return;
-    const n = services.length;
-    let geo = { cx: 0, cy: 0, rx: 0, ry: 0 };
-    let dirty = true;
-    let lastVis = NaN;
-
-    // the wheel fills the zone: its front edge (the active icon) 10px in from the zone's right,
-    // which itself sits 14px short of the card (globals.css `.orbit-gear`)
-    const measure = () => {
-      const w = zone.clientWidth;
-      const h = zone.clientHeight;
-      const margin = 10;
-      const half = 22;
-      const rx = Math.max(28, (w - 2 * margin - 2 * half) / 2);
-      const ry = Math.max(60, Math.min(h / 2 - 40, rx * 2.6));
-      geo = { cx: w - margin - half - rx, cy: h / 2, rx, ry };
-      const t = trackRef.current;
-      if (t) {
-        t.setAttribute("cx", geo.cx.toFixed(1));
-        t.setAttribute("cy", geo.cy.toFixed(1));
-        t.setAttribute("rx", geo.rx.toFixed(1));
-        t.setAttribute("ry", geo.ry.toFixed(1));
-      }
-      dirty = true;
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(zone);
-
-    const render = () => {
-      const vis = posRef.current;
-      if (!dirty && vis === lastVis) return; // at rest this costs nothing
-      dirty = false;
-      lastVis = vis;
-      const on = ((Math.round(vis) % n) + n) % n;
-      for (let i = 0; i < n; i++) {
-        const el = itemRefs.current[i];
-        if (!el) continue;
-        const phi = (i - vis) * NOTCH;
-        const c = Math.cos(phi);
-        const closeness = (c + 1) / 2; // 1 at the front, ~0 at the back of the wheel
-        const isOn = i === on;
-        const x = geo.cx + geo.rx * c;
-        const y = geo.cy + geo.ry * Math.sin(phi);
-        const scale = isOn ? 1 : 0.5 + 0.42 * closeness ** 1.6;
-        const opacity = isOn ? 1 : 0.12 + 0.78 * closeness ** 2;
-        const t = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
-        if (el.style.transform !== t) el.style.transform = t;
-        const o = opacity.toFixed(2);
-        if (el.style.opacity !== o) el.style.opacity = o;
-        const z = String(Math.round(closeness * 10));
-        if (el.style.zIndex !== z) el.style.zIndex = z;
-        if (el.classList.contains("orbit-icon--on") !== isOn) el.classList.toggle("orbit-icon--on", isOn);
-        const cap = capRefs.current[i];
-        const show = String(isOn || closeness > 0.84); // the active icon and its two neighbours
-        if (cap && cap.dataset.show !== show) cap.dataset.show = show;
-      }
-    };
-    render();
-    gsap.ticker.add(render);
-    return () => {
-      ro.disconnect();
-      gsap.ticker.remove(render);
-    };
-  }, [services]);
-
   return (
-    <div ref={zoneRef} className="orbit-gear" role="group" aria-label="Choose a service">
-      <svg className="orbit-track" aria-hidden="true">
-        <ellipse ref={trackRef} fill="none" />
-      </svg>
-      {services.map((s, i) => (
-        <button
-          key={s.slug}
-          ref={(el) => {
-            itemRefs.current[i] = el;
-          }}
-          type="button"
-          onClick={() => goTo(i)}
-          aria-label={`Go to ${s.short}`}
-          aria-current={i === active ? "true" : undefined}
-          title={s.short}
-          className="orbit-icon"
-        >
-          <ActivityIcon icon={s.icon} size={20} play={i === active} />
-          <span
-            ref={(el) => {
-              capRefs.current[i] = el;
-            }}
-            className="orbit-cap"
-            data-show="false"
-          >
-            {s.short}
-          </span>
-        </button>
-      ))}
+    <div className="orbit-dock-wrap hidden md:flex" role="group" aria-label="Choose a service">
+      <div className="orbit-capsule-dock">
+        {services.map((s, i) => {
+          const isActive = i === active;
+          return (
+            <button
+              key={s.slug}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Go to ${s.short}`}
+              aria-current={isActive ? "true" : undefined}
+              title={s.short}
+              className={`orbit-capsule-node group relative ${isActive ? "orbit-capsule-node--active" : ""}`}
+            >
+              {isActive && (
+                <svg
+                  className={`timing-ring ${running ? "timing-ring--running" : "timing-ring--paused"}`}
+                  viewBox="0 0 60 60"
+                  aria-hidden="true"
+                >
+                  <circle
+                    key={active}
+                    cx="30"
+                    cy="30"
+                    r="26"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeDasharray="163.36"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+              <ActivityIcon icon={s.icon} size={20} play={isActive} />
+              <span className="orbit-node-tooltip pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-nl-panel px-2 py-0.5 text-[10.5px] font-semibold text-nl-ink shadow-sm opacity-0 transition-opacity group-hover:opacity-100 dark:border dark:border-white/10 dark:text-white">
+                {s.short}
+              </span>
+            </button>
+          );
+        })}
+        <div className="dock-counter pl-3 pr-1 text-[12px] font-bold font-mono text-nl-indigo dark:text-nl-purple select-none border-l border-black/[0.08] dark:border-white/10">
+          {String(active + 1).padStart(2, "0")} / 09
+        </div>
+      </div>
     </div>
   );
+}
+
+/** Kept for backwards-compatibility: renders the desktop floor track on large screens */
+export function OrbitGear() {
+  return <OrbitFloorTrack />;
 }
 
 /** Phone / touch: a convex semi-circular dome dial dock auto-centred on the active service. */

@@ -8,10 +8,10 @@ import type { Service } from "@/content/site";
 import { particleBus, heroTarget, picTarget, allNineTarget } from "@/components/particles/bus";
 
 const N = 9; // the nine cards are reorderable (The 9 cards), but there are always exactly nine
-const AUTOPLAY_MS = 5000;
-const HOLD_MS = 6000; // autoplay waits this long after a swipe, tap or click
+const AUTOPLAY_MS = 3500;
+const HOLD_MS = 4500; // autoplay waits this long after a swipe, tap or click
 const PEEK_OPACITY = 0.45; // a card one step away from centre
-const PEEK_SCALE = 0.06;
+const PEEK_SCALE = 0.08;
 
 /** Laptop/tablet: OrbitGear sits left of the horizontal card row; phone keeps OrbitArc below.
  * Same query as the orbit `@media` block in globals.css — keep the two in step. */
@@ -146,7 +146,10 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
               if (wrappedEnd) opacity *= edgeOut;
 
               const dx = (offset - (idx - anchorIdx)) * step;
-              c.style.transform = `translate3d(${dx.toFixed(1)}px, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
+              const rotY = phone ? 0 : Math.max(-14, Math.min(14, -offset * 12));
+              c.style.transform = phone
+                ? `translate3d(${dx.toFixed(1)}px, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`
+                : `translate3d(${dx.toFixed(1)}px, ${yArc.toFixed(1)}px, 0) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
               c.style.opacity = opacity.toFixed(2);
               const isActive = absOffset < 0.28;
               if (c.getAttribute("data-active") !== (isActive ? "true" : "false")) {
@@ -258,7 +261,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       const pos = posOf(el, step);
       posRef.current = pos;
       const phone = window.innerWidth < 640;
-      const maxArc = phone ? 12 : 18;
+      const maxArc = phone ? 12 : 20;
       const maxScale = phone ? 0.05 : PEEK_SCALE;
       const peekOpacity = phone ? 0.52 : PEEK_OPACITY;
 
@@ -277,12 +280,15 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
         if (c.style.pointerEvents !== "") c.style.pointerEvents = "";
         const clampedAbs = Math.min(1.2, absOffset);
 
-        // Flat Apple orbital arc without 3D perspective skew or stacking-context churn
+        // Orbital arc: slight vertical dip + smooth scale + subtle 3D rotateY on desktop
         const yArc = clampedAbs * maxArc;
         const scale = 1 - clampedAbs * maxScale;
         const opacity = Math.max(0.18, 1 - clampedAbs * (1 - peekOpacity));
+        const rotY = phone ? 0 : Math.max(-14, Math.min(14, -offset * 12));
 
-        const transformStr = `translate3d(0, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
+        const transformStr = phone
+          ? `translate3d(0, ${yArc.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`
+          : `translate3d(0, ${yArc.toFixed(1)}px, 0) rotateY(${rotY.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
         const opacityStr = opacity.toFixed(2);
 
         if (c.style.transform !== transformStr) c.style.transform = transformStr;

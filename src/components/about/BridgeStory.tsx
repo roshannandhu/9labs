@@ -192,26 +192,46 @@ function PhoneBridge({
   const skylineRef = useRef<HTMLDivElement>(null);
 
   const { story, steps } = useSite().about;
-  // left bank → the middle (the finished bridge) → right bank
+  // Left bank (Quote 1) -> Right bank (Quote 2) -> Center result & zoom out full bridge (Quote 3)
   const STOPS = [
     { label: story.yourSideLabel, s: steps[0] },
-    { label: story.middleLabel, s: steps[LAST] },
     { label: story.ourSideLabel, s: steps[1] },
+    { label: story.result || "Results", s: steps[LAST] },
   ];
-  const stop = Math.min(2, Math.max(0, Math.round(progress * 2)));
+  const stop = progress < 0.33 ? 0 : progress < 0.66 ? 1 : 2;
   const cur = STOPS[stop];
 
   useEffect(() => {
     if (reduced) return;
     const containerWidth = containerRef.current?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 390);
-    const maxScroll = Math.max(0, 1250 - containerWidth);
-    const x = -progress * maxScroll;
+    // Stage base width is 1250px.
+    // Calculate full bridge fit scale so the 1200px SVG + padding fits cleanly across the mobile screen:
+    const sFull = Math.min(0.85, (containerWidth - 20) / 1200);
+
+    const p = Math.min(1, Math.max(0, progress));
+    let currentX: number;
+    let currentScale: number;
+
+    if (p <= 0.5) {
+      // Phase 1 -> 2: Camera pans from Left side (Quote 1) to Right side (Quote 2)
+      const t = p / 0.5;
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      currentX = 385 + (-355 - 385) * ease;
+      currentScale = 1.0;
+    } else {
+      // Phase 2 -> 3: Camera pans to Center and Zooms Out to reveal the full bridge (Quote 3)
+      const t = (p - 0.5) / 0.5;
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      const target3X = 25 * sFull;
+      currentX = -355 + (target3X - (-355)) * ease;
+      currentScale = 1.0 + (sFull - 1.0) * ease;
+    }
 
     if (stageRef.current) {
-      stageRef.current.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`;
+      stageRef.current.style.transform = `translate3d(${currentX.toFixed(1)}px, 0, 0) scale(${currentScale.toFixed(3)})`;
     }
     if (skylineRef.current) {
-      skylineRef.current.style.transform = `translate3d(${(-x * 0.45).toFixed(1)}px, 0, 0)`;
+      skylineRef.current.style.transform = `translate3d(${(-currentX * 0.35).toFixed(1)}px, 0, 0)`;
     }
   }, [progress, reduced]);
 
@@ -221,12 +241,12 @@ function PhoneBridge({
         ref={containerRef}
         role="region"
         aria-label="The bridge between your business and Nine Labs. Scroll down to cross it."
-        className="relative -mx-4 overflow-hidden touch-pan-y sm:-mx-8"
+        className="relative -mx-4 overflow-hidden touch-pan-y sm:-mx-8 h-[270px] sm:h-[310px] flex items-center justify-center"
       >
         <div
           ref={stageRef}
-          className="bs-stage relative w-[1250px] px-4 pt-2 will-change-transform"
-          style={{ transition: "none" }}
+          className="bs-stage relative w-[1250px] px-4 pt-2 will-change-transform shrink-0"
+          style={{ transformOrigin: "50% 50%", transition: "none" }}
         >
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
             <div ref={skylineRef} className="absolute inset-0 will-change-transform">
@@ -281,8 +301,7 @@ function PhoneBridge({
  *   1. your side: your business with its goals, ideas and feedback (left tower + cable)
  *   2. our side: Nine Labs and its nine activities (right tower, the main span, hangers)
  *   3. the deck joins: two-way traffic, the 9 lights up in the middle, "Results".
- * Laptop/tablet: a side view that builds as it scrolls up through the screen.
- * Phone: pinned scroll stage that translates sideways across the three stops as you scroll down.
+ * Pinned scroll stage on both desktop and mobile: locks until all three quotes complete.
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
@@ -304,56 +323,45 @@ export function BridgeStory() {
       const q = gsap.utils.selector(el);
       const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
       tl.from(q(".bs-1.bs-card, .bs-1 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 0)
-        .from(q(".bs-1.bs-draw, .bs-1 .bs-draw"), { drawSVG: "0%", duration: 0.7, stagger: 0.01 }, 0.05)
+        .from(q(".bs-1.bs-draw, .bs-1 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.01 }, 0.05)
         .from(q(".bs-1 .bs-pop, .bs-1.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 0.6)
-        .from(q(".bs-2.bs-card, .bs-2 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 1)
-        .from(q(".bs-2.bs-draw, .bs-2 .bs-draw"), { drawSVG: "0%", duration: 0.7, stagger: 0.008 }, 1.05)
+        .from(q(".bs-2.bs-card, .bs-2 .bs-card"), { autoAlpha: 0, y: 18, duration: 0.35 }, 1.0)
+        .from(q(".bs-2.bs-draw, .bs-2 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.008 }, 1.05)
         .from(q(".bs-2 .bs-pop, .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 1.6)
-        .from(q(".bs-deck"), { drawSVG: "50% 50%", duration: 0.6 }, 2)
-        .from(q(".bs-nine"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.3 }, 2.45)
-        .from(q(".bs-result"), { autoAlpha: 0, y: 10, duration: 0.3 }, 2.6)
-        .to({}, { duration: 0.15 });
+        .from(q(".bs-deck"), { drawSVG: "50% 50%", duration: 0.45 }, 2.0)
+        .from(q(".bs-nine"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25 }, 2.35)
+        .from(q(".bs-result"), { autoAlpha: 0, y: 10, duration: 0.2 }, 2.45)
+        .to({}, { duration: 0.55 });
 
-      if (!wide) {
-        // Phone: pin the whole section so heading + bridge + stops stay in view while scrolling down
-        tl.timeScale(1.4).play();
-        el.dataset.live = "true";
-        const st = ScrollTrigger.create({
-          trigger: el,
-          start: "top 72px",
-          end: () => `+=${Math.round(window.innerHeight * 1.6)}`,
-          pin: true,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          snap: { snapTo: 0.5, duration: { min: 0.25, max: 0.5 }, delay: 0.08, ease: "power2.inOut" },
-          onUpdate: (self) => {
-            setPhoneProgress(self.progress);
-            el.dataset.live = "true";
-          },
-        });
-        stRef.current = st;
-        return () => {
-          stRef.current = null;
-        };
-      }
-
-      // Laptop / tablet: scroll builds it while the bridge rises through the screen (no pin)
       const setStep = (p: number) => {
-        const i = Math.min(LAST, Math.floor(p * 3 + 0.02));
+        const i = p < 0.33 ? 0 : p < 0.66 ? 1 : 2;
         setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
-        el.dataset.live = p > 0.86 ? "true" : "false";
+        el.dataset.live = p >= 0.72 ? "true" : "false";
       };
+
       const st = ScrollTrigger.create({
-        trigger: stage,
-        start: "top 88%",
-        end: "bottom 62%",
-        animation: tl,
-        scrub: 0.6,
+        trigger: el,
+        start: "top 72px",
+        end: () => `+=${Math.round(window.innerHeight * 1.8)}`,
+        pin: true,
+        anticipatePin: 1,
+        scrub: wide ? 0.3 : true,
+        animation: wide ? tl : undefined,
         invalidateOnRefresh: true,
-        onUpdate: (s) => setStep(s.progress),
+        onUpdate: (self) => {
+          setStep(self.progress);
+          setPhoneProgress(self.progress);
+          if (!wide) {
+            tl.progress(self.progress);
+          }
+        },
       });
       stRef.current = st;
       setStep(st.progress);
+      setPhoneProgress(st.progress);
+      if (!wide) {
+        tl.progress(st.progress);
+      }
       return () => {
         stRef.current = null;
       };
@@ -363,8 +371,9 @@ export function BridgeStory() {
 
   const handleGoToStop = (i: number) => {
     const st = stRef.current;
-    if (st && !wide) {
-      const target = st.start + (st.end - st.start) * (i / 2);
+    if (st) {
+      const progressTarget = i === 0 ? 0 : i === 1 ? 0.5 : 0.95;
+      const target = st.start + (st.end - st.start) * progressTarget;
       window.scrollTo({ top: target, behavior: "smooth" });
     }
   };
