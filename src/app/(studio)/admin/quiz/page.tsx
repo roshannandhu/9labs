@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { IconKey, QuizOption, QuizQuestion } from "@/content/site";
 import { balanceReport, maxReachable, randomAnswers, totalsFor, type BalanceReport } from "@/lib/quiz/analyze";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
@@ -9,7 +10,8 @@ import type { Path } from "@/lib/path";
 import { AreaField, CheckField, NumField, TextField } from "@/studio/Field";
 import { SortableList } from "@/studio/Sortable";
 import { useDraft, useField, useQuizResults } from "@/studio/state";
-import { Box, Button, Pill, Row, relativeTime, useNow } from "@/studio/ui";
+import { Box, Button, PageHeader, Row, Tabs, relativeTime, useNow } from "@/studio/ui";
+import { BarList, StatTile, type BarItem } from "@/studio/charts";
 
 const ACTIVITIES: { key: IconKey; label: string }[] = [
   { key: "social", label: "Social" },
@@ -84,17 +86,19 @@ function OptionEditor({ qi, oi, o }: { qi: number; oi: number; o: QuizOption }) 
           Stands alone
         </label>
       </div>
-      <div className="mt-2.5 grid grid-cols-9 gap-1">
-        {ACTIVITIES.map((a) => (
-          <PointCell key={a.key} value={o.weights[a.key] ?? 0} onChange={(v) => setDraft(["site", "quiz", "questions", qi, "options", oi, "weights", a.key] as Path, v || undefined)} />
-        ))}
-      </div>
-      <div className="mt-1 grid grid-cols-9 gap-1">
-        {ACTIVITIES.map((a) => (
-          <span key={a.key} className="text-center text-[9px] text-st-dim">
-            {a.label}
-          </span>
-        ))}
+      <div className="mt-2.5 overflow-x-auto">
+        <div className="grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>
+          {ACTIVITIES.map((a) => (
+            <PointCell key={a.key} value={o.weights[a.key] ?? 0} onChange={(v) => setDraft(["site", "quiz", "questions", qi, "options", oi, "weights", a.key] as Path, v || undefined)} />
+          ))}
+        </div>
+        <div className="mt-1 grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>
+          {ACTIVITIES.map((a) => (
+            <span key={a.key} className="text-center text-[9px] text-st-dim">
+              {a.label}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -374,39 +378,21 @@ function InsightsTab() {
   for (const r of results) if (r.top) tally.set(r.top, (tally.get(r.top) ?? 0) + 1);
   const ranked = [...tally.entries()].sort((a, b) => b[1] - a[1]);
   const actions = { none: results.filter((r) => r.action === "none").length, whatsapp: results.filter((r) => r.action === "whatsapp").length, email: results.filter((r) => r.action === "email").length };
+  const items: BarItem[] = ranked.slice(0, 9).map(([title, n]) => ({ key: title, label: title, value: n }));
   return (
     <>
       <div className="grid gap-2.5 sm:grid-cols-3">
-        <div className="st-card p-4">
-          <p className="font-digits text-[26px] font-black text-st-ink">{results.length}</p>
-          <p className="st-help">Finished, all time</p>
-        </div>
-        <div className="st-card p-4">
-          <p className="font-digits text-[26px] font-black text-st-ink">{week.length}</p>
-          <p className="st-help">Finished, 7 days</p>
-        </div>
-        <div className="st-card p-4">
-          <p className="font-digits text-[26px] font-black text-st-ink">{actions.whatsapp + actions.email}</p>
-          <p className="st-help">Followed through</p>
-        </div>
+        <StatTile label="Finished, all time" value={results.length} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
+        <StatTile label="Finished, 7 days" value={week.length} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
+        <StatTile label="Followed through" value={actions.whatsapp + actions.email} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
       </div>
-      <Box title="Most recommended">
-        {ranked.length === 0 && <p className="text-[13px] text-st-sub">No quizzes finished yet.</p>}
-        <div className="grid gap-1.5">
-          {ranked.slice(0, 9).map(([title, n]) => (
-            <div key={title} className="flex items-center justify-between text-[13px]">
-              <span className="text-st-ink">{title}</span>
-              <Pill>{n}</Pill>
-            </div>
-          ))}
-        </div>
-      </Box>
+      <Box title="Most recommended">{ranked.length === 0 ? <p className="text-[13px] text-st-sub">No quizzes finished yet.</p> : <BarList items={items} color="var(--st-series-quiz)" />}</Box>
       <Box title="Recent results">
         <div className="grid gap-1.5">
           {results.slice(0, 8).map((r) => (
-            <div key={r.id} className="rounded-lg bg-st-panel-2 px-3 py-2 text-[12.5px]">
-              <span className="text-st-ink">{r.top}</span> <span className="text-st-dim">· {relativeTime(r.createdAt)}</span>
-            </div>
+            <Link key={r.id} href={`/admin/inbox?tab=quiz&id=${r.id}`} className="flex items-center justify-between rounded-lg bg-st-panel-2 px-3 py-2 text-[12.5px] transition-colors hover:bg-st-panel-3">
+              <span className="text-st-ink">{r.top}</span> <span className="text-st-dim">{relativeTime(r.createdAt)}</span>
+            </Link>
           ))}
         </div>
       </Box>
@@ -417,20 +403,16 @@ function InsightsTab() {
 export default function QuizLabPage() {
   const [tab, setTab] = useState<Tab>("build");
   return (
-    <div className="grid gap-4">
-      <h1 className="font-display text-[22px] font-semibold text-st-ink">Quiz Lab</h1>
-      <nav className="flex flex-wrap gap-1.5 border-b border-st-border pb-3">
-        {TABS.map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setTab(id)} className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ${tab === id ? "bg-st-indigo text-white" : "text-st-sub hover:text-st-ink"}`}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      {tab === "build" && <BuildTab />}
-      {tab === "try" && <TryTab />}
-      {tab === "balance" && <BalanceTab />}
-      {tab === "result" && <ResultTab />}
-      {tab === "insights" && <InsightsTab />}
+    <div className="grid gap-5">
+      <PageHeader title="Quiz" description="The 9 Quiz — questions, points, the result screen and what visitors chose." />
+      <Tabs layoutId="quiz-tabs" active={tab} onChange={setTab} tabs={TABS.map(([id, label]) => ({ id, label }))} />
+      <div className="grid gap-4">
+        {tab === "build" && <BuildTab />}
+        {tab === "try" && <TryTab />}
+        {tab === "balance" && <BalanceTab />}
+        {tab === "result" && <ResultTab />}
+        {tab === "insights" && <InsightsTab />}
+      </div>
     </div>
   );
 }
