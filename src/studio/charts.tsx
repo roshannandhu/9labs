@@ -2,7 +2,6 @@
 
 import { Fragment, useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { Icon, type IconName } from "./Icon";
 import { useCountUp } from "./motion";
 
 /**
@@ -272,7 +271,7 @@ export function SegmentedBar({ parts, tall }: { parts: SegmentPart[]; tall?: boo
 
 /* ------------------------------------------------------------------ ranked horizontal bars */
 
-export type BarItem = { key: string; label: string; icon?: IconName; value: number; segments?: { label: string; value: number; color: string }[] };
+export type BarItem = { key: string; label: string; icon?: React.ReactNode; value: number; segments?: { label: string; value: number; color: string }[] };
 
 /** Horizontal bars — one colour per bar (nominal categories), or stacked segments when `segments` is set. `ranked` (default) sorts descending; pass false to keep the given order (budgets, timelines). */
 export function BarList({ items, color, unit = "", ranked = true }: { items: BarItem[]; color: string; unit?: string; ranked?: boolean }) {
@@ -294,11 +293,7 @@ export function BarList({ items, color, unit = "", ranked = true }: { items: Bar
         {sorted.map((item) => (
           <div key={item.key} className="grid grid-cols-[minmax(100px,34%)_1fr_auto] items-center gap-2.5" aria-label={`${item.label}: ${item.value}${unit}`}>
             <span className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-st-ink" title={item.label}>
-              {item.icon && (
-                <span className="shrink-0 text-st-dim">
-                  <Icon name={item.icon} size={14} />
-                </span>
-              )}
+              {item.icon && <span className="shrink-0 text-st-dim">{item.icon}</span>}
               <span className="truncate">{item.label}</span>
             </span>
             <span className="flex h-[14px] overflow-hidden rounded-full bg-st-panel-2">
