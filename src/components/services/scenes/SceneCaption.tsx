@@ -22,10 +22,22 @@ export function SceneCaption({ s, className = "" }: { s: Service; className?: st
       <p className="mt-1 max-w-[44ch] text-[13px] leading-snug text-nl-ink line-clamp-2 sm:mt-1.5 sm:text-[15px] sm:leading-relaxed sm:line-clamp-none">
         {s.description}
       </p>
+      {s.tags && s.tags.length > 0 && (
+        <div className="mt-3.5 hidden flex-wrap items-center justify-center gap-2 sm:flex">
+          {s.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full border border-black/[0.07] bg-black/[0.03] px-3 py-1 text-[11.5px] font-medium tracking-wide text-nl-ink/80 transition-colors dark:border-white/10 dark:bg-white/[0.05] dark:text-white/75"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
       <button
         type="button"
         onClick={() => enquiry.open(s.slug)}
-        className="link-glow mt-2 inline-flex items-center gap-2 py-1 text-xs font-medium text-white sm:mt-3 sm:text-sm"
+        className="link-glow mt-2.5 inline-flex items-center gap-2 py-1 text-xs font-medium text-white sm:mt-3.5 sm:text-sm"
         data-cursor="Ask"
       >
         {cardCta}

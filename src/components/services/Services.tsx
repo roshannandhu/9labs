@@ -103,7 +103,7 @@ function ServicesTrack({ heading, services, t }: Part) {
   const { active, goTo, running, posRef } = useServiceTrack(scrollerRef, services);
 
   return (
-    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-12 sm:pb-16 lg:pt-12 lg:pb-20">
+    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-14 sm:pb-16 lg:pt-24 lg:pb-20 scroll-mt-20">
       <div className="pb-3 sm:pb-6 lg:pb-8">{heading}</div>
       {/* laptop/tablet: the icon wheel (left) and the card wheel (the scroller) turn together */}
       <div className="svc-stage">

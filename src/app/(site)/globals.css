@@ -352,10 +352,10 @@ html.lenis body {
   /* the nav bar's background: flush, no card, no margins — fades in on scroll instead of a
      floating pill. Same blur technique as `.glass`, deliberately without its glow/edge gradient. */
   .nav-surface {
-    background: rgb(var(--fg-rgb) / 0.055);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    border-bottom: 1px solid rgb(var(--fg-rgb) / 0.1);
+    background: color-mix(in srgb, var(--nl-bg) 84%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid rgb(var(--fg-rgb) / 0.08);
   }
   .link-glow {
     position: relative;
@@ -1106,6 +1106,7 @@ html[data-intro="playing"] [data-logo-9] {
   border-radius: 14px;
   background: var(--surface-1);
   border: 1px solid rgb(var(--fg-rgb) / 0.08);
+  box-shadow: 0 4px 14px -3px rgba(0, 0, 0, 0.07);
   color: rgb(var(--fg-rgb) / 0.62);
   cursor: pointer;
   pointer-events: auto;
@@ -1155,9 +1156,9 @@ html[data-intro="playing"] [data-logo-9] {
 }
 .orbit-track ellipse {
   stroke: rgb(var(--fg-rgb));
-  stroke-opacity: 0.12;
-  stroke-width: 1;
-  stroke-dasharray: 2 7;
+  stroke-opacity: 0.22;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 6;
 }
 /* ---- phone / touch: convex semi-circular dome dial dock under the card ---- */
 .orbit-dial {

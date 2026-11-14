@@ -1,52 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import ScrollReveal from "@/components/reactbits/ScrollReveal";
 import CountUp from "@/components/reactbits/CountUp";
-import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { BridgeStory } from "./BridgeStory";
+import { ValueCards } from "./ValueCards";
 import { SpringHeading } from "@/components/layout/SpringHeading";
-import { useDemo } from "@/components/providers/DemoSettings";
 
-const VALUE_ICONS: Record<string, React.ReactNode> = {
-  partnership: (
-    <>
-      <circle cx="9" cy="12" r="5.5" />
-      <circle cx="15" cy="12" r="5.5" stroke="var(--nl-purple)" />
-    </>
-  ),
-  ownership: (
-    <>
-      <path d="M12 3l7 3v5.5c0 4.4-3 7.9-7 9.5-4-1.6-7-5.1-7-9.5V6z" />
-      <path d="M9 12l2.2 2.2L15.5 10" stroke="var(--nl-purple)" />
-    </>
-  ),
-  trust: (
-    <>
-      <rect x="4" y="10.5" width="16" height="10" rx="2.5" />
-      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
-      <circle cx="12" cy="15.5" r="1.6" fill="var(--nl-purple)" stroke="none" />
-    </>
-  ),
-  quality: (
-    <>
-      <path d="M6 4h12l3 5-9 11L3 9z" />
-      <path d="M3 9h18M9 4l3 16 3-16" stroke="var(--nl-purple)" strokeOpacity=".9" />
-    </>
-  ),
-  loyalty: (
-    <path d="M7.5 9c-3 0-4.5 1.5-4.5 3s1.5 3 4.5 3c3.5 0 5.5-6 9-6 3 0 4.5 1.5 4.5 3s-1.5 3-4.5 3c-3.5 0-5.5-6-9-6z" />
-  ),
-};
-
-// the values grid follows however many value cards the admin keeps
-const VALUE_COLS: Record<number, string> = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5", 6: "lg:grid-cols-3" };
 const STAT_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
 
 export function About() {
-  const { settings } = useDemo();
   const site = useSite();
   const a = site.about;
 
@@ -73,6 +39,14 @@ export function About() {
           <AnimatedContent distance={40} duration={1} ease="expo.out" className="lg:col-span-7">
             <p className="text-[17px] leading-relaxed text-nl-ink sm:text-lg">{a.body}</p>
             {a.philosophy && <p className="mt-5 border-l-2 border-nl-purple/60 pl-4 text-[15px] italic leading-relaxed text-white/65">“{a.philosophy}”</p>}
+            {a.more && (
+              <Link href="/about" className="link-glow mt-6 inline-flex items-center gap-2 py-1 text-sm font-medium text-white">
+                {a.more}
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
           </AnimatedContent>
           <AnimatedContent distance={40} duration={1} delay={0.1} ease="expo.out" className="lg:col-span-5">
             <dl className={`grid ${STAT_COLS[a.stats.length] ?? "grid-cols-3"} divide-x divide-white/10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]`}>
@@ -102,37 +76,8 @@ export function About() {
           </div>
           {a.valuesIntro && <p className="max-w-[40ch] text-[15px] text-nl-ink">{a.valuesIntro}</p>}
         </div>
-        <div className={`mt-10 grid gap-4 sm:grid-cols-2 ${VALUE_COLS[site.values.length] ?? "lg:grid-cols-4"}`}>
-          {site.values.map((v, i) => (
-            <AnimatedContent
-              key={`${v.key}-${i}`}
-              distance={50}
-              duration={0.9}
-              delay={i * 0.07}
-              ease="expo.out"
-              className={`relative hover:z-10 focus-within:z-10 ${i === site.values.length - 1 && site.values.length % 2 ? "sm:col-span-2 lg:col-span-1" : ""}`}
-            >
-              <SpotlightCard
-                className="h-full !rounded-3xl !p-6 will-change-transform"
-                spotlightColor={settings.purple}
-                intensity={0.22}
-                spotlightSize={260}
-                popScale={1.038}
-                style={{ ["--spotlight-card-surface" as string]: "linear-gradient(160deg,var(--surface-1),var(--surface-2))" }}
-              >
-                <div className="relative flex h-full flex-col">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.03] text-nl-blue-soft">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      {VALUE_ICONS[v.key] ?? VALUE_ICONS.partnership}
-                    </svg>
-                  </span>
-                  <span className="label-mono mt-6 !text-[11px]">0{i + 1}</span>
-                  <h3 className="mt-1.5 text-xl font-semibold">{v.title}</h3>
-                  <p className="mt-2 text-[14.5px] leading-relaxed text-nl-ink">{v.line}</p>
-                </div>
-              </SpotlightCard>
-            </AnimatedContent>
-          ))}
+        <div className="mt-10">
+          <ValueCards values={site.values} />
         </div>
       </div>
     </section>

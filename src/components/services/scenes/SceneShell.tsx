@@ -14,11 +14,11 @@ export function SceneShell({ s, flourish, captionClassName = "" }: { s: Service;
   return (
     <section id={`service-${s.slug}`} aria-roledescription="slide" aria-label={`${s.n} of 9: ${s.title}`} className="scene-section scene-card">
       {/* sized from the card's own height, so the caption and its CTA always fit below it */}
-      <div className="relative mx-auto aspect-square w-full max-w-[min(260px,calc(var(--card-h)_-_175px))] sm:max-w-[min(400px,calc(var(--card-h)_-_260px))]">
+      <div className="relative mx-auto aspect-square w-full max-w-[min(260px,calc(var(--card-h)_-_175px))] sm:max-w-[min(260px,calc(var(--card-h)_-_320px))]">
         {flourish}
         <div data-particle-slot={`stage-${s.n}`} className="absolute inset-[4%] z-10" aria-hidden="true" />
       </div>
-      <SceneCaption s={s} className={`mx-auto mt-2.5 max-w-[480px] text-center sm:mt-8 ${captionClassName}`} />
+      <SceneCaption s={s} className={`mx-auto mt-2 max-w-[500px] text-center sm:mt-4 ${captionClassName}`} />
     </section>
   );
 }

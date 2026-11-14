@@ -97,6 +97,7 @@ function AboutTextTab() {
           <TextField key={i} path={["site", "about", "stats", i, "label"]} label={`Number ${i + 1} label`} />
         ))}
       </Row>
+      <TextField path={["site", "about", "more"]} label="Read more link" placeholder="Read more about us" help="Opens the full About page (Pages & FAQ). Empty = no link." />
     </Box>
   );
 }

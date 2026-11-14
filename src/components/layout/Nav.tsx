@@ -54,7 +54,8 @@ export function Nav() {
   }, [home, site.nav]);
 
   // the current link: the section in view on the homepage, the page itself elsewhere
-  const current = home ? activeId : pathname;
+  // (a nav item's id only matches a real page's own address once slashes are stripped, e.g. "/about/" -> "about")
+  const current = home ? activeId : pathname.replace(/\//g, "");
 
   return (
     // Always visible: the logo lives here permanently (the landing animation lands on it).

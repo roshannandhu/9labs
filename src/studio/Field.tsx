@@ -12,7 +12,7 @@ type Base = { path: Path; label: string; help?: string; placeholder?: string; re
 /** Every text-ish field pushes an undo checkpoint on focus — captures "before you started typing here". */
 const onFocusCheckpoint = () => checkpoint();
 
-export function TextField({ path, label, help, placeholder, required, mono }: Base & { mono?: boolean }) {
+export function TextField({ path, label, help, placeholder, required, mono, disabled }: Base & { mono?: boolean; disabled?: boolean }) {
   const [value, setValue] = useField<string>(path);
   const id = useId();
   return (
@@ -20,7 +20,7 @@ export function TextField({ path, label, help, placeholder, required, mono }: Ba
       <span className="st-label">
         {label} {required && <span className="text-st-danger">*</span>}
       </span>
-      <input id={id} className={`st-field mt-1.5 ${mono ? "font-mono" : ""}`} value={value ?? ""} placeholder={placeholder} onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
+      <input id={id} disabled={disabled} className={`st-field mt-1.5 ${mono ? "font-mono" : ""} ${disabled ? "opacity-60" : ""}`} value={value ?? ""} placeholder={placeholder} onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
       {help && <span className="st-help mt-1 block">{help}</span>}
     </label>
   );

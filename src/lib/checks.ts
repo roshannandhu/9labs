@@ -68,6 +68,40 @@ function checkBooks(ws: Workspace): Issue[] {
   return out;
 }
 
+/**
+ * The client's content doc asked that nothing with a "[… to be confirmed …]" / "[… to be supplied
+ * …]" note go live as-is — every one of those was imported switched off. This blocks Publish if one
+ * is switched back on with the note still in it, and warns (doesn't block) how many are still waiting.
+ */
+const PLACEHOLDER_NOTE = /\[[^[\]]*\bto be (confirmed|supplied)\b[^[\]]*\]/i;
+
+function checkPlaceholders(ws: Workspace): Issue[] {
+  const out: Issue[] = [];
+  let pending = 0;
+
+  ws.faqs.forEach((f, i) => {
+    if (!PLACEHOLDER_NOTE.test(f.answerText)) return;
+    if (f.enabled) out.push({ path: ["faqs", i], message: `"${f.question}" still has a [to be confirmed] note — switch it off, or finish the answer before showing it.`, level: "error" });
+    else pending++;
+  });
+
+  ws.site.aboutPage.commitments.forEach((c, i) => {
+    if (!PLACEHOLDER_NOTE.test(c.text)) return;
+    if (c.enabled) out.push({ path: ["site", "aboutPage", "commitments", i], message: "A commitment still has a [to be confirmed] note — switch it off, or finish the text before showing it.", level: "error" });
+    else pending++;
+  });
+
+  const about = ws.pages.find((p) => p.slug === "about");
+  const aboutText = [about?.title, about?.intro, about?.body, ws.site.aboutPage.mission, ws.site.aboutPage.vision, ...ws.site.aboutPage.steps.map((s) => s.text)];
+  if (aboutText.some((t) => t && PLACEHOLDER_NOTE.test(t))) {
+    out.push({ path: ["pages"], message: "The About page still has a [to be confirmed] note in its text — finish it before publishing.", level: "error" });
+  }
+
+  if (pending > 0) out.push({ path: ["faqs"], message: `${pending} question${pending === 1 ? "" : "s"}/commitment${pending === 1 ? "" : "s"} still ${pending === 1 ? "has" : "have"} a [to be confirmed] note — switched off, so it's safe to publish.`, level: "warning" });
+
+  return out;
+}
+
 function checkPages(ws: Workspace): Issue[] {
   const out: Issue[] = [];
   const seen = new Set<string>();
@@ -84,7 +118,7 @@ function checkPages(ws: Workspace): Issue[] {
 
 /** Every issue across the workspace. Publish blocks on "error"; "warning" only shows as a checklist. */
 export function checkWorkspace(ws: Workspace): Issue[] {
-  return [...checkQuiz(ws), ...checkCompany(ws), ...checkCards(ws), ...checkBooks(ws), ...checkPages(ws)];
+  return [...checkQuiz(ws), ...checkCompany(ws), ...checkCards(ws), ...checkBooks(ws), ...checkPages(ws), ...checkPlaceholders(ws)];
 }
 
 export const blockingIssues = (issues: Issue[]) => issues.filter((i) => i.level === "error");

@@ -117,13 +117,13 @@ export const site: SiteData = {
   nav: [
     { label: "Home", href: "#home", id: "home" },
     { label: "Services", href: "#services", id: "services" },
-    { label: "About", href: "#about", id: "about" },
+    { label: "About", href: "/about", id: "about" },
     { label: "Free E-books", href: "#ebooks", id: "ebooks" },
     { label: "The 9 Quiz", href: "#quiz", id: "quiz" },
     { label: "Contact", href: "#contact", id: "contact" },
   ],
   navCta: { label: "Start The 9 Quiz", action: "quiz" },
-  sections: ["services", "about", "quiz", "ebooks", "contact"],
+  sections: ["services", "about", "quiz", "ebooks", "faq", "contact"],
 
   hero: {
     eyebrow: "Marketing · Events · Technology",
@@ -266,6 +266,7 @@ export const site: SiteData = {
     valuesLabel: "Our values",
     valuesHeading: "What we stand on.",
     valuesIntro: "Five values that hold the bridge up — in every campaign, video, event and strategy.",
+    more: "Read more about us",
     statement: "We are the bridge between your business and your results.",
     body:
       "Nine Labs Solutions is a marketing, events and technology company based in Dubai South. We are the bridge between your business and your results. We see your company as our own, and we work in both directions: your goals come to us, and our expertise goes to you. Nine activities, one team, one aim: results you can see.",
@@ -290,6 +291,35 @@ export const site: SiteData = {
     { key: "quality", title: "Quality", line: "Every campaign, video, event and strategy is built to a standard we would put our own name on." },
     { key: "loyalty", title: "Loyalty", line: "We stay with clients for the long run, and we grow when they grow." },
   ] satisfies Value[],
+
+  aboutPage: {
+    missionLabel: "Our mission",
+    mission: "To bridge businesses and their goals with quality marketing, events and technology services, treating every client's company as our own.",
+    visionLabel: "Our vision",
+    vision: "To become the most trusted two-way growth partner for brands in Dubai and beyond.",
+    servicesHeading: "What we do",
+    servicesLink: "See all services",
+    stepsLabel: "How we work",
+    stepsHeading: "The bridge, in",
+    stepsAccent: "five steps.",
+    stepsIntro: "A bridge carries traffic both ways, so every step involves you as well as us.",
+    steps: [
+      { title: "Listen", text: "We start by understanding your business, your customers and your goals. The 9 Quiz can be your first step." },
+      { title: "Plan", text: "We agree a clear plan with you: what we will do, when, and what success looks like." },
+      { title: "Build", text: "We create and deliver the work to a standard we would put our own name on." },
+      { title: "Report", text: "We show you what is happening in clear, honest reporting, including what is not working." },
+      { title: "Improve", text: "We review the results together and adjust, so the next step is stronger than the last." },
+    ],
+    commitmentsHeading: "Our commitments to clients",
+    commitments: [
+      { text: "A can-do mindset: we look for a practical way to meet client needs, while staying honest about what is possible and maintaining quality.", enabled: true },
+      { text: "A clear scope, timeline and price agreed before work starts. [Details to be confirmed.]", enabled: false },
+      { text: "Regular updates and open communication throughout the work.", enabled: true },
+      { text: "Your feedback shapes the work at every stage.", enabled: true },
+      { text: "Your business information is treated as confidential.", enabled: true },
+    ],
+    findUsHeading: "Where to find us",
+  },
 
   quiz: {
     label: "The 9 Quiz",
@@ -605,7 +635,7 @@ export const site: SiteData = {
     ],
   },
 
-  faqPreview: { enabled: false, label: "FAQ", heading: "Questions,", accent: "answered.", cta: "See all questions", count: 4, items: [] },
+  faqPreview: { enabled: false, label: "FAQ", heading: "Questions,", accent: "answered.", cta: "See all FAQs", count: 4, items: [] },
 
   theme: { default: "light", toggle: true, intro: true, grid: 0.06, colors: {} },
 

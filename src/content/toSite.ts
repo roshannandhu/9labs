@@ -6,7 +6,10 @@ import type { SiteData, Workspace } from "./types";
  */
 export function toSite(ws: Workspace): SiteData {
   const count = Math.max(1, Math.min(10, ws.site.faqPreview.count || 4));
-  const items = ws.faqs.filter((f) => f.enabled).slice(0, count);
+  const shown = ws.faqs.filter((f) => f.enabled);
+  // questions marked "Show on the homepage" first; older saved data with none marked keeps the old behaviour
+  const marked = shown.filter((f) => f.home);
+  const items = (marked.length > 0 ? marked : shown).slice(0, count);
   return {
     ...ws.site,
     ebooks: ws.site.ebooks.filter((b) => b.enabled),

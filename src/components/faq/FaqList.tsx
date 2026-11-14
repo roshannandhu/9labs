@@ -4,16 +4,23 @@ import { useId, useState } from "react";
 import type { FaqItem } from "@/content/types";
 import { textToHtml } from "@/lib/richtext";
 
-/** Questions that open and close. Answers are rich text written in the admin (Content → FAQ). */
-export function FaqList({ items, openFirst = false }: { items: FaqItem[]; openFirst?: boolean }) {
+/**
+ * Questions that open and close. Answers are rich text written in the admin (Content → FAQ).
+ * Uncontrolled by default (its own open question); pass `open`/`onToggle` to share one open
+ * question across several lists, e.g. the FAQ page's groups (`PageView`).
+ */
+export function FaqList({ items, openFirst = false, open: openProp, onToggle }: { items: FaqItem[]; openFirst?: boolean; open?: string | null; onToggle?: (id: string | null) => void }) {
   const uid = useId();
-  const [open, setOpen] = useState<string | null>(openFirst ? (items[0]?.id ?? null) : null);
+  const [localOpen, setLocalOpen] = useState<string | null>(openFirst ? (items[0]?.id ?? null) : null);
+  const open = onToggle ? openProp : localOpen;
+  const setOpen = onToggle ?? setLocalOpen;
   return (
     <ul className="divide-y divide-white/10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
       {items.map((f) => {
         const on = open === f.id;
         return (
-          <li key={f.id}>
+          <li key={f.id} id={f.id} className="relative scroll-mt-[calc(var(--nav-h)+16px)]">
+            {on && <span aria-hidden="true" className="absolute inset-y-3 left-0 w-[3px] rounded-full bg-nl-purple shadow-[0_0_12px_1px_var(--nl-purple)]" />}
             <h3>
               <button
                 type="button"

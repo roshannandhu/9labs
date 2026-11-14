@@ -25,7 +25,7 @@ export type ThemeColors = {
   logoTo: string;
 };
 
-export type FaqItem = { id: string; question: string; answerText: string; category?: string; enabled: boolean };
+export type FaqItem = { id: string; question: string; answerText: string; category?: string; enabled: boolean; home: boolean };
 export type FooterLink = { label: string; href: string };
 
 export interface SiteData {
@@ -105,8 +105,29 @@ export interface SiteData {
     valuesLabel: string;
     valuesHeading: string;
     valuesIntro: string;
+    /** "Read more about us" link under the homepage text; empty hides it. */
+    more: string;
   };
   values: Value[];
+
+  /** The full /about page — the homepage About section above only shows a short version. */
+  aboutPage: {
+    missionLabel: string;
+    mission: string;
+    visionLabel: string;
+    vision: string;
+    servicesHeading: string;
+    /** "See all services" link text under the activity tiles; goes to /#services. */
+    servicesLink: string;
+    stepsLabel: string;
+    stepsHeading: string;
+    stepsAccent: string;
+    stepsIntro: string;
+    steps: { title: string; text: string }[];
+    commitmentsHeading: string;
+    commitments: { text: string; enabled: boolean }[];
+    findUsHeading: string;
+  };
 
   quiz: {
     label: string;
@@ -286,9 +307,12 @@ export type Page = {
   /** Plain text: blank line = new paragraph. `**bold**`, `[text](url)`, lines starting "- " for a list. */
   body: string;
   showStats: boolean;
+  showMission: boolean;
   showSteps: boolean;
   showValues: boolean;
+  showCommitments: boolean;
   showServices: boolean;
+  showContact: boolean;
   showCta: boolean;
   seo: { title: string; description: string };
   updatedAt: string;

@@ -29,3 +29,17 @@ test("two books sharing a link name is an error", () => {
   const issues = checkWorkspace(ws);
   assert.ok(issues.some((i) => i.level === "error" && i.message.includes("share the link name")));
 });
+
+test("switching on an FAQ that still has a [to be confirmed] note blocks publish", () => {
+  const ws = defaultWorkspace();
+  const faq = ws.faqs.find((f) => f.id === "faq-cost")!;
+  faq.enabled = true;
+  const issues = checkWorkspace(ws);
+  assert.ok(issues.some((i) => i.level === "error" && i.message.includes("to be confirmed")));
+});
+
+test("a fresh workspace only warns about the FAQs/commitments waiting on the client, while they're switched off", () => {
+  const issues = checkWorkspace(defaultWorkspace());
+  assert.equal(issues.filter((i) => i.level === "error").length, 0);
+  assert.ok(issues.some((i) => i.level === "warning" && i.message.includes("to be confirmed")));
+});
