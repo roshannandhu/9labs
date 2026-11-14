@@ -10,8 +10,8 @@ import { ringOffset } from "./useServiceTrack";
 export function OrbitFloorTrack() {
   return (
     <div className="orbital-floor-track pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-[520px] overflow-hidden -z-10 hidden md:block" aria-hidden="true">
-      <svg className="mx-auto h-full w-[1180px] max-w-full" viewBox="0 0 1180 520" fill="none">
-        <ellipse cx="590" cy="260" rx="560" ry="175" stroke="currentColor" strokeOpacity="0.14" strokeWidth="1.5" strokeDasharray="4 7" className="text-nl-purple dark:text-nl-purple/50" />
+      <svg className="mx-auto h-full w-[1240px] max-w-full" viewBox="0 0 1240 520" fill="none">
+        <ellipse cx="620" cy="260" rx="590" ry="180" stroke="currentColor" strokeOpacity="0.14" strokeWidth="1.5" strokeDasharray="4 7" className="text-nl-purple dark:text-nl-purple/50" />
       </svg>
     </div>
   );

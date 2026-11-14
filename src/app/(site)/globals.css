@@ -1041,8 +1041,8 @@ html[data-intro="playing"] [data-logo-9] {
 }
 @media (min-width: 640px) {
   .scene-card {
-    padding: 2.25rem 2rem;
-    border-radius: 32px;
+    padding: 1.5rem 2rem;
+    border-radius: 30px;
   }
 }
 .scene-card[data-active="true"] {
@@ -1064,8 +1064,8 @@ html[data-intro="playing"] [data-logo-9] {
 @media (min-width: 768px) and (min-height: 560px) {
   .svc-stage,
   .svc-scroller {
-    --card-w: min(calc(100vw - 80px), 640px);
-    --card-h: clamp(400px, calc(100svh - 320px), 480px);
+    --card-w: min(calc(100vw - 80px), 720px);
+    --card-h: clamp(430px, calc(100svh - 290px), 490px);
   }
   .orbit-arc {
     display: none;
@@ -1075,7 +1075,7 @@ html[data-intro="playing"] [data-logo-9] {
 .orbit-dock-wrap {
   position: relative;
   justify-content: center;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   z-index: 30;
   user-select: none;
   -webkit-user-select: none;
@@ -1160,11 +1160,11 @@ html[data-intro="playing"] [data-logo-9] {
 }
 .orbit-chev--left {
   position: absolute;
-  left: max(16px, calc(50% - var(--card-w) / 2 - 22px));
+  left: max(16px, calc(50% - var(--card-w) / 2 - 36px));
 }
 .orbit-chev--right {
   position: absolute;
-  right: max(16px, calc(50% - var(--card-w) / 2 - 22px));
+  right: max(16px, calc(50% - var(--card-w) / 2 - 36px));
 }
 .orbit-chev:hover {
   background: var(--nl-indigo);

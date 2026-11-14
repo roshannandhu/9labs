@@ -57,10 +57,10 @@ export function Services() {
         id="services-title"
         text={t.heading}
         accent={t.accent || undefined}
-        className="mt-2 text-[clamp(1.75rem,4.4vw,3.6rem)] font-semibold leading-[1.04] tracking-[-0.035em] sm:mt-4 sm:leading-[1.02]"
+        className="mt-1.5 text-[clamp(1.75rem,3.8vw,3.2rem)] font-semibold leading-[1.04] tracking-[-0.035em] sm:mt-2.5 sm:leading-[1.02]"
       />
       {t.intro && (
-        <p className="mt-2 max-w-[60ch] text-[13.5px] leading-snug text-nl-ink line-clamp-2 sm:mt-4 sm:text-base sm:leading-relaxed sm:line-clamp-none">
+        <p className="mt-1.5 max-w-[60ch] text-[13.5px] leading-snug text-nl-ink line-clamp-2 sm:mt-2.5 sm:text-[15px] sm:leading-relaxed sm:line-clamp-none">
           {t.intro}
         </p>
       )}
@@ -101,9 +101,34 @@ function Finale({ services, t, gap = "" }: Omit<Part, "heading"> & { gap?: strin
 function ServicesTrack({ heading, services, t }: Part) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { active, goTo, running, posRef } = useServiceTrack(scrollerRef, services);
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
 
-  // Allow clicking a peeking adjacent card on laptop/desktop to navigate directly to it
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = false;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointerDownPos.current) return;
+    const dx = Math.abs(e.clientX - pointerDownPos.current.x);
+    const dy = Math.abs(e.clientY - pointerDownPos.current.y);
+    if (dx > 8 || dy > 8) {
+      isDraggingRef.current = true;
+    }
+  };
+
+  const handlePointerUp = () => {
+    pointerDownPos.current = null;
+  };
+
+  // Allow clicking a peeking adjacent card on laptop/desktop to navigate directly to it,
+  // but ignore if the user was dragging/swiping
   const handleScrollerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      return;
+    }
     const cardEl = (e.target as HTMLElement).closest<HTMLElement>(".scene-card");
     if (!cardEl || !scrollerRef.current) return;
     const cards = Array.from(scrollerRef.current.querySelectorAll<HTMLElement>(":scope > .scene-card"));
@@ -114,14 +139,17 @@ function ServicesTrack({ heading, services, t }: Part) {
   };
 
   return (
-    <section id="services" aria-labelledby="services-title" className="relative pt-6 pb-12 sm:pt-12 sm:pb-14 lg:pt-16 lg:pb-16 scroll-mt-16">
-      <div className="pb-2 sm:pb-4 lg:pb-5">{heading}</div>
+    <section id="services" aria-labelledby="services-title" className="relative pt-4 pb-10 sm:pt-6 sm:pb-12 lg:pt-8 lg:pb-12 scroll-mt-16">
+      <div className="pb-2 sm:pb-3">{heading}</div>
       {/* 3D orbital stage: floor track, chevrons and centered carousel */}
       <div className="svc-stage">
         <OrbitFloorTrack />
         <OrbitChevrons active={active} goTo={goTo} />
         <div
           ref={scrollerRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
           onClick={handleScrollerClick}
           data-lenis-prevent-horizontal
           data-particle-track
