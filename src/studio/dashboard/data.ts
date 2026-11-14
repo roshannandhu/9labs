@@ -66,17 +66,10 @@ export function useDashboardData(range: Range) {
       .map((s: Service) => ({ slug: s.slug, short: s.short, icon: s.icon, enquiries: eR.filter((e) => e.service === s.slug).length, quiz: qR.filter((q) => q.top === s.title).length }))
       .sort((a, b) => b.enquiries + b.quiz - (a.enquiries + a.quiz));
 
-    // coverLogo isn't read here yet — it's added to Ebook (src/content/site.ts) in the Books phase
     const books = draft.site.ebooks.map((b: Ebook) => {
       const rows = bR.filter((r) => r.bookSlug === b.slug);
       return {
-        id: b.id,
-        title: b.title,
-        cover: b.cover,
-        tone: b.tone,
-        n: b.n,
-        enabled: b.enabled,
-        hasPdf: !!b.pdfFileId,
+        book: b,
         requests: rows.length,
         downloads: rows.reduce((sum, r) => sum + r.downloads, 0),
         pending: rows.filter((r) => r.status === "pending").length,
