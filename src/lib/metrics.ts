@@ -73,6 +73,16 @@ export function byWeekday(dates: string[], days: number, now = Date.now()): numb
   return out;
 }
 
+/** Counts per weekday (Mon→Sun) × hour (0–23) within the last `days` days — the Dashboard's busiest-times heatmap. */
+export function byWeekdayHour(dates: string[], days: number, now = Date.now()): number[][] {
+  const out: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0) as number[]);
+  for (const iso of withinDays(dates, days, now)) {
+    const d = new Date(iso);
+    out[(d.getDay() + 6) % 7][d.getHours()]++;
+  }
+  return out;
+}
+
 /** Groups `items` by `keyOf` and counts each group — the shape every "by X" bar list needs. */
 export function countBy<T>(items: T[], keyOf: (item: T) => string): Record<string, number> {
   const out: Record<string, number> = {};

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bucketCounts, byWeekday, countBy, pctChange, periodTotal, previousPeriodTotal, withinDays } from "./metrics.ts";
+import { bucketCounts, byWeekday, byWeekdayHour, countBy, pctChange, periodTotal, previousPeriodTotal, withinDays } from "./metrics.ts";
 
 const DAY = 86_400_000;
 const now = new Date("2026-11-14T12:00:00.000Z").getTime();
@@ -50,6 +50,26 @@ test("byWeekday maps Sunday to the last slot (Mon..Sun)", () => {
   assert.equal(counts[6], 1); // Sunday
   assert.equal(counts[0], 1); // Monday
   assert.equal(counts.reduce((a, b) => a + b, 0), 2);
+});
+
+test("byWeekdayHour buckets by weekday and hour, ignoring dates outside the window", () => {
+  // local-time constructor throughout (here and in byWeekdayHour itself), so the round trip
+  // through toISOString()/new Date() is timezone-independent
+  const base = new Date(2026, 10, 16, 9, 0, 0); // a Monday
+  const sunday1405 = new Date(2026, 10, 15, 14, 5, 0); // the Sunday before, 14:05
+  const monday0030 = new Date(2026, 10, 16, 0, 30, 0); // same Monday, 00:30
+  const tooOld = new Date(2026, 10, 1, 10, 0, 0); // 15 days before `base`, outside a 7-day window
+  const dates = [sunday1405.toISOString(), monday0030.toISOString(), tooOld.toISOString()];
+
+  const grid = byWeekdayHour(dates, 7, base.getTime());
+  assert.equal(grid.length, 7);
+  assert.equal(grid[0].length, 24);
+  assert.equal(grid[6][14], 1); // Sunday, 14:00 slot
+  assert.equal(grid[0][0], 1); // Monday, 00:00 slot
+  assert.equal(
+    grid.flat().reduce((a, b) => a + b, 0),
+    2, // the too-old date is excluded
+  );
 });
 
 test("countBy groups and counts by key", () => {
