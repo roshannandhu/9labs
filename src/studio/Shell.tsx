@@ -1,152 +1,382 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark } from "@/components/brand/LogoMark";
 import { useTheme } from "@/components/layout/ThemeToggle";
-import { setTheme } from "@/lib/theme";
-import { canRedo, canUndo, redo, signOut, undo } from "@/lib/store";
-import { ROOMS, roomByPath } from "./rooms";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { siteHref } from "@/lib/site-href";
+import { checkWorkspace } from "@/lib/checks";
+import { signOut } from "@/lib/store";
+import { setAdminTheme } from "./theme";
+import { CommandPalette } from "./CommandPalette";
+import { Icon } from "./Icon";
+import { ROOMS, roomByPath, type Room, type RoomGroup } from "./rooms";
 import { SignIn } from "./SignIn";
-import { useSession, useStoreState } from "./state";
+import { useBookRequests, useDraft, useEnquiries, useQuizResults, useSession } from "./state";
 import { PublishBar } from "./PublishBar";
-import { Palette } from "./Palette";
-import { IconButton, ToastProvider } from "./ui";
+import { Avatar, ConfirmProvider, IconButton, Kbd, ToastProvider } from "./ui";
 
-function Rail({ pathname }: { pathname: string }) {
-  const active = roomByPath(pathname)?.id;
+const RAIL_KEY = "nl-admin-rail";
+const GROUPS: RoomGroup[] = ["Overview", "Content", "System"];
+
+function todayStart(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** Small live counters/dots the sidebar shows next to a room — computed once here, read by both the full sidebar and the rail. */
+function useRoomBadges() {
+  const draft = useDraft();
+  const enquiries = useEnquiries();
+  const bookRequests = useBookRequests();
+  const quizResults = useQuizResults();
+
+  return useMemo(() => {
+    const since = todayStart();
+    const today = (iso: string) => new Date(iso).getTime() >= since;
+    const inboxToday = enquiries.filter((e) => today(e.createdAt)).length + bookRequests.filter((r) => today(r.createdAt)).length + quizResults.filter((r) => today(r.createdAt)).length;
+    const missingPdf = draft.site.ebooks.some((b) => b.enabled && !b.pdfFileId);
+    const quizErrors = checkWorkspace(draft).some((i) => i.level === "error" && i.path[0] === "site" && i.path[1] === "quiz");
+    return { inboxToday, missingPdf, quizErrors };
+  }, [draft, enquiries, bookRequests, quizResults]);
+}
+
+function NavItem({ room, active, rail, badge, onNavigate }: { room: Room; active: boolean; rail: boolean; badge?: React.ReactNode; onNavigate: () => void }) {
+  const link = (
+    <Link
+      href={room.path}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium transition-colors ${rail ? "justify-center px-0" : ""} ${active ? "bg-st-panel-3 text-st-purple" : "text-st-sub hover:bg-st-panel-2 hover:text-st-ink"}`}
+    >
+      {active && <motion.span layoutId="nav-active" transition={{ type: "spring", stiffness: 500, damping: 40 }} className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-st-grad" aria-hidden="true" />}
+      <span className="relative shrink-0">
+        <Icon name={room.icon} />
+        {badge && rail && <span className="absolute -right-1 -top-1">{badge}</span>}
+      </span>
+      {!rail && <span className="min-w-0 flex-1 truncate">{room.title}</span>}
+      {!rail && badge}
+    </Link>
+  );
+  if (!rail) return link;
   return (
-    <nav className="hidden w-[64px] shrink-0 flex-col items-center gap-1 border-r border-st-border bg-st-panel py-3 sm:flex" aria-label="Rooms">
-      {ROOMS.map((r) => (
-        <Link
-          key={r.id}
-          href={r.path}
-          title={r.title}
-          className={`flex w-12 flex-col items-center gap-0.5 rounded-xl py-2 text-[10.5px] font-semibold transition-colors ${active === r.id ? "bg-st-panel-2 text-st-purple" : "text-st-dim hover:text-st-ink"}`}
-        >
-          <span className="font-digits text-[13px]">{r.n}</span>
-          <span>{r.short}</span>
-        </Link>
-      ))}
-    </nav>
+    <span className="group/tip relative">
+      {link}
+      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-st-panel-3 px-2 py-1 font-mono text-[10.5px] text-st-ink opacity-0 shadow-[var(--st-shadow)] transition-opacity group-hover/tip:opacity-100">
+        {room.title}
+      </span>
+    </span>
+  );
+}
+
+function SidebarBody({ pathname, rail, onToggleRail, onNavigate }: { pathname: string; rail: boolean; onToggleRail?: () => void; onNavigate: () => void }) {
+  const session = useSession();
+  const theme = useTheme();
+  const badges = useRoomBadges();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const active = roomByPath(pathname)?.id;
+
+  const badgeFor = (id: Room["id"]) => {
+    if (id === "inbox" && badges.inboxToday > 0) return <span className="st-micro rounded-full bg-st-panel-3 px-1.5 py-0.5 text-[10px] text-st-purple">{badges.inboxToday}</span>;
+    if (id === "books" && badges.missingPdf) return <span className="h-2 w-2 shrink-0 rounded-full bg-st-warn" aria-hidden="true" />;
+    if (id === "quiz" && badges.quizErrors) return <span className="h-2 w-2 shrink-0 rounded-full bg-st-danger" aria-hidden="true" />;
+    return undefined;
+  };
+
+  return (
+    <div className={`flex h-full shrink-0 flex-col bg-st-panel ${rail ? "w-[68px]" : "w-[248px]"}`}>
+      <Link href="/admin" onClick={onNavigate} className={`flex items-center gap-2.5 px-5 pb-4 pt-5 ${rail ? "justify-center px-0" : ""}`}>
+        <LogoMark className="h-6" />
+        {!rail && <span className="font-display text-[13px] font-semibold text-st-sub">Nine Labs</span>}
+      </Link>
+
+      {!rail && (
+        <div className="px-3 pb-2">
+          <span className="st-micro mb-1.5 block px-1">Admin</span>
+        </div>
+      )}
+
+      <nav className="st-scrollbox flex-1 space-y-4 px-3" aria-label="Rooms">
+        {GROUPS.map((g) => {
+          const rooms = ROOMS.filter((r) => r.group === g);
+          return (
+            <div key={g}>
+              {!rail && <p className="st-micro px-3 pb-1.5">{g}</p>}
+              <div className="space-y-0.5">
+                {rooms.map((r) => (
+                  <NavItem key={r.id} room={r} active={active === r.id} rail={rail} badge={badgeFor(r.id)} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-st-border p-3">
+        {onToggleRail && (
+          <button type="button" onClick={onToggleRail} className={`mb-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[12.5px] font-medium text-st-dim hover:bg-st-panel-2 hover:text-st-ink ${rail ? "justify-center px-0" : ""}`}>
+            <Icon name="chevron" size={14} />
+            {!rail && <span>Collapse</span>}
+          </button>
+        )}
+        <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-st-sub hover:bg-st-panel-2 hover:text-st-ink ${rail ? "justify-center px-0" : ""}`}>
+          <Icon name="external" size={16} />
+          {!rail && <span>View website</span>}
+        </a>
+        {session && (
+          <div className="relative mt-1">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-st-panel-2 ${rail ? "justify-center px-0" : ""}`}>
+              <Avatar letter={session.email} size={30} />
+              {!rail && (
+                <>
+                  <span className="min-w-0 flex-1 truncate text-left text-[12.5px] font-semibold capitalize text-st-ink">{session.role}</span>
+                  <Icon name="chevron" size={12} />
+                </>
+              )}
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute bottom-full left-0 z-20 mb-2 w-[220px] rounded-xl border border-st-border bg-st-panel p-1.5 shadow-[var(--st-shadow)]">
+                  <p className="truncate px-2.5 py-1.5 text-[12px] text-st-dim">{session.email}</p>
+                  <div className="my-1 flex items-center justify-between rounded-lg px-2.5 py-1.5">
+                    <span className="text-[12.5px] text-st-ink">Theme</span>
+                    <div className="flex gap-0.5 rounded-full bg-st-panel-2 p-0.5">
+                      <button type="button" onClick={() => setAdminTheme("dark")} className={`rounded-full px-2 py-1 text-[11px] font-medium ${theme === "dark" ? "bg-st-grad text-white" : "text-st-dim"}`}>
+                        Dark
+                      </button>
+                      <button type="button" onClick={() => setAdminTheme("light")} className={`rounded-full px-2 py-1 text-[11px] font-medium ${theme === "light" ? "bg-st-grad text-white" : "text-st-dim"}`}>
+                        Light
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => signOut()} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] text-st-sub hover:bg-st-panel-2 hover:text-st-ink">
+                    <Icon name="logout" size={14} /> Sign out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MobileDrawer({ open, pathname, onClose }: { open: boolean; pathname: string; onClose: () => void }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div className="fixed inset-0 z-[150] sm:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden="true" />
+          <motion.div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 shadow-2xl" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
+            <SidebarBody pathname={pathname} rail={false} onNavigate={onClose} />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+function MobileTopBar({ onMenu }: { onMenu: () => void }) {
+  const session = useSession();
+  const theme = useTheme();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  return (
+    <>
+      <header className="st-glass flex h-14 shrink-0 items-center gap-3 border-b border-st-border px-4 sm:hidden">
+        <IconButton label="Open menu" onClick={onMenu}>
+          <Icon name="menu" size={18} />
+        </IconButton>
+        <LogoMark className="h-5" />
+        <span className="flex-1" />
+        <IconButton label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setAdminTheme(theme === "dark" ? "light" : "dark")}>
+          <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+        </IconButton>
+        {session && (
+          <button type="button" onClick={() => setSheetOpen(true)} aria-label="Account">
+            <Avatar letter={session.email} size={30} />
+          </button>
+        )}
+      </header>
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {sheetOpen && session && (
+              <motion.div className="fixed inset-0 z-[150] sm:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="absolute inset-0 bg-black/45" onClick={() => setSheetOpen(false)} aria-hidden="true" />
+                <motion.div role="dialog" aria-modal="true" className="absolute inset-x-0 bottom-0 rounded-t-[22px] bg-st-panel p-5 pb-[max(20px,env(safe-area-inset-bottom))]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
+                  <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-st-border-strong" aria-hidden="true" />
+                  <div className="flex items-center gap-3">
+                    <Avatar letter={session.email} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-semibold text-st-ink">{session.email}</p>
+                      <p className="text-[12px] capitalize text-st-dim">{session.role}</p>
+                    </div>
+                  </div>
+                  <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2.5 rounded-xl px-1 py-2.5 text-[13.5px] font-medium text-st-sub">
+                    <Icon name="external" size={16} /> View website
+                  </a>
+                  <button type="button" onClick={() => signOut()} className="flex w-full items-center gap-2.5 rounded-xl px-1 py-2.5 text-left text-[13.5px] font-medium text-st-danger">
+                    <Icon name="logout" size={16} /> Sign out
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function TopBar({ pathname }: { pathname: string }) {
+  const theme = useTheme();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const room = roomByPath(pathname);
+  const crumbs = pathname.split("/").filter(Boolean);
+
+  return (
+    <header className="st-glass hidden h-14 shrink-0 items-center gap-3 border-b border-st-border px-6 sm:flex">
+      <p className="st-micro flex items-center gap-1.5">
+        {crumbs.map((c, i) => (
+          <span key={i} className={i === crumbs.length - 1 ? "text-st-ink" : ""}>
+            {i > 0 && <span className="mx-1 text-st-dim">/</span>}
+            {c}
+          </span>
+        ))}
+        {!room && crumbs.length <= 1 && <span className="text-st-ink">dashboard</span>}
+      </p>
+      <span className="flex-1" />
+      <span className="st-num text-[12.5px] text-st-dim">{now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
+      <IconButton label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setAdminTheme(theme === "dark" ? "light" : "dark")}>
+        <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
+      </IconButton>
+      <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" title="View website" aria-label="View website" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-st-sub transition-colors hover:bg-st-panel-2 hover:text-st-ink">
+        <Icon name="external" size={15} />
+      </a>
+    </header>
   );
 }
 
 function BottomTabs({ pathname }: { pathname: string }) {
   const active = roomByPath(pathname)?.id;
+  const badges = useRoomBadges();
   return (
-    <nav className="st-scrollbox flex shrink-0 items-center gap-1 overflow-x-auto border-t border-st-border bg-st-panel px-2 py-1.5 sm:hidden" aria-label="Rooms">
-      {ROOMS.map((r) => (
-        <Link key={r.id} href={r.path} className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-semibold ${active === r.id ? "bg-st-panel-2 text-st-purple" : "text-st-dim"}`}>
-          <span className="font-digits text-[12px]">{r.n}</span>
-          <span>{r.short}</span>
-        </Link>
-      ))}
+    <nav className="st-glass st-scrollbox flex shrink-0 items-center justify-around border-t border-st-border px-1 pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Rooms">
+      {ROOMS.map((r) => {
+        const on = active === r.id;
+        const dot = (r.id === "inbox" && badges.inboxToday > 0) || (r.id === "books" && badges.missingPdf) || (r.id === "quiz" && badges.quizErrors);
+        return (
+          <Link key={r.id} href={r.path} className="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-medium">
+            {on && <motion.span layoutId="bottom-active" transition={{ type: "spring", stiffness: 500, damping: 40 }} className="absolute inset-x-5 top-0 h-[2.5px] rounded-full bg-st-grad" aria-hidden="true" />}
+            <span className={`relative ${on ? "text-st-purple" : "text-st-dim"}`}>
+              <Icon name={r.icon} size={19} />
+              {dot && <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-st-warn" aria-hidden="true" />}
+            </span>
+            <span className={on ? "text-st-ink" : "text-st-dim"}>{r.title}</span>
+          </Link>
+        );
+      })}
     </nav>
-  );
-}
-
-function ThemeSwitch() {
-  const theme = useTheme();
-  const next = theme === "dark" ? "light" : "dark";
-  return (
-    <IconButton label={`Switch to ${next} mode`} onClick={() => setTheme(next)}>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-        {theme === "dark" ? <circle cx="12" cy="12" r="4.2" /> : <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />}
-        {theme === "dark" && <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />}
-      </svg>
-    </IconButton>
-  );
-}
-
-function TopBar() {
-  const session = useSession();
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  useStoreState(); // re-render on every store change so the undo buttons stay in sync
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen(true);
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-st-border bg-st-panel px-3.5 sm:px-5">
-      <Link href="/admin" className="flex shrink-0 items-center gap-2">
-        <LogoMark className="h-5" />
-        <span className="hidden font-display text-[13px] font-semibold text-st-sub md:inline">The Bridge</span>
-      </Link>
-
-      <button type="button" onClick={() => setPaletteOpen(true)} className="st-field hidden !h-9 max-w-[280px] items-center gap-2 text-left text-st-dim md:flex">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-        Search…
-        <kbd className="ml-auto rounded border border-st-border px-1.5 py-0.5 text-[10px]">⌘K</kbd>
-      </button>
-
-      <div className="flex-1" />
-
-      <div className="hidden items-center gap-1 sm:flex">
-        <IconButton label="Undo" onClick={() => undo()} disabled={!canUndo()}>
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 7h7a3 3 0 0 1 0 6H8M3 7l3-3M3 7l3 3" /></svg>
-        </IconButton>
-        <IconButton label="Redo" onClick={() => redo()} disabled={!canRedo()}>
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 7H6a3 3 0 0 0 0 6h2M13 7l-3-3M13 7l-3 3" /></svg>
-        </IconButton>
-      </div>
-
-      <IconButton label="Search" onClick={() => setPaletteOpen(true)} className="md:hidden">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-      </IconButton>
-
-      <ThemeSwitch />
-
-      <PublishBar />
-
-      {session && (
-        <div className="hidden items-center gap-2 border-l border-st-border pl-3 sm:flex">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-st-panel-2 text-[12px] font-semibold capitalize text-st-ink">{session.email[0]?.toUpperCase()}</span>
-          <div className="leading-tight">
-            <p className="text-[12.5px] font-semibold capitalize text-st-ink">{session.role}</p>
-          </div>
-          <IconButton label="Sign out" onClick={() => signOut()}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M15 16l4-4-4-4M19 12H9" /></svg>
-          </IconButton>
-        </div>
-      )}
-
-      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-    </header>
   );
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [railPref, setRailPref] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 1024px)", true);
+  const isTabletUp = useMediaQuery("(min-width: 640px)", true);
+
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors a browser-only preference (localStorage), read once after mount
+      setRailPref(window.localStorage.getItem(RAIL_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const toggleRail = () => {
+    setRailPref((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem(RAIL_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   if (!session) return <SignIn />;
 
+  const rail = !isDesktop || railPref;
+
   return (
     <ToastProvider>
-      <div className="flex h-dvh flex-col bg-st-bg">
-        <TopBar />
-        <div className="flex min-h-0 flex-1">
-          <Rail pathname={pathname} />
-          <main className="min-w-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1100px] px-4 py-5 sm:px-7 sm:py-7">{children}</div>
-          </main>
+      <ConfirmProvider>
+        <div className="st-canvas flex h-dvh">
+          {isTabletUp && (
+            <div className="border-r border-st-border">
+              <SidebarBody pathname={pathname} rail={rail} onToggleRail={isDesktop ? toggleRail : undefined} onNavigate={() => {}} />
+            </div>
+          )}
+          <MobileDrawer open={mobileOpen} pathname={pathname} onClose={() => setMobileOpen(false)} />
+
+          <div className="flex min-h-0 flex-1 flex-col">
+            <TopBar pathname={pathname} />
+            <MobileTopBar onMenu={() => setMobileOpen(true)} />
+
+            <main className="min-h-0 flex-1 overflow-y-auto">
+              <PublishBar />
+              <div className="mx-auto max-w-[1360px] px-4 pb-28 pt-5 sm:px-6 sm:pt-6 lg:px-8">
+                <AnimatePresence mode="wait">
+                  <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}>
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </main>
+
+            <BottomTabs pathname={pathname} />
+          </div>
+
+          <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+          {/* a small, out-of-the-way hint that ⌘K exists; the search affordance itself lives on the Dashboard */}
+          <div className="sr-only">
+            Press <Kbd>⌘K</Kbd> to search
+          </div>
         </div>
-        <BottomTabs pathname={pathname} />
-      </div>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }
