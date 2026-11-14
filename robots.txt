@@ -1,5 +1,7 @@
 User-Agent: *
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /download
 
 Host: https://www.ninelabs.example
 Sitemap: https://www.ninelabs.example/sitemap.xml
