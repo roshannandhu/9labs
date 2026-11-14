@@ -1,4 +1,4 @@
-:HL["/9labs/_next/static/chunks/29kq_kzcedl5l.css","style"]
+:HL["/9labs/_next/static/chunks/174xa7qexr54x.css","style"]
 :HL["/9labs/_next/static/chunks/0i1lr4g19h_8o.css","style"]
 :HL["/9labs/_next/static/media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/9labs/_next/static/media/24b194041b9b37de-s.p.3a2a4weh7ixm0.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
@@ -9,4 +9,4 @@
 3:[["children",{"s":"__PAGE__","h":160}]]
 2:[["children",{"s":{"n":"slug","t":"d","k":"about","s":["admin","download","ebooks","p"]},"h":96,"c":"$Q3"}]]
 1:[["children",{"s":"(site)","h":112,"c":"$Q2"}]]
-0:{"b":"urnprvFO4ly3peS8SXWbN","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"nLlZ4nbASiIAyCaw8go56","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
