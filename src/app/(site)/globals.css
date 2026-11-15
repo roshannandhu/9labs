@@ -769,9 +769,15 @@ html[data-motion="reduce"] *::after {
   }
 }
 
-.shelf-item .book {
+.shelf-item .book,
+.book-landing .book {
   --ry: 28deg;
   --rx: 4deg;
+}
+.book-landing:hover .book {
+  --ry: 8deg;
+  --rx: 2deg;
+  --bz: 24px;
 }
 .shelf-item:hover .book,
 .shelf-item:focus-within .book,

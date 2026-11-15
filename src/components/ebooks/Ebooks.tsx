@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { fill } from "@/content/site";
+import { bookCardLabel } from "@/content/site";
 import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import ClickSpark from "@/components/reactbits/ClickSpark";
@@ -137,7 +137,7 @@ export function Ebooks() {
                   </span>
                 </button>
 
-                <p className="label-mono mt-20">{fill(t.cardLabel, { n: b.n, pages: b.pages })}</p>
+                <p className="label-mono mt-20">{bookCardLabel(t.cardLabel, b)}</p>
                 <h3 className="mt-2 text-[22px] font-semibold sm:text-2xl">{b.title}</h3>
                 <p className="mt-2 max-w-[34ch] text-[15px] leading-relaxed text-nl-ink">{b.oneLiner}</p>
                 <div className="mt-6">

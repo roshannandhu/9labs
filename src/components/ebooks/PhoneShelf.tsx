@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { fill } from "@/content/site";
+import { bookCardLabel } from "@/content/site";
 import { useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { Book3D } from "./Book3D";
@@ -129,7 +129,7 @@ export function PhoneShelf({ onOpen }: { onOpen: (slug: string) => void }) {
             transition={{ duration: reduced ? 0 : 0.35 }}
           >
             <p className="label-mono">
-              {fill(t.cardLabel, { n: book.n, pages: book.pages })}
+              {bookCardLabel(t.cardLabel, book)}
             </p>
             <h3 className="mt-2 text-[22px] font-semibold">{book.title}</h3>
             <p className="mx-auto mt-2 max-w-[34ch] text-[15px] leading-relaxed text-nl-ink">{book.oneLiner}</p>
