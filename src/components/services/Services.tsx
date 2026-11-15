@@ -10,7 +10,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
-import { OrbitArc, OrbitFloorTrack, OrbitChevrons, OrbitCapsuleDock } from "./OrbitNav";
+import { OrbitArc, OrbitFloorTrack, OrbitCapsuleDock } from "./OrbitNav";
 import { Scene1Social } from "./scenes/Scene1Social";
 import { Scene2Advertising } from "./scenes/Scene2Advertising";
 import { Scene3Content } from "./scenes/Scene3Content";
@@ -163,7 +163,6 @@ function ServicesTrack({ heading, services, t }: Part) {
       {/* 3D orbital stage: floor track, chevrons and centered carousel */}
       <div className="svc-stage">
         <OrbitFloorTrack />
-        <OrbitChevrons active={active} goTo={goTo} services={services} />
         <div
           ref={scrollerRef}
           onPointerDown={handlePointerDown}

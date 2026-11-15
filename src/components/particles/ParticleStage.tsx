@@ -44,10 +44,10 @@ const ASM_MS = 1700;
  * - **Formed**: a crisp picture or "9" drawn *inside* its slot in the page. The card in focus
  *   keeps redrawing with real time so its small details live; every other card shows a faint still
  *   ghost of its object. The swarm draws nothing while a shape is at rest.
- * - **Moving**: ~11,000 particles (~6,000 on phones), drawn on a canvas that scrolls with the page
+ * - **Moving**: up to 12,000 particles on a strong PC (9,000 / 6,000 on lighter ones, 4,400 on phones), drawn on a canvas that scrolls with the page
  *   (or, card to card, with the carousel), each carrying its own true pixel colour from both shapes
  *   and landing exactly where the crisp version is drawn, so the hand-over has no jump. A device
- *   that can't keep up quietly draws 60% of them.
+ *   that can't keep up quietly steps down to 80%, then 60%, of them.
  */
 export function ParticleStage() {
   const { reduced } = useDemo();
@@ -71,7 +71,11 @@ export function ParticleStage() {
     // fillRect scales linearly with N and profiled as the single largest per-frame cost during an
     // active flight; the "exact formation" accuracy (true per-pixel colour, exact placement) is
     // independent of density, so this is a pure smoothness win, not a quality trade
-    const N = phone ? 4400 : 6000;
+    // PC gets a denser swarm, sized to the machine (phones keep theirs); a PC that still can't keep
+    // up steps the drawn share down (see `keep`), so more particles never means a stutter
+    const pc = !phone && window.matchMedia("(pointer: fine) and (min-width: 1024px)").matches;
+    const cores = navigator.hardwareConcurrency || 4;
+    const N = phone ? 4400 : pc && cores >= 8 ? 12000 : pc && cores >= 4 ? 9000 : 6000;
     const dustDpr = 1;
     const r = rng(9001);
 
@@ -103,9 +107,13 @@ export function ParticleStage() {
     const counts = new Int32Array(COLOR_KEYS + 1);
     const start = new Int32Array(COLOR_KEYS + 1);
 
-    let thin = false;
+    // how many of every 10 particles are drawn: 10, stepping down to 8 then 6 only if flights run slow
+    let keep = 10;
     let probe = 0;
     let probeSum = 0;
+    // the colour sort (bucket/order) only changes when the colour blend does: it is redone when the
+    // flight's colour step (u in twentieths), its two shapes, `keep` or the theme change — not every frame
+    let colourKey = "";
     let lastT = 0;
     let started = false;
     let assembling = false;
@@ -479,30 +487,54 @@ export function ParticleStage() {
         S.c.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
       }
 
-      if (asm >= 1 && probe < 40) {
+      if (asm >= 1 && keep > 6) {
         // only back-to-back flight frames count: a pause between two flights isn't a slow device
-        // (it used to be counted, which could switch on thinning mid-session for no reason)
         const dt = now - lastT;
         if (lastT && dt < 100) {
           probeSum += dt;
-          if (++probe === 40 && probeSum / 40 > 24) thin = true;
+          if (++probe === 30) {
+            if (probeSum / 30 > 21) keep -= 2; // slower than ~48fps: draw a little less
+            probe = 0;
+            probeSum = 0;
+          }
         }
         lastT = now;
       }
 
-      const ra = SA.rgb;
-      const rb = SB.rgb;
-      counts.fill(0);
+      const uq = Math.round(u * 20);
+      const ck = `${fromKey}|${toKey}|${uq}|${keep}|${dark ? 1 : 0}`;
+      if (ck !== colourKey) {
+        colourKey = ck;
+        const ra = SA.rgb;
+        const rb = SB.rgb;
+        const cu = uq / 20;
+        counts.fill(0);
+        for (let i = 0; i < N; i++) {
+          if (i % 10 >= keep) {
+            bucket[i] = COLOR_KEYS;
+            counts[COLOR_KEYS]++;
+            continue;
+          }
+          const j = i * 3;
+          const k = colorKey(ra[j] + (rb[j] - ra[j]) * cu, ra[j + 1] + (rb[j + 1] - ra[j + 1]) * cu, ra[j + 2] + (rb[j + 2] - ra[j + 2]) * cu);
+          bucket[i] = k;
+          counts[k]++;
+        }
+        let acc = 0;
+        for (let b = 0; b <= COLOR_KEYS; b++) {
+          start[b] = acc;
+          acc += counts[b];
+        }
+        // `start[b]` ends up marking the end of bucket b (kept until the next re-sort)
+        for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
+      }
+
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
       let maxY = -Infinity;
       for (let i = 0; i < N; i++) {
-        if (thin && i % 5 > 2) {
-          bucket[i] = COLOR_KEYS;
-          counts[COLOR_KEYS]++;
-          continue;
-        }
+        if (bucket[i] === COLOR_KEYS) continue; // not drawn at this `keep`
         const ax = A.cx + SA.x[i] * A.h;
         const ay = A.cy + SA.y[i] * A.h;
         const bx = B.cx + SB.x[i] * B.h;
@@ -535,19 +567,10 @@ export function ParticleStage() {
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
         if (y > maxY) maxY = y;
-        const j = i * 3;
-        const k = colorKey(ra[j] + (rb[j] - ra[j]) * u, ra[j + 1] + (rb[j + 1] - ra[j + 1]) * u, ra[j + 2] + (rb[j + 2] - ra[j + 2]) * u);
-        bucket[i] = k;
-        counts[k]++;
       }
-      let acc = 0;
-      for (let b = 0; b <= COLOR_KEYS; b++) {
-        start[b] = acc;
-        acc += counts[b];
-      }
-      for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
 
-      const size = Math.max(1.2, Math.min(phone ? 2.6 : 3.0, (A.h + (B.h - A.h) * u) * (phone ? 0.0088 : 0.0056)));
+      // a denser PC swarm uses finer dots, so it reads as more detail rather than a heavier mass
+      const size = Math.max(1.2, Math.min(phone || N >= 9000 ? 2.6 : 3.0, (A.h + (B.h - A.h) * u) * (phone ? 0.0088 : N >= 9000 ? 0.0047 : 0.0056)));
       const g = S.g;
       g.setTransform(dustDpr, 0, 0, dustDpr, -ox * dustDpr, -oy * dustDpr);
       g.globalAlpha = dustAlpha;
