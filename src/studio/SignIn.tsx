@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LogoMark } from "@/components/brand/LogoMark";
 import { supabase } from "./supabase";
 import { Icon, type IconName } from "./Icon";
+import { Button } from "./ui";
 
 const FEATURES: { icon: IconName; text: string }[] = [
   { icon: "inbox", text: "Every lead in one inbox" },
@@ -44,6 +45,65 @@ function urlError(): string | null {
   return new URLSearchParams(window.location.search).get("error_description");
 }
 
+/**
+ * ponytail: a temporary password sign-in, only while Google OAuth isn't configured in Supabase
+ * yet (needs a Google Cloud OAuth client + the provider turned on in Supabase Auth — section 4.2
+ * of the backend plan). Delete this block once that's done; "Continue with Google" above already
+ * works and needs no further code changes.
+ */
+function PasswordSignIn() {
+  const [mode, setMode] = useState<"up" | "in">("up");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [sentConfirm, setSentConfirm] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    setSentConfirm(false);
+    try {
+      if (mode === "up") {
+        const { data, error: err } = await supabase.auth.signUp({ email, password });
+        if (err) setError(err.message);
+        else if (!data.session) setSentConfirm(true); // this project requires e-mail confirmation
+      } else {
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        if (err) setError(err.message);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 grid gap-2">
+      <div className="my-1 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-st-dim">
+        <span className="h-px flex-1 bg-st-border" /> Temporary — until Google sign-in is set up <span className="h-px flex-1 bg-st-border" />
+      </div>
+      {error && <p className="rounded-lg bg-st-danger-bg px-3 py-2 text-[12.5px] text-st-danger">{error}</p>}
+      {sentConfirm && <p className="rounded-lg bg-st-panel-2 px-3 py-2 text-[12.5px] text-st-ink">Check your e-mail for a confirmation link, then sign in below.</p>}
+      <input className="st-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" autoComplete="username" />
+      <input className="st-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (6+ characters)" autoComplete={mode === "up" ? "new-password" : "current-password"} onKeyDown={(e) => e.key === "Enter" && void submit()} />
+      <Button variant="primary" disabled={busy || !email || password.length < 6} onClick={() => void submit()}>
+        {busy ? "Working…" : mode === "up" ? "Create account & sign in" : "Sign in"}
+      </Button>
+      <button
+        type="button"
+        onClick={() => {
+          setMode((m) => (m === "up" ? "in" : "up"));
+          setError("");
+          setSentConfirm(false);
+        }}
+        className="text-center text-[12px] text-st-dim hover:text-st-ink"
+      >
+        {mode === "up" ? "Already have an account? Sign in" : "First time? Create an account"}
+      </button>
+    </div>
+  );
+}
+
 export function SignIn() {
   const [error] = useState(urlError);
   const [busy, setBusy] = useState(false);
@@ -77,6 +137,7 @@ export function SignIn() {
               </svg>
               {busy ? "Opening Google…" : "Continue with Google"}
             </button>
+            <PasswordSignIn />
           </div>
           <p className="st-help mt-4 text-center">Only e-mails on the team (Settings → Team) can get in.</p>
         </div>

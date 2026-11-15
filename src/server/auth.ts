@@ -26,7 +26,9 @@ export async function requireAdmin(req: Request, roles?: AdminRole[]): Promise<A
 
   if (!admin) {
     const { count } = await db().from("admins").select("id", { count: "exact", head: true });
-    if ((count ?? 0) === 0 && adminEmails().includes(email)) {
+    // With no allowlist configured, the first sign-in bootstraps as owner (common for a fresh self-hosted install); once ADMIN_EMAILS is set, it's enforced.
+    const allowed = adminEmails().length === 0 || adminEmails().includes(email);
+    if ((count ?? 0) === 0 && allowed) {
       const { data: created, error: createErr } = await db()
         .from("admins")
         .insert({ email, name: email.split("@")[0], role: "owner", active: true, last_login_at: new Date().toISOString() })
