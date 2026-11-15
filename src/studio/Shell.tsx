@@ -10,7 +10,7 @@ import { useTheme } from "@/components/layout/ThemeToggle";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { siteHref } from "@/lib/site-href";
 import { checkWorkspace } from "@/lib/checks";
-import { refreshLeads, signOut, startAuth } from "@/lib/store";
+import { refreshLeads, signOut, startAuth } from "@/studio/store";
 import { setAdminTheme } from "./theme";
 import { CommandPalette } from "./CommandPalette";
 import { Icon } from "./Icon";

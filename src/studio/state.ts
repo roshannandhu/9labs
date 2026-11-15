@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { diffDeep } from "@/lib/diff";
 import { getIn, type Path } from "@/lib/path";
-import * as store from "@/lib/store";
+import * as store from "@/studio/store";
 
 /** The whole store, reactive: any component using this (directly or via a hook below) re-renders on every save. */
 export function useStoreState() {

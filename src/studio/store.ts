@@ -3,11 +3,11 @@
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
 import { defaultWorkspace } from "@/content/defaults";
 import type { AdminRole, AdminUser, BookRequest, Enquiry, OutboxKind, OutboxMail, QuizResult, Workspace } from "@/content/types";
-import { ApiError, api } from "@/studio/api";
-import { supabase } from "@/studio/supabase";
-import { diffDeep } from "./diff";
-import { getIn, insertIntoArray, moveInArray, removeFromArray, setIn, type Path } from "./path";
-import { normalizeWorkspace } from "./workspace";
+import { ApiError, api } from "./api";
+import { supabase } from "./supabase";
+import { diffDeep } from "@/lib/diff";
+import { getIn, insertIntoArray, moveInArray, removeFromArray, setIn, type Path } from "@/lib/path";
+import { normalizeWorkspace } from "@/lib/workspace";
 
 export type Access = "loading" | "signed-out" | "denied" | "ok";
 export type Sync = "saved" | "saving" | "offline" | "conflict";

@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { IconKey, QuizOption, QuizQuestion } from "@/content/site";
 import { balanceReport, maxReachable, randomAnswers, totalsFor, type BalanceReport } from "@/lib/quiz/analyze";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
-import { checkpoint, setDraft } from "@/lib/store";
+import { checkpoint, setDraft } from "@/studio/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, NumField, TextField } from "@/studio/Field";
 import { SortableList } from "@/studio/Sortable";

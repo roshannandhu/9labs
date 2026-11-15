@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { waLink } from "@/content/site";
 import type { AdminRole } from "@/content/types";
 import { SocialIcon } from "@/components/icons/SocialIcon";
-import { addAdmin, checkpoint, clearSampleLeads, downloadBackup, loadSampleData, removeAdmin, resetAll, restoreBackup, setDraft, updateAdmin } from "@/lib/store";
+import { addAdmin, checkpoint, clearSampleLeads, downloadBackup, loadSampleData, removeAdmin, resetAll, restoreBackup, setDraft, updateAdmin } from "@/studio/store";
 import { ColorField, Dropzone, Slider, TextField } from "../Field";
 import { Icon } from "../Icon";
 import { useAdmins, useDraft, useSession } from "../state";

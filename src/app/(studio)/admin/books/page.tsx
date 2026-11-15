@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Ebook } from "@/content/site";
-import { setDraft } from "@/lib/store";
+import { setDraft } from "@/studio/store";
 import { BookEditor, TiltCover } from "@/studio/books/BookEditor";
 import { Icon } from "@/studio/Icon";
 import { useBookRequests, useFieldArray } from "@/studio/state";

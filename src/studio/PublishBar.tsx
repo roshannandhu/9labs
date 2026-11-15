@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { checkWorkspace, type Issue } from "@/lib/checks";
 import { autoLabel, diffDeep, humanizeDiff } from "@/lib/diff";
-import { discardDraft, publish } from "@/lib/store";
+import { discardDraft, publish } from "@/studio/store";
 import { ApiError } from "./api";
 import { Icon } from "./Icon";
 import { useDraft, usePendingChanges, usePublished } from "./state";

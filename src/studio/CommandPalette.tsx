@@ -8,7 +8,7 @@ import { useTheme } from "@/components/layout/ThemeToggle";
 import { useModalLock } from "@/lib/useModalLock";
 import { checkWorkspace } from "@/lib/checks";
 import { autoLabel, diffDeep, humanizeDiff } from "@/lib/diff";
-import { publish } from "@/lib/store";
+import { publish } from "@/studio/store";
 import { ApiError } from "./api";
 import { setAdminTheme } from "./theme";
 import { Icon, type IconName } from "./Icon";

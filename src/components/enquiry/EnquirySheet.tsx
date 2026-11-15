@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import type { EnquiryFieldKey } from "@/content/types";
 import { useSite } from "@/components/providers/SiteProvider";
-import { submitEnquiry } from "@/lib/local/backend";
+import { submitEnquiry } from "@/site/backend";
 import { useModalLock } from "@/lib/useModalLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useDemo } from "@/components/providers/DemoSettings";

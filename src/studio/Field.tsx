@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import type { Path } from "@/lib/path";
-import { checkpoint } from "@/lib/store";
+import { checkpoint } from "@/studio/store";
 import { Icon } from "./Icon";
 import { useField } from "./state";
 import { useFileUrl } from "./useFileUrl";

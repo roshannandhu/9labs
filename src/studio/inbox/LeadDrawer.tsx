@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { waLink } from "@/content/site";
-import { getOutboxHtml, removeLead } from "@/lib/store";
+import { getOutboxHtml, removeLead } from "@/studio/store";
 import { Icon } from "../Icon";
 import type { LeadKind } from "../leads";
 import { KIND_LABEL } from "../leads";

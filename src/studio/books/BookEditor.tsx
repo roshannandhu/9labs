@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Ebook } from "@/content/site";
 import { BookCover } from "@/components/ebooks/BookCover";
 import { siteHref } from "@/lib/site-href";
-import { checkpoint, setDraft } from "@/lib/store";
+import { checkpoint, setDraft } from "@/studio/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, ImageField, ListField, NumField, PdfField, TextField } from "../Field";
 import { Panel, Segmented, Button, useConfirm, useToast } from "../ui";
