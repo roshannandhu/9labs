@@ -219,7 +219,7 @@ export function Dropzone({ accept, label, hint, onFile, current, busy }: { accep
 }
 
 /**
- * An uploaded image (a book cover, a cover logo). Stores `idb:<fileId>`; empty = the built-in look.
+ * An uploaded image (a book cover, a cover logo). Stores an R2 file ref (`makeRef`); empty = the built-in look.
  * A JPEG photo over 400KB is re-encoded to fit `maxSide`; with `keepFormat`, PNG/SVG/WebP are
  * never re-encoded, so an uploaded logo keeps its transparency.
  */
