@@ -88,6 +88,7 @@
   --color-st-indigo: var(--st-indigo);
   --color-st-cyan: var(--st-cyan);
   --color-st-danger: var(--st-danger);
+  --color-st-danger-bg: var(--st-danger-bg);
   --color-st-good: var(--st-good);
   --color-st-warn: var(--st-warn);
   --font-display: var(--font-display-src), ui-sans-serif, system-ui, sans-serif;

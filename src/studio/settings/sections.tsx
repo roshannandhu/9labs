@@ -4,8 +4,7 @@ import { useRef, useState } from "react";
 import { waLink } from "@/content/site";
 import type { AdminRole } from "@/content/types";
 import { SocialIcon } from "@/components/icons/SocialIcon";
-import { exportBackup, importBackup } from "@/lib/backup";
-import { addAdmin, checkpoint, clearSampleLeads, removeAdmin, resetAll, setDraft, updateAdmin } from "@/lib/store";
+import { addAdmin, checkpoint, clearSampleLeads, downloadBackup, loadSampleData, removeAdmin, resetAll, restoreBackup, setDraft, updateAdmin } from "@/lib/store";
 import { ColorField, Dropzone, Slider, TextField } from "../Field";
 import { Icon } from "../Icon";
 import { useAdmins, useDraft, useSession } from "../state";
@@ -264,6 +263,14 @@ export function TeamSection() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<AdminRole>("editor");
 
+  const onUpdateAdmin = async (id: string, patch: Partial<{ role: AdminRole; active: boolean }>) => {
+    try {
+      await updateAdmin(id, patch);
+    } catch (err) {
+      toast("bad", err instanceof Error ? err.message : "Could not update that.");
+    }
+  };
+
   if (session?.role !== "owner") return <RoleNote what="Only Owners can manage who signs in." />;
 
   return (
@@ -288,7 +295,7 @@ export function TeamSection() {
                   <p className="truncate text-[13px] font-medium text-st-ink">{a.name || a.email}</p>
                   <p className="st-help truncate">{a.email}</p>
                 </div>
-                <select disabled={isSelf} value={a.role} onChange={(e) => updateAdmin(a.id, { role: e.target.value as AdminRole })} className="st-field w-auto disabled:opacity-50">
+                <select disabled={isSelf} value={a.role} onChange={(e) => void onUpdateAdmin(a.id, { role: e.target.value as AdminRole })} className="st-field w-auto disabled:opacity-50">
                   {ROLE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
@@ -296,7 +303,7 @@ export function TeamSection() {
                   ))}
                 </select>
                 <label className="flex items-center gap-1.5 text-[12px] text-st-sub">
-                  <input type="checkbox" checked={a.active} onChange={(e) => updateAdmin(a.id, { active: e.target.checked })} className="h-3.5 w-3.5 accent-[var(--st-purple)]" />
+                  <input type="checkbox" disabled={isSelf} checked={a.active} onChange={(e) => void onUpdateAdmin(a.id, { active: e.target.checked })} className="h-3.5 w-3.5 accent-[var(--st-purple)] disabled:opacity-50" />
                   Can sign in
                 </label>
                 <span className="w-20 shrink-0 text-[11px] text-st-dim">{a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Never signed in"}</span>
@@ -310,8 +317,12 @@ export function TeamSection() {
                     onClick={async () => {
                       const ok = await confirm({ title: `Remove ${a.email}?`, body: "They'll no longer be able to sign in.", confirmLabel: "Remove", danger: true });
                       if (!ok) return;
-                      removeAdmin(a.id);
-                      toast("ok", "Removed.");
+                      try {
+                        await removeAdmin(a.id);
+                        toast("ok", "Removed.");
+                      } catch (err) {
+                        toast("bad", err instanceof Error ? err.message : "Could not remove them.");
+                      }
                     }}
                     className="shrink-0 text-[11.5px] text-st-dim hover:text-st-danger"
                   >
@@ -337,15 +348,19 @@ export function TeamSection() {
           </select>
           <Button
             variant="primary"
-            onClick={() => {
+            onClick={async () => {
               if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
                 toast("bad", "Enter a valid e-mail address.");
                 return;
               }
-              addAdmin(email, name || email.split("@")[0], role);
-              setEmail("");
-              setName("");
-              toast("ok", "Added.");
+              try {
+                await addAdmin(email, name || email.split("@")[0], role);
+                setEmail("");
+                setName("");
+                toast("ok", "Added.");
+              } catch (err) {
+                toast("bad", err instanceof Error ? err.message : "Could not add them.");
+              }
             }}
           >
             Add
@@ -363,35 +378,45 @@ export function BackupSection() {
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const sampleSeedAvailable = process.env.NEXT_PUBLIC_SAMPLE_SEED === "1";
 
   return (
     <div className="grid gap-4">
-      <SettingCard title="Download a backup" help="Everything — settings, books, leads and uploaded files — in one file.">
+      <SettingCard title="Download a backup" help="Content and leads in one file. Uploaded files stay in storage.">
         <Button
           variant="primary"
           className="w-fit"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            await exportBackup();
-            setBusy(false);
+            try {
+              await downloadBackup();
+            } catch (err) {
+              toast("bad", err instanceof Error ? err.message : "Could not download the backup.");
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           <Icon name="download" size={14} /> {busy ? "Preparing…" : "Download backup"}
         </Button>
       </SettingCard>
 
-      <SettingCard title="Restore from a backup">
+      <SettingCard title="Restore from a backup" help="Replaces content and leads; the team stays.">
         <Dropzone
           accept="application/json"
           label=""
           hint="A .json backup file"
           onFile={async (file) => {
             if (!file) return;
-            const ok = await confirm({ title: "Restore this backup?", body: "This replaces everything currently here.", confirmLabel: "Restore", danger: true });
+            const ok = await confirm({ title: "Restore this backup?", body: "This replaces the content and leads currently here.", confirmLabel: "Restore", danger: true });
             if (!ok) return;
-            const res = await importBackup(file);
-            toast(res.ok ? "ok" : "bad", res.ok ? "Imported." : res.error);
+            try {
+              await restoreBackup(file);
+              toast("ok", "Restored.");
+            } catch (err) {
+              toast("bad", err instanceof Error ? err.message : "Could not restore that file.");
+            }
           }}
         />
         <input ref={fileRef} type="file" className="hidden" />
@@ -404,23 +429,49 @@ export function BackupSection() {
           onClick={async () => {
             const ok = await confirm({ title: "Remove sample data?", body: "Every enquiry, book request and quiz result is cleared.", confirmLabel: "Remove", danger: true });
             if (!ok) return;
-            clearSampleLeads();
-            toast("ok", "Removed.");
+            try {
+              await clearSampleLeads();
+              toast("ok", "Removed.");
+            } catch (err) {
+              toast("bad", err instanceof Error ? err.message : "Could not remove the sample data.");
+            }
           }}
         >
           Remove sample data
         </Button>
       </SettingCard>
 
-      <SettingCard title="Start over" help="Erases everything in this browser back to the built-in defaults.">
+      {sampleSeedAvailable && (
+        <SettingCard title="Load sample data" help="Dev only — adds demo enquiries, book requests and quiz results for testing.">
+          <Button
+            className="w-fit"
+            onClick={async () => {
+              try {
+                await loadSampleData();
+                toast("ok", "Loaded.");
+              } catch (err) {
+                toast("bad", err instanceof Error ? err.message : "Could not load sample data.");
+              }
+            }}
+          >
+            Load sample data
+          </Button>
+        </SettingCard>
+      )}
+
+      <SettingCard title="Start over" help="Erases every setting and lead back to the built-in defaults.">
         <Button
           variant="danger"
           className="w-fit"
           onClick={async () => {
-            const ok = await confirm({ title: "Reset everything?", body: "This erases every setting, lead and uploaded file in this browser. It can't be undone.", confirmLabel: "Reset", danger: true, typeToConfirm: "RESET" });
+            const ok = await confirm({ title: "Reset everything?", body: "This erases every setting and lead. It can't be undone.", confirmLabel: "Reset", danger: true, typeToConfirm: "RESET" });
             if (!ok) return;
-            resetAll();
-            toast("ok", "Reset.");
+            try {
+              await resetAll();
+              toast("ok", "Reset.");
+            } catch (err) {
+              toast("bad", err instanceof Error ? err.message : "Could not reset.");
+            }
           }}
         >
           Start over

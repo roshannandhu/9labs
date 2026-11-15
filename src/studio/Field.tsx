@@ -2,12 +2,12 @@
 
 import { useId, useState } from "react";
 import type { Path } from "@/lib/path";
-import { resizeImage, saveFile } from "@/lib/files";
-import { idbRef } from "@/lib/resolveFiles";
 import { checkpoint } from "@/lib/store";
 import { Icon } from "./Icon";
 import { useField } from "./state";
 import { useFileUrl } from "./useFileUrl";
+import { resizeImage, uploadFile } from "./upload";
+import { useToast } from "./ui";
 
 type Base = { path: Path; label: string; help?: string; placeholder?: string; required?: boolean };
 
@@ -227,16 +227,21 @@ export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Ba
   const [value, setValue] = useField<string>(path);
   const { url: preview } = useFileUrl(value);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
     checkpoint();
-    const skip = keepFormat && /^image\/(png|svg\+xml|webp)$/.test(file.type);
-    const blob = !skip && file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
-    const fileId = await saveFile(blob, file.name);
-    setValue(idbRef(fileId));
-    setBusy(false);
+    try {
+      const skip = keepFormat && /^image\/(png|svg\+xml|webp)$/.test(file.type);
+      const blob = !skip && file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
+      setValue(await uploadFile(blob, file.name, "image"));
+    } catch {
+      toast("bad", "Could not upload that image. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -280,16 +285,22 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
   const [name, setName] = useField<string | undefined>(namePath);
   const [, setSize] = useField<number | undefined>(sizePath);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
     checkpoint();
-    const newId = await saveFile(file, file.name);
-    setFileId(newId);
-    setName(file.name);
-    setSize(file.size);
-    setBusy(false);
+    try {
+      const ref = await uploadFile(file, file.name, "pdf");
+      setFileId(ref);
+      setName(file.name);
+      setSize(file.size);
+    } catch {
+      toast("bad", "Could not upload that PDF. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

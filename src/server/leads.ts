@@ -119,7 +119,7 @@ export async function updateBookRequest(id: string, patch: BookRequestPatch): Pr
 }
 
 /** Uses up one download of a signed link, atomically (`supabase/migrations/0001_init.sql`). */
-export async function useDownload(id: string, version: number, maxDownloads: number): Promise<BookRequestRow | null> {
+export async function spendDownload(id: string, version: number, maxDownloads: number): Promise<BookRequestRow | null> {
   const { data, error } = await db().rpc("use_download", { p_id: id, p_version: version, p_max: maxDownloads });
   if (error) throw error;
   const rows = data as BookRequestRow[];
@@ -232,5 +232,43 @@ export async function findLatestOutboxByEmailKind(email: string, kind: OutboxKin
 export async function insertOutbox(input: { kind: OutboxKind; to: string; subject: string; html: string; text: string; status: "sent" | "failed" | "logged"; error?: string }): Promise<void> {
   const row = { id: newId("mail"), kind: input.kind, to_email: input.to, subject: input.subject, html: input.html, text: input.text, status: input.status, error: input.error ?? "" };
   const { error } = await db().from("outbox").insert(row);
+  if (error) throw error;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bulk upserts — restore-from-backup and sample-data seeding only     */
+/* ------------------------------------------------------------------ */
+
+export async function upsertEnquiries(rows: Enquiry[]): Promise<void> {
+  if (!rows.length) return;
+  const mapped = rows.map((e) => ({ id: e.id, ref: e.ref, name: e.name, company: e.company, service: e.service, service_title: e.serviceTitle, needs: e.needs, budget: e.budget, timeline: e.timeline, message: e.message, channel: e.channel, status: e.status, notes: e.notes, created_at: e.createdAt }));
+  const { error } = await db().from("enquiries").upsert(mapped);
+  if (error) throw error;
+}
+
+export async function upsertBookRequests(rows: BookRequest[]): Promise<void> {
+  if (!rows.length) return;
+  const mapped = rows.map((r) => ({ id: r.id, name: r.name, email: r.email, phone: r.phone, company: r.company, book_slug: r.bookSlug, status: r.status, delivery_used: r.deliveryUsed, sent_at: r.sentAt, expires_at: r.expiresAt, downloads: r.downloads, link_downloads: r.linkDownloads, token_version: r.tokenVersion, error: r.error, notes: r.notes, consent: r.consent, source: r.source, created_at: r.createdAt }));
+  const { error } = await db().from("book_requests").upsert(mapped);
+  if (error) throw error;
+}
+
+export async function upsertQuizResults(rows: QuizResult[]): Promise<void> {
+  if (!rows.length) return;
+  const mapped = rows.map((r) => ({ id: r.id, ref: r.ref, top: r.top, matches: r.matches, summary: r.summary, answers: r.answers, action: r.action, email: r.email, status: r.status, notes: r.notes, created_at: r.createdAt }));
+  const { error } = await db().from("quiz_results").upsert(mapped, { onConflict: "ref" });
+  if (error) throw error;
+}
+
+export async function upsertOutboxRows(rows: OutboxMail[]): Promise<void> {
+  if (!rows.length) return;
+  const mapped = rows.map((m) => ({ id: m.id, kind: m.kind, to_email: m.to, subject: m.subject, html: m.html, text: m.text, status: m.status ?? "logged", error: m.error ?? "", created_at: m.createdAt }));
+  const { error } = await db().from("outbox").upsert(mapped);
+  if (error) throw error;
+}
+
+export async function deleteLeadsNotIn(table: "enquiries" | "book_requests" | "quiz_results", ids: string[]): Promise<void> {
+  const query = db().from(table).delete();
+  const { error } = ids.length ? await query.not("id", "in", `(${ids.map((id) => `"${id}"`).join(",")})`) : await query.neq("id", "");
   if (error) throw error;
 }

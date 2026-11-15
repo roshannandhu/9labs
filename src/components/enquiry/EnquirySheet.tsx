@@ -87,7 +87,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
 
   const send = (how: "wa" | "mail") => {
     setTried(true);
-    const res = submitEnquiry(svc.slug, { needs, budget: budget[0] ?? "", timeline: when[0] ?? "", name, company, message }, how === "wa" ? "whatsapp" : "email");
+    const res = submitEnquiry(site, svc.slug, { needs, budget: budget[0] ?? "", timeline: when[0] ?? "", name, company, message }, how === "wa" ? "whatsapp" : "email");
     if (!res.ok) {
       setMissing(res.missing);
       if (res.missing.includes("name")) panel.current?.querySelector<HTMLInputElement>(`#${CSS.escape(id)}-name`)?.focus();

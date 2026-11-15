@@ -1,115 +1,43 @@
 "use client";
 
-import { defaultWorkspace, WORKSPACE_SCHEMA } from "@/content/defaults";
-import type { AdminRole, AdminUser, BookRequest, Enquiry, FollowUp, OutboxKind, OutboxMail, QuizResult, Version, Workspace } from "@/content/types";
+import type { Session as SupabaseSession } from "@supabase/supabase-js";
+import { defaultWorkspace } from "@/content/defaults";
+import type { AdminRole, AdminUser, BookRequest, Enquiry, OutboxKind, OutboxMail, QuizResult, Workspace } from "@/content/types";
+import { ApiError, api } from "@/studio/api";
+import { supabase } from "@/studio/supabase";
 import { diffDeep } from "./diff";
 import { getIn, insertIntoArray, moveInArray, removeFromArray, setIn, type Path } from "./path";
-import { seedSampleData } from "./sample";
+import { normalizeWorkspace } from "./workspace";
 
-export type Session = { email: string; role: AdminRole } | null;
+export type Access = "loading" | "signed-out" | "denied" | "ok";
+export type Sync = "saved" | "saving" | "offline" | "conflict";
+export type Session = { email: string; name: string; role: AdminRole } | null;
 
 export type StoreState = {
+  access: Access;
+  sync: Sync;
+  session: Session;
+  deniedEmail: string;
   draft: Workspace;
+  draftRev: number;
   published: Workspace;
-  versions: Version[];
   enquiries: Enquiry[];
   bookRequests: BookRequest[];
   quizResults: QuizResult[];
   outbox: OutboxMail[];
   admins: AdminUser[];
-  session: Session;
 };
 
-const KEY = "nl-studio-v1";
-const MAX_VERSIONS = 30;
-const MAX_UNDO = 60;
-
-function freshState(): StoreState {
+function emptyState(): StoreState {
   const ws = defaultWorkspace();
-  const owner: AdminUser = { id: "owner-1", email: "owner@ninelabs.example", name: "Owner", role: "owner", active: true, lastLoginAt: null };
-  const base: StoreState = {
-    draft: ws,
-    published: structuredClone(ws),
-    versions: [],
-    enquiries: [],
-    bookRequests: [],
-    quizResults: [],
-    outbox: [],
-    admins: [owner],
-    session: null,
-  };
-  return seedSampleData(base);
+  return { access: "loading", sync: "saved", session: null, deniedEmail: "", draft: ws, draftRev: 0, published: structuredClone(ws), enquiries: [], bookRequests: [], quizResults: [], outbox: [], admins: [] };
 }
 
-/** Lays a freshly loaded workspace over today's defaults, so an older save never crashes a newer build. */
-function normalizeWorkspace(saved: unknown): Workspace {
-  const d = defaultWorkspace();
-  if (!saved || typeof saved !== "object") return d;
-  const s = saved as Partial<Workspace>;
-  return {
-    schema: WORKSPACE_SCHEMA,
-    site: deepMerge(d.site, s.site),
-    pages: Array.isArray(s.pages) && s.pages.length ? (s.pages as Workspace["pages"]) : d.pages,
-    faqs: Array.isArray(s.faqs) ? (s.faqs as Workspace["faqs"]) : d.faqs,
-    delivery: { ...d.delivery, ...(s.delivery ?? {}) },
-    email: { ...d.email, ...(s.email ?? {}) },
-  };
-}
-
-function deepMerge<T>(def: T, saved: unknown): T {
-  if (saved === undefined || saved === null) return def;
-  if (Array.isArray(def)) return (Array.isArray(saved) ? saved : def) as T;
-  if (def !== null && typeof def === "object") {
-    if (typeof saved !== "object" || saved === null) return def;
-    const out: Record<string, unknown> = { ...(def as Record<string, unknown>) };
-    const savedObj = saved as Record<string, unknown>;
-    for (const k of new Set([...Object.keys(out), ...Object.keys(savedObj)])) out[k] = deepMerge(out[k], savedObj[k]);
-    return out as T;
-  }
-  return (saved as T) ?? def;
-}
-
-function loadState(): StoreState {
-  if (typeof window === "undefined") return freshState();
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return freshState();
-    const parsed = JSON.parse(raw) as Partial<StoreState>;
-    return {
-      draft: normalizeWorkspace(parsed.draft),
-      published: normalizeWorkspace(parsed.published),
-      versions: Array.isArray(parsed.versions) ? parsed.versions : [],
-      enquiries: Array.isArray(parsed.enquiries) ? parsed.enquiries : [],
-      bookRequests: Array.isArray(parsed.bookRequests) ? parsed.bookRequests : [],
-      quizResults: Array.isArray(parsed.quizResults) ? parsed.quizResults : [],
-      outbox: Array.isArray(parsed.outbox) ? parsed.outbox : [],
-      admins: Array.isArray(parsed.admins) && parsed.admins.length ? parsed.admins : freshState().admins,
-      session: parsed.session ?? null,
-    };
-  } catch {
-    return freshState();
-  }
-}
-
-let state: StoreState = loadState();
+let state: StoreState = emptyState();
 const listeners = new Set<() => void>();
-let saveTimer: number | undefined;
-
-function persist() {
-  if (typeof window === "undefined") return;
-  window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => {
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(state));
-    } catch (err) {
-      console.error("[store] could not save — the browser's storage may be full.", err);
-    }
-  }, 150);
-}
 
 function setState(patch: Partial<StoreState>) {
   state = { ...state, ...patch };
-  persist();
   for (const l of listeners) l();
 }
 
@@ -121,40 +49,106 @@ export function getState(): StoreState {
   return state;
 }
 
-/**
- * A deterministic, signed-out placeholder — never the real (localStorage-derived) state, even on
- * the client. There is no server to render admin content at request time, so every admin screen
- * must render identically on the server and on the client's first paint (both "signed out"); only
- * after hydration does `useStoreState` (`src/studio/state.ts`) swap to the real `getState()`, via
- * `useSyncExternalStore`'s dedicated server-snapshot argument — exactly what it's for.
- */
-const EMPTY_SNAPSHOT: StoreState = { draft: defaultWorkspace(), published: defaultWorkspace(), versions: [], enquiries: [], bookRequests: [], quizResults: [], outbox: [], admins: [], session: null };
+/** There is no server to render admin content at request time: every admin screen renders this
+ * identically on the server and on the client's first paint, then `startAuth()` takes over. */
+const EMPTY_SNAPSHOT: StoreState = emptyState();
 export function getServerSnapshot(): StoreState {
   return EMPTY_SNAPSHOT;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sign-in and hydration                                              */
+/* ------------------------------------------------------------------ */
+
+async function handleSession(session: SupabaseSession | null): Promise<void> {
+  if (!session) {
+    setState({ access: "signed-out", session: null });
+    return;
+  }
+  await hydrate();
+}
+
+/** Call once on mount (Shell.tsx). `setTimeout(…, 0)` — supabase-js warns that awaiting inside the auth callback can deadlock. */
+export function startAuth(): void {
+  void supabase.auth.getSession().then(({ data }) => {
+    setTimeout(() => void handleSession(data.session), 0);
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    setTimeout(() => void handleSession(session), 0);
+  });
+}
+
+type BootstrapResponse = { session: { email: string; name: string; role: AdminRole }; draft: Workspace; draftRev: number; published: Workspace; enquiries: Enquiry[]; bookRequests: BookRequest[]; quizResults: QuizResult[]; outbox: OutboxMail[]; admins: AdminUser[] };
+
+export async function hydrate(): Promise<void> {
+  try {
+    const data = await api<BootstrapResponse>("/api/admin/bootstrap");
+    setState({
+      access: "ok",
+      sync: "saved",
+      session: data.session,
+      draft: normalizeWorkspace(data.draft),
+      draftRev: data.draftRev,
+      published: normalizeWorkspace(data.published),
+      enquiries: data.enquiries,
+      bookRequests: data.bookRequests,
+      quizResults: data.quizResults,
+      outbox: data.outbox,
+      admins: data.admins,
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 403) {
+      const { data } = await supabase.auth.getSession();
+      setState({ access: "denied", deniedEmail: data.session?.user.email ?? "" });
+      return;
+    }
+    setState({ access: "signed-out" });
+  }
+}
+
+export async function refreshLeads(): Promise<void> {
+  if (state.access !== "ok" || state.session?.role === "editor") return;
+  try {
+    const data = await api<{ enquiries: Enquiry[]; bookRequests: BookRequest[]; quizResults: QuizResult[]; outbox: OutboxMail[] }>("/api/admin/leads");
+    setState({ enquiries: data.enquiries, bookRequests: data.bookRequests, quizResults: data.quizResults, outbox: data.outbox });
+  } catch {
+    // a background refresh failing silently is fine — the next poll tries again
+  }
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+  setState(emptyState());
+  setState({ access: "signed-out" });
 }
 
 /* ------------------------------------------------------------------ */
 /*  Draft editing — one generic mechanism for every field and list   */
 /* ------------------------------------------------------------------ */
 
+function setDraftState(next: Workspace) {
+  setState({ draft: next });
+  scheduleFlush();
+}
+
 export function setDraft(path: Path, value: unknown) {
-  setState({ draft: setIn(state.draft, path, value) });
+  setDraftState(setIn(state.draft, path, value));
 }
 export function moveDraftItem(path: Path, from: number, to: number) {
   checkpoint();
   const arr = (getIn(state.draft, path) as unknown[]) ?? [];
-  setState({ draft: setIn(state.draft, path, moveInArray(arr, from, to)) });
+  setDraftState(setIn(state.draft, path, moveInArray(arr, from, to)));
 }
 export function addDraftItem(path: Path, item: unknown, at?: number) {
   checkpoint();
   const arr = (getIn(state.draft, path) as unknown[]) ?? [];
   const next = at === undefined ? [...arr, item] : insertIntoArray(arr, at, item);
-  setState({ draft: setIn(state.draft, path, next) });
+  setDraftState(setIn(state.draft, path, next));
 }
 export function removeDraftItem(path: Path, index: number) {
   checkpoint();
   const arr = (getIn(state.draft, path) as unknown[]) ?? [];
-  setState({ draft: setIn(state.draft, path, removeFromArray(arr, index)) });
+  setDraftState(setIn(state.draft, path, removeFromArray(arr, index)));
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,7 +161,7 @@ let redoStack: Workspace[] = [];
 /** Call before a discrete edit (a list move/add/remove, or a field losing focus) to make it undoable. */
 export function checkpoint() {
   undoStack.push(state.draft);
-  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  if (undoStack.length > 60) undoStack.shift();
   redoStack = [];
 }
 export function canUndo() {
@@ -180,17 +174,17 @@ export function undo() {
   const prev = undoStack.pop();
   if (!prev) return;
   redoStack.push(state.draft);
-  setState({ draft: prev });
+  setDraftState(prev);
 }
 export function redo() {
   const next = redoStack.pop();
   if (!next) return;
   undoStack.push(state.draft);
-  setState({ draft: next });
+  setDraftState(next);
 }
 
 /* ------------------------------------------------------------------ */
-/*  Publish lifecycle                                                   */
+/*  Saving to the server                                                */
 /* ------------------------------------------------------------------ */
 
 export function pendingChangeCount(): number {
@@ -200,103 +194,95 @@ export function hasUnpublishedChanges(): boolean {
   return pendingChangeCount() > 0;
 }
 
-function pushVersion(workspace: Workspace, summary: string[]) {
-  const version: Version = { id: `v_${Date.now().toString(36)}`, at: new Date().toISOString(), summary, workspace: structuredClone(workspace) };
-  const versions = [version, ...state.versions].slice(0, MAX_VERSIONS);
-  return versions;
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+let flushing = false;
+let flushQueued = false;
+let retryAttempt = 0;
+const RETRY_DELAYS_MS = [5000, 15000, 30000];
+
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => void flushDraft(), 800);
 }
 
-export function publish(summary: string[]) {
-  const versions = pushVersion(state.draft, summary);
-  setState({ published: structuredClone(state.draft), versions });
+/** Saves the current draft, with optimistic-concurrency retry/offline handling. One request at a time. */
+export async function flushDraft(): Promise<void> {
+  if (state.access !== "ok") return;
+  if (flushing) {
+    flushQueued = true;
+    return;
+  }
+  flushing = true;
+  clearTimeout(flushTimer);
+  setState({ sync: "saving" });
+  try {
+    const { rev } = await api<{ rev: number }>("/api/admin/draft", { method: "PUT", json: { draft: state.draft, rev: state.draftRev } });
+    retryAttempt = 0;
+    setState({ draftRev: rev, sync: "saved" });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      setState({ sync: "conflict" });
+    } else {
+      setState({ sync: "offline" });
+      const delay = RETRY_DELAYS_MS[Math.min(retryAttempt, RETRY_DELAYS_MS.length - 1)];
+      retryAttempt++;
+      flushTimer = setTimeout(() => void flushDraft(), delay);
+    }
+  } finally {
+    flushing = false;
+    if (flushQueued) {
+      flushQueued = false;
+      void flushDraft();
+    }
+  }
 }
-export function discardDraft() {
+
+/** Flushes first, so Publish never ships a draft the server hasn't seen yet. Throws ApiError(422) with `.details.issues` when blocked. */
+export async function publish(summary: string[]): Promise<void> {
+  await flushDraft();
+  if (state.sync !== "saved") throw new Error("Can't publish right now — fix the sync issue first.");
+  const { published } = await api<{ published: Workspace }>("/api/admin/publish", { json: { rev: state.draftRev, summary } });
+  setState({ published: normalizeWorkspace(published) });
+}
+
+export function discardDraft(): void {
   undoStack = [];
   redoStack = [];
-  setState({ draft: structuredClone(state.published) });
-}
-export function restoreVersion(id: string) {
-  const v = state.versions.find((x) => x.id === id);
-  if (!v) return;
-  const restored = structuredClone(v.workspace);
-  const versions = pushVersion(restored, [`Restored the version from ${new Date(v.at).toLocaleString()}`]);
-  undoStack = [];
-  redoStack = [];
-  setState({ draft: restored, published: structuredClone(restored), versions });
+  setDraftState(structuredClone(state.published));
 }
 
 /* ------------------------------------------------------------------ */
 /*  Leads                                                               */
 /* ------------------------------------------------------------------ */
 
-const newId = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-
-export function addEnquiry(e: Omit<Enquiry, "id" | "createdAt" | "status" | "notes">): Enquiry {
-  const full: Enquiry = { ...e, id: newId("enq"), status: "new", notes: "", createdAt: new Date().toISOString() };
-  setState({ enquiries: [full, ...state.enquiries] });
-  return full;
-}
-export function addBookRequest(r: Omit<BookRequest, "id" | "createdAt">): BookRequest {
-  const full: BookRequest = { ...r, id: newId("req"), createdAt: new Date().toISOString() };
-  setState({ bookRequests: [full, ...state.bookRequests] });
-  return full;
-}
-export function updateBookRequest(id: string, patch: Partial<BookRequest>) {
-  setState({ bookRequests: state.bookRequests.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
-}
-export function addQuizResult(r: Omit<QuizResult, "id" | "createdAt" | "status" | "notes">): QuizResult {
-  const full: QuizResult = { ...r, id: newId("quiz"), status: "new", notes: "", createdAt: new Date().toISOString() };
-  setState({ quizResults: [full, ...state.quizResults] });
-  return full;
-}
-export function updateQuizResult(id: string, patch: Partial<QuizResult>) {
-  setState({ quizResults: state.quizResults.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
-}
-export function updateEnquiry(id: string, patch: Partial<Enquiry>) {
-  setState({ enquiries: state.enquiries.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
-}
-export function setFollowUp(kind: "enquiry" | "book" | "quiz", id: string, status: FollowUp) {
-  if (kind === "enquiry") updateEnquiry(id, { status });
-  else if (kind === "quiz") updateQuizResult(id, { status });
-}
-export function removeLead(kind: "enquiry" | "book" | "quiz", id: string) {
+export async function removeLead(kind: "enquiry" | "book" | "quiz", id: string): Promise<void> {
+  await api(`/api/admin/leads/${kind}/${id}`, { method: "DELETE" });
   if (kind === "enquiry") setState({ enquiries: state.enquiries.filter((e) => e.id !== id) });
   else if (kind === "book") setState({ bookRequests: state.bookRequests.filter((r) => r.id !== id) });
   else setState({ quizResults: state.quizResults.filter((r) => r.id !== id) });
 }
 
-/* ------------------------------------------------------------------ */
-/*  Outbox                                                              */
-/* ------------------------------------------------------------------ */
-
-export function addOutboxMail(m: Omit<OutboxMail, "id" | "createdAt">): OutboxMail {
-  const full: OutboxMail = { ...m, id: newId("mail"), createdAt: new Date().toISOString() };
-  setState({ outbox: [full, ...state.outbox].slice(0, 300) });
-  return full;
+export async function getOutboxHtml(id: string): Promise<string | null> {
+  const { html } = await api<{ html: string | null }>(`/api/admin/outbox/${id}`);
+  return html;
 }
+
 export const outboxKindLabel: Record<OutboxKind, string> = { ebook: "E-book", "ebook-alert": "Admin alert", "quiz-plan": "Quiz plan", test: "Test" };
 
 /* ------------------------------------------------------------------ */
-/*  Admins & session (demo sign-in — real Google sign-in is a publish-phase addition)  */
+/*  Team                                                                */
 /* ------------------------------------------------------------------ */
 
-export function signIn(email: string, role: AdminRole) {
-  const existing = state.admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
-  const admins = existing
-    ? state.admins.map((a) => (a.id === existing.id ? { ...a, lastLoginAt: new Date().toISOString() } : a))
-    : [...state.admins, { id: newId("admin"), email, name: email.split("@")[0], role, active: true, lastLoginAt: new Date().toISOString() }];
-  setState({ admins, session: { email, role: existing?.role ?? role } });
+export async function addAdmin(email: string, name: string, role: AdminRole): Promise<void> {
+  const { admin } = await api<{ admin: AdminUser }>("/api/admin/admins", { json: { email, name, role } });
+  setState({ admins: [...state.admins, admin] });
 }
-export function signOut() {
-  setState({ session: null });
+export async function updateAdmin(id: string, patch: Partial<Pick<AdminUser, "role" | "active">>): Promise<void> {
+  const { admin } = await api<{ admin: AdminUser }>(`/api/admin/admins/${id}`, { method: "PATCH", json: patch });
+  setState({ admins: state.admins.map((a) => (a.id === id ? admin : a)) });
 }
-export function addAdmin(email: string, name: string, role: AdminRole) {
-  setState({ admins: [...state.admins, { id: newId("admin"), email, name, role, active: true, lastLoginAt: null }] });
-}
-export function updateAdmin(id: string, patch: Partial<AdminUser>) {
-  setState({ admins: state.admins.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
-}
-export function removeAdmin(id: string) {
+export async function removeAdmin(id: string): Promise<void> {
+  await api(`/api/admin/admins/${id}`, { method: "DELETE" });
   setState({ admins: state.admins.filter((a) => a.id !== id) });
 }
 
@@ -304,34 +290,38 @@ export function removeAdmin(id: string) {
 /*  Data                                                                */
 /* ------------------------------------------------------------------ */
 
-/** A full backup restore: replaces every document at once (used by Settings → Data → Import). */
-export function replaceState(next: StoreState) {
-  undoStack = [];
-  redoStack = [];
-  state = next;
-  persist();
-  for (const l of listeners) l();
+export async function downloadBackup(): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/admin/backup/", { headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } });
+  if (!res.ok) throw new Error("Could not download the backup.");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = res.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "nine-labs-backup.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-export function resetAll() {
-  undoStack = [];
-  redoStack = [];
-  const fresh = freshState();
-  setState(fresh);
-}
-export function clearSampleLeads() {
-  setState({ enquiries: [], bookRequests: [], quizResults: [], outbox: [] });
+export async function restoreBackup(file: File): Promise<void> {
+  const text = await file.text();
+  await api("/api/admin/restore", { method: "POST", body: text });
+  await hydrate();
 }
 
-/**
- * A book's requests/sent/downloads counters live on the record itself (so the shelf can show
- * them), but they are operational data, not editable content — they're bumped in both the
- * draft and the published copy directly, so neither Discard nor the next Publish can erase them.
- */
-export function bumpEbookCounter(bookId: string, field: "requests" | "sent" | "downloads", by = 1) {
-  const bump = (ws: Workspace): Workspace => ({
-    ...ws,
-    site: { ...ws.site, ebooks: ws.site.ebooks.map((b) => (b.id === bookId ? { ...b, [field]: (b[field] ?? 0) + by } : b)) },
-  });
-  setState({ draft: bump(state.draft), published: bump(state.published) });
+export async function resetAll(): Promise<void> {
+  await api("/api/admin/reset", { method: "POST", json: {} });
+  undoStack = [];
+  redoStack = [];
+  await hydrate();
+}
+
+export async function clearSampleLeads(): Promise<void> {
+  await api("/api/admin/leads/clear-samples", { method: "POST", json: {} });
+  await refreshLeads();
+}
+
+export async function loadSampleData(): Promise<void> {
+  await api("/api/admin/sample", { method: "POST", json: {} });
+  await refreshLeads();
 }

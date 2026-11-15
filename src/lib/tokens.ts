@@ -8,7 +8,8 @@ export function signToken(payload: Record<string, unknown>, secret: string): str
   return `${body}.${sign(body, secret)}`;
 }
 
-export function verifyToken<T extends { exp: number }>(token: string, secret: string): T | null {
+/** `allowExpired`: verify the signature but skip the expiry check — for callers that need to tell "expired" apart from "invalid". */
+export function verifyToken<T extends { exp: number }>(token: string, secret: string, options?: { allowExpired?: boolean }): T | null {
   const i = token.indexOf(".");
   if (i < 0) return null;
   const body = token.slice(0, i);
@@ -22,7 +23,8 @@ export function verifyToken<T extends { exp: number }>(token: string, secret: st
   } catch {
     return null;
   }
-  if (typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null;
+  if (typeof payload.exp !== "number") return null;
+  if (!options?.allowExpired && payload.exp < Date.now() / 1000) return null;
   return payload;
 }
 

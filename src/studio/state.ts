@@ -13,12 +13,14 @@ export function useStoreState() {
 export const useDraft = () => useStoreState().draft;
 export const usePublished = () => useStoreState().published;
 export const useSession = () => useStoreState().session;
+export const useAccess = () => useStoreState().access;
+export const useSync = () => useStoreState().sync;
+export const useDeniedEmail = () => useStoreState().deniedEmail;
 export const useEnquiries = () => useStoreState().enquiries;
 export const useBookRequests = () => useStoreState().bookRequests;
 export const useQuizResults = () => useStoreState().quizResults;
 export const useOutbox = () => useStoreState().outbox;
 export const useAdmins = () => useStoreState().admins;
-export const useVersions = () => useStoreState().versions;
 
 /** How many leaf values differ between what's live and what's drafted. 0 = nothing to publish. */
 export function usePendingChanges(): number {

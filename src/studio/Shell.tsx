@@ -10,13 +10,13 @@ import { useTheme } from "@/components/layout/ThemeToggle";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { siteHref } from "@/lib/site-href";
 import { checkWorkspace } from "@/lib/checks";
-import { signOut } from "@/lib/store";
+import { refreshLeads, signOut, startAuth } from "@/lib/store";
 import { setAdminTheme } from "./theme";
 import { CommandPalette } from "./CommandPalette";
 import { Icon } from "./Icon";
 import { ROOMS, roomByPath, type Room, type RoomGroup } from "./rooms";
 import { SignIn } from "./SignIn";
-import { useBookRequests, useDraft, useEnquiries, useQuizResults, useSession } from "./state";
+import { useAccess, useBookRequests, useDeniedEmail, useDraft, useEnquiries, useQuizResults, useSession, useSync } from "./state";
 import { PublishBar } from "./PublishBar";
 import { Avatar, ConfirmProvider, IconButton, Kbd, ToastProvider } from "./ui";
 
@@ -237,6 +237,25 @@ function MobileTopBar({ onMenu }: { onMenu: () => void }) {
   );
 }
 
+const SYNC_LABEL: Record<"saved" | "saving" | "offline" | "conflict", string> = { saved: "Saved", saving: "Saving…", offline: "Offline — retrying", conflict: "Changed elsewhere — reload" };
+
+function SyncStatus() {
+  const sync = useSync();
+  if (sync === "saved") return null;
+  const tone = sync === "conflict" ? "text-st-danger" : sync === "offline" ? "text-st-warn" : "text-st-dim";
+  return (
+    <span className={`st-micro flex items-center gap-1.5 ${tone}`}>
+      {sync === "conflict" ? (
+        <button type="button" onClick={() => window.location.reload()} className="underline underline-offset-2">
+          {SYNC_LABEL[sync]}
+        </button>
+      ) : (
+        SYNC_LABEL[sync]
+      )}
+    </span>
+  );
+}
+
 function TopBar({ pathname }: { pathname: string }) {
   const theme = useTheme();
   const [now, setNow] = useState(() => new Date());
@@ -259,6 +278,7 @@ function TopBar({ pathname }: { pathname: string }) {
         {!room && crumbs.length <= 1 && <span className="text-st-ink">dashboard</span>}
       </p>
       <span className="flex-1" />
+      <SyncStatus />
       <span className="st-num text-[12.5px] text-st-dim">{now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
       <IconButton label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setAdminTheme(theme === "dark" ? "light" : "dark")}>
         <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
@@ -293,14 +313,67 @@ function BottomTabs({ pathname }: { pathname: string }) {
   );
 }
 
+function LoadingScreen() {
+  return (
+    <div className="st-canvas grid h-dvh place-items-center">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-st-border-strong border-t-st-purple" aria-label="Loading" role="status" />
+    </div>
+  );
+}
+
+function DeniedScreen({ email }: { email: string }) {
+  return (
+    <div className="st-canvas grid h-dvh place-items-center px-6">
+      <div className="st-panel max-w-[420px] p-7 text-center">
+        <p className="text-[14px] text-st-ink">
+          <span className="font-mono text-st-purple">{email || "This account"}</span> isn&apos;t on the team. Ask the owner to add you in Settings → Team.
+        </p>
+        <button type="button" onClick={() => void signOut()} className="st-btn st-btn-ghost mt-5">
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
+  const access = useAccess();
   const session = useSession();
+  const sync = useSync();
+  const deniedEmail = useDeniedEmail();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [railPref, setRailPref] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)", true);
   const isTabletUp = useMediaQuery("(min-width: 640px)", true);
+
+  useEffect(() => {
+    startAuth();
+  }, []);
+
+  useEffect(() => {
+    if (access !== "ok" || session?.role === "editor") return;
+    const tick = () => {
+      if (document.visibilityState === "visible") void refreshLeads();
+    };
+    const interval = window.setInterval(tick, 60_000);
+    window.addEventListener("focus", tick);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", tick);
+    };
+  }, [access, session?.role]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (sync === "saved") return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [sync]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- closes the mobile drawer on every navigation, not a derived render value
@@ -339,7 +412,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
     });
   };
 
-  if (!session) return <SignIn />;
+  if (access === "loading") return <LoadingScreen />;
+  if (access === "signed-out") return <SignIn />;
+  if (access === "denied") return <DeniedScreen email={deniedEmail} />;
 
   const rail = !isDesktop || railPref;
 

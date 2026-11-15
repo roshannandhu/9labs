@@ -28,6 +28,12 @@ test("verifyToken rejects an expired token even with a correct signature", () =>
   assert.equal(verifyToken(token, "secret-a"), null);
 });
 
+test("verifyToken with allowExpired still checks the signature, just not the expiry", () => {
+  const token = signToken({ id: "req_1", exp: Math.floor(Date.now() / 1000) - 1 }, "secret-a");
+  assert.equal(verifyToken<{ id: string; exp: number }>(token, "secret-a", { allowExpired: true })?.id, "req_1");
+  assert.equal(verifyToken(token, "secret-b", { allowExpired: true }), null);
+});
+
 test("keyedHash is deterministic per secret, and different secrets never collide", () => {
   assert.equal(keyedHash("1.2.3.4", "secret-a"), keyedHash("1.2.3.4", "secret-a"));
   assert.notEqual(keyedHash("1.2.3.4", "secret-a"), keyedHash("1.2.3.4", "secret-b"));
