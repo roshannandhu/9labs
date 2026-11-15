@@ -1088,6 +1088,118 @@ html[data-intro="playing"] [data-logo-9] {
     display: none;
   }
 }
+/* ---- laptop "wow" layer: same cards, same positions and motion — only light and life added ----
+   The focused card gets a slowly turning brand-gradient rim, a glow beneath, a light that follows
+   the mouse (--mx/--my, set in Services.tsx) and a halo behind its picture; its caption rises in
+   line by line each time it comes into focus. Peeking cards lose a little colour so it stands out.
+   Phones are untouched (this whole block is the orbit query). */
+.scene-halo {
+  display: none;
+}
+@property --svc-rim {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@media (min-width: 768px) and (min-height: 560px) {
+  .scene-card {
+    --mx: 50%;
+    --my: 30%;
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgb(140 83 254 / 0.07), transparent 60%),
+      linear-gradient(180deg, var(--surface-1), color-mix(in srgb, var(--surface-1) 82%, var(--surface-2)));
+    transition: box-shadow 0.8s var(--ease-out-expo), filter 0.8s ease;
+    filter: saturate(0.75);
+  }
+  .scene-card[data-active="true"] {
+    filter: none;
+    box-shadow:
+      0 40px 80px -40px rgb(90 72 245 / 0.55),
+      0 18px 40px -28px rgb(92 224 230 / 0.35);
+  }
+  /* the turning rim: a conic gradient shown only in a 2px ring (mask), fading in on focus */
+  .scene-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(from var(--svc-rim), transparent 0deg, var(--brand-a) 70deg, var(--brand-b) 130deg, transparent 200deg, transparent 250deg, var(--brand-a) 320deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    animation: svc-rim 7s linear infinite;
+    pointer-events: none;
+  }
+  /* the mouse light */
+  .scene-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(420px circle at var(--mx) var(--my), rgb(140 83 254 / 0.12), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  .scene-card[data-active="true"]::before {
+    opacity: 1;
+  }
+  .scene-card[data-active="true"]:hover::after {
+    opacity: 1;
+  }
+
+  /* the halo behind the picture */
+  .scene-halo {
+    display: block;
+    position: absolute;
+    inset: -6%;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+      radial-gradient(closest-side, rgb(140 83 254 / 0.16), rgb(92 224 230 / 0.06) 62%, transparent 72%);
+    box-shadow: inset 0 0 0 1px rgb(140 83 254 / 0.14);
+    opacity: 0;
+    transform: scale(0.82);
+    transition: opacity 0.9s ease, transform 1.2s var(--ease-out-expo);
+  }
+  .scene-card[data-active="true"] .scene-halo {
+    opacity: 1;
+    transform: scale(1);
+    animation: svc-halo 4.5s ease-in-out 1.2s infinite;
+  }
+
+  /* the caption rises in, line by line, on focus */
+  .scene-card .scene-caption > * {
+    opacity: 0.55;
+    transform: translateY(10px);
+    transition: opacity 0.6s ease, transform 0.8s var(--ease-out-expo);
+  }
+  .scene-card[data-active="true"] .scene-caption > * {
+    opacity: 1;
+    transform: none;
+  }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(2) { transition-delay: 0.07s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(3) { transition-delay: 0.14s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(4) { transition-delay: 0.21s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(5) { transition-delay: 0.28s; }
+}
+@keyframes svc-rim {
+  to { --svc-rim: 360deg; }
+}
+@keyframes svc-halo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+html[data-motion-resolved="reduce"] .scene-card::before,
+html[data-motion-resolved="reduce"] .scene-halo {
+  animation: none;
+}
+
 /* ---- 3B Frosted Capsule Dock (Laptop / Desktop) -------------------------------------------- */
 .orbit-dock-wrap {
   position: relative;

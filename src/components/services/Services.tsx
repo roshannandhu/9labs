@@ -110,6 +110,15 @@ function ServicesTrack({ heading, services, t }: Part) {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // laptop: the focused card's light follows the mouse (CSS reads --mx/--my; phones never get it)
+    if (e.pointerType === "mouse") {
+      const card = (e.target as HTMLElement).closest<HTMLElement>(".scene-card");
+      if (card) {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", `${(e.clientX - r.left).toFixed(0)}px`);
+        card.style.setProperty("--my", `${(e.clientY - r.top).toFixed(0)}px`);
+      }
+    }
     if (!pointerDownPos.current) return;
     const dx = Math.abs(e.clientX - pointerDownPos.current.x);
     const dy = Math.abs(e.clientY - pointerDownPos.current.y);
