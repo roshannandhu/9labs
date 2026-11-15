@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSite } from "@/components/providers/SiteProvider";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -162,14 +162,18 @@ function UsBank({ className = "" }: { className?: string }) {
 
 /** A low skyline behind the phone panorama (moves slower than the bridge while you swipe: depth). */
 function Skyline() {
-  const r = (n: number) => (((Math.sin(n * 12.9898) * 43758.5453) % 1) + 1) % 1; // fixed pseudo-random
-  const blocks: string[] = [];
-  for (let x = 0, n = 1; x < 1250; n++) {
-    const w = 26 + r(n) * 44;
-    const h = 40 + r(n + 99) * (x < 200 || x > 1000 ? 90 : 46);
-    blocks.push(`M${x.toFixed(0)} 380 V${(380 - h).toFixed(0)} H${(x + w).toFixed(0)} V380`);
-    x += w + 4 + r(n + 7) * 10;
-  }
+  // The seed is fixed, so this is the same string every time — compute it once, not on every re-render.
+  const blocks = useMemo(() => {
+    const r = (n: number) => (((Math.sin(n * 12.9898) * 43758.5453) % 1) + 1) % 1; // fixed pseudo-random
+    const out: string[] = [];
+    for (let x = 0, n = 1; x < 1250; n++) {
+      const w = 26 + r(n) * 44;
+      const h = 40 + r(n + 99) * (x < 200 || x > 1000 ? 90 : 46);
+      out.push(`M${x.toFixed(0)} 380 V${(380 - h).toFixed(0)} H${(x + w).toFixed(0)} V380`);
+      x += w + 4 + r(n + 7) * 10;
+    }
+    return out;
+  }, []);
   return (
     <svg viewBox="0 0 1250 440" className="absolute inset-0 h-full w-full text-white" preserveAspectRatio="none" aria-hidden="true">
       <path d={blocks.join(" ")} fill="currentColor" fillOpacity="0.04" />
