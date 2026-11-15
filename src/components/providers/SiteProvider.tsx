@@ -1,49 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { site as defaults, waLink } from "@/content/site";
-import { toSite } from "@/content/toSite";
+import { createContext, useCallback, useContext } from "react";
+import { waLink } from "@/content/site";
 import type { FaqItem, Page, SectionKey, SiteData } from "@/content/types";
-import { resolveSiteFiles } from "@/lib/resolveFiles";
-import { getState, subscribe } from "@/lib/store";
 
-/**
- * There is no server at request time (fully static export): the first render — on the build
- * server and on the client's first paint — always shows the built-in defaults, so there is
- * nothing to hydrate against. Once mounted, an effect swaps in whatever is published in the
- * browser's own storage, and re-applies on every save (`subscribe`), so an admin's changes and
- * uploaded files (logo, covers) appear live without a reload.
- */
-const Ctx = createContext<SiteData>(defaults);
+/** The site's real content, read once on the server (getPublicContent) and passed down as props — no client fetch, no hydration gap. */
+const Ctx = createContext<SiteData | null>(null);
 const PagesCtx = createContext<Page[]>([]);
 const FaqsCtx = createContext<FaqItem[]>([]);
 
-export function SiteProvider({ children }: { children: React.ReactNode }) {
-  const [site, setSite] = useState<SiteData>(defaults);
-  const [pages, setPages] = useState<Page[]>([]);
-  const [faqs, setFaqs] = useState<FaqItem[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let lastPublished: ReturnType<typeof getState>["published"] | null = null; // only re-resolve when a Publish actually changes this reference — not on every lead saved elsewhere
-    const apply = async () => {
-      const ws = getState().published;
-      if (ws === lastPublished) return;
-      lastPublished = ws;
-      const resolved = await resolveSiteFiles(toSite(ws));
-      if (cancelled) return;
-      setSite(resolved);
-      setPages(ws.pages);
-      setFaqs(ws.faqs);
-    };
-    void apply();
-    const unsubscribe = subscribe(() => void apply());
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
-
+export function SiteProvider({ site, pages, faqs, children }: { site: SiteData; pages: Page[]; faqs: FaqItem[]; children: React.ReactNode }) {
   return (
     <Ctx.Provider value={site}>
       <PagesCtx.Provider value={pages}>
@@ -53,7 +19,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useSite = () => useContext(Ctx);
+export function useSite(): SiteData {
+  const site = useContext(Ctx);
+  if (!site) throw new Error("useSite must be used inside <SiteProvider>");
+  return site;
+}
 export const usePages = () => useContext(PagesCtx);
 export const usePage = (slug: string) => useContext(PagesCtx).find((p) => p.slug === slug);
 export const useFaqs = () => useContext(FaqsCtx).filter((f) => f.enabled);
