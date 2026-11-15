@@ -101,9 +101,9 @@ export function Tabs<T extends string>({ tabs, active, onChange, layoutId }: { t
 export function Segmented<T extends string>({ options, value, onChange, layoutId, size = "md" }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; layoutId: string; size?: "sm" | "md" }) {
   const h = size === "sm" ? "h-7" : "h-9";
   return (
-    <div className={`inline-flex items-center gap-0.5 rounded-full border border-st-border-strong bg-st-panel-2 p-0.5`}>
+    <div className={`inline-flex w-fit items-center gap-0.5 rounded-full border border-st-border-strong bg-st-panel-2 p-0.5`}>
       {options.map((o) => (
-        <button key={o.value} type="button" onClick={() => onChange(o.value)} className={`relative ${h} rounded-full px-3 text-[12.5px] font-medium transition-colors ${value === o.value ? "text-white" : "text-st-sub hover:text-st-ink"}`}>
+        <button key={o.value} type="button" onClick={() => onChange(o.value)} className={`relative isolate ${h} rounded-full px-3 text-[12.5px] font-medium transition-colors ${value === o.value ? "text-white" : "text-st-sub hover:text-st-ink"}`}>
           {value === o.value && <motion.span layoutId={layoutId} transition={SPRING} className="absolute inset-0 -z-10 rounded-full bg-st-grad" aria-hidden="true" />}
           {o.label}
         </button>

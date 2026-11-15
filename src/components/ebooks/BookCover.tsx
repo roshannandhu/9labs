@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { Ebook } from "@/content/site";
 import { NINE_PATH } from "@/components/hero/nine-path";
 
@@ -14,6 +14,17 @@ function titleLines(title: string, max = 14) {
 }
 
 /**
+ * An uploaded cover's print finish (inline, so the admin's previews get it as well as the site): the
+ * hinge groove (as the designed covers' 10/200 spine band), a soft top-left light falling to a darker
+ * bottom-right, and a thin inner edge.
+ */
+const COVER_FINISH: CSSProperties = {
+  background:
+    "linear-gradient(90deg, rgb(0 0 0 / 0.42) 0, rgb(0 0 0 / 0.3) 4%, rgb(255 255 255 / 0.16) 5%, rgb(255 255 255 / 0) 7.5%), linear-gradient(150deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 38%, rgb(0 0 0 / 0) 60%, rgb(0 0 0 / 0.26))",
+  boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.1), inset -10px 0 18px -12px rgb(0 0 0 / 0.35)",
+};
+
+/**
  * The cover. If the admin uploaded an image (`book.cover`) it is used as-is; otherwise a designed
  * cover is drawn in code from the book's tone and order (viewBox 200×290).
  */
@@ -26,7 +37,7 @@ export function BookCover({ book }: { book: Ebook }) {
       <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]">
         {/* eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers */}
         <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />
-        <span className="cover-finish" aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-0" style={COVER_FINISH} aria-hidden="true" />
       </span>
     );
   }

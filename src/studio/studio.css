@@ -255,6 +255,10 @@ h3 {
     transform: none;
   }
 }
+/* the brand gradient as a background: segmented-control pills, the Settings nav marker, bars */
+@utility bg-st-grad {
+  background: var(--st-grad);
+}
 @utility st-btn-primary {
   border-color: transparent;
   background: var(--st-grad);

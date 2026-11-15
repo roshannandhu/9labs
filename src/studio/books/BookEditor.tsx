@@ -26,7 +26,12 @@ export function TiltCover({ book, className = "" }: { book: Ebook; className?: s
         {/* the pages, seen past the cover's right edge */}
         <span className="absolute -right-[5px] bottom-[3px] top-[3px] w-[7px] rounded-r-[3px] bg-[repeating-linear-gradient(90deg,#d9d6cf_0_1px,#b8b3aa_1px_2px)] shadow-[inset_0_0_6px_rgb(0_0_0/0.35)]" aria-hidden="true" />
         <div className="relative h-full overflow-hidden rounded-[3px_6px_6px_3px] shadow-[10px_14px_28px_-10px_rgb(0_0_0/0.6)]">
-          <BookCover book={resolved} />
+          {book.cover && !coverUrl ? (
+            // the uploaded image is still loading: don't flash the designed cover meanwhile
+            <span className="block h-full w-full animate-pulse bg-[linear-gradient(160deg,var(--st-panel-3),var(--st-panel-2))]" aria-label="Loading cover" />
+          ) : (
+            <BookCover book={resolved} />
+          )}
           <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,transparent_35%,rgba(255,255,255,.09)_48%,transparent_60%)]" aria-hidden="true" />
         </div>
       </div>
