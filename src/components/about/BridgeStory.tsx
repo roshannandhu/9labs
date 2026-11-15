@@ -25,10 +25,22 @@ const H = { deck: 300, top: 70, water: 380, towers: [330, 870], x0: 120, x1: 108
 
 function SideBridge() {
   const { story } = useSite().about;
-  const hangers: { x: number; y: number; side: "l" | "c" | "r" }[] = [];
-  for (let x = 360; x <= 840; x += 30) hangers.push({ x, y: quad(H.top, 470, H.top, (x - 330) / 540), side: "c" });
-  for (let x = 150; x <= 310; x += 30) hangers.push({ x, y: quad(290, 190, H.top, (x - H.x0) / (330 - H.x0)), side: "l" });
-  for (let x = 890; x <= 1050; x += 30) hangers.push({ x, y: quad(H.top, 190, 290, (x - 870) / (H.x1 - 870)), side: "r" });
+  // Pure geometry, same inputs every time — compute once instead of on every render.
+  const hangers = useMemo(() => {
+    const out: { x: number; y: number; side: "l" | "c" | "r" }[] = [];
+    for (let x = 360; x <= 840; x += 30) out.push({ x, y: quad(H.top, 470, H.top, (x - 330) / 540), side: "c" });
+    for (let x = 150; x <= 310; x += 30) out.push({ x, y: quad(290, 190, H.top, (x - H.x0) / (330 - H.x0)), side: "l" });
+    for (let x = 890; x <= 1050; x += 30) out.push({ x, y: quad(H.top, 190, 290, (x - 870) / (H.x1 - 870)), side: "r" });
+    return out;
+  }, []);
+  // Railing posts along the deck, as one path (a tick every 60px) so it's a single extra element, not dozens.
+  const railTicks = useMemo(() => {
+    const out: string[] = [];
+    for (let x = H.x0 + 20; x <= H.x1 - 20; x += 60) out.push(`M${x} ${H.deck - 2} V${H.deck - 13}`);
+    return out.join(" ");
+  }, []);
+  const lampX = [180, 390, 600, 810, 1020];
+  const lampPosts = lampX.map((x) => `M${x} ${H.deck - 13} V${H.deck - 30}`).join(" ");
 
   return (
     <svg viewBox="0 0 1200 440" className="block h-auto w-full overflow-visible text-white" aria-hidden="true">
@@ -46,9 +58,10 @@ function SideBridge() {
         </filter>
       </defs>
 
-      {/* water + reflections */}
+      {/* water + reflections, shimmering gently */}
       <path d={`M0 ${H.water} H1200`} {...stroke} stroke="currentColor" strokeOpacity="0.14" />
-      <path d={`M180 ${H.water + 14} H460 M620 ${H.water + 14} H1020 M300 ${H.water + 28} H900`} {...stroke} stroke="currentColor" strokeOpacity="0.07" strokeDasharray="10 14" />
+      <path className="bs-shimmer" d={`M180 ${H.water + 14} H460 M620 ${H.water + 14} H1020 M300 ${H.water + 28} H900`} {...stroke} stroke="currentColor" strokeOpacity="0.07" strokeDasharray="10 14" />
+      <path className="bs-shimmer bs-shimmer-b" d={`M80 ${H.water + 20} H260 M520 ${H.water + 34} H760 M940 ${H.water + 22} H1140`} {...stroke} stroke="currentColor" strokeOpacity="0.05" strokeDasharray="6 16" />
 
       {/* banks */}
       <path className="bs-draw bs-1" d={`M0 ${H.deck} H${H.x0} L${H.x0 + 26} ${H.water}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" strokeWidth={1.4} />
@@ -67,6 +80,9 @@ function SideBridge() {
             strokeOpacity="0.22"
           />
           <path className="bs-draw" d={`M${x - 18} ${H.top} H${x + 18}`} {...stroke} stroke="currentColor" strokeOpacity="0.7" strokeWidth={1.6} />
+          {/* rivets, right where the cross-bracing actually crosses */}
+          <circle className="bs-pop" cx={x} cy={145} r="3.2" fill="currentColor" opacity="0.6" />
+          <circle className="bs-pop" cx={x} cy={225} r="3.2" fill="currentColor" opacity="0.6" />
           {/* tower light */}
           <circle className="bs-pop" cx={x} cy={H.top - 10} r="4" fill={i === 0 ? "var(--brand-a)" : "var(--brand-b)"} filter="url(#bs-glow)" />
         </g>
@@ -84,19 +100,31 @@ function SideBridge() {
         />
       ))}
 
-      {/* main cables */}
+      {/* main cables, each with a fainter twin just below it for a sense of thickness */}
       <g filter="url(#bs-glow)">
         <path className="bs-draw bs-1" d={`M${H.x0} 290 Q225 190 330 ${H.top}`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
         <path className="bs-draw bs-2" d={`M330 ${H.top} Q600 470 870 ${H.top}`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
         <path className="bs-draw bs-2" d={`M870 ${H.top} Q975 190 ${H.x1} 290`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
       </g>
+      <g opacity="0.4">
+        <path className="bs-draw bs-1" d={`M${H.x0} 296 Q225 196 330 ${H.top + 6}`} {...stroke} stroke="currentColor" strokeWidth={1} />
+        <path className="bs-draw bs-2" d={`M330 ${H.top + 6} Q600 476 870 ${H.top + 6}`} {...stroke} stroke="currentColor" strokeWidth={1} />
+        <path className="bs-draw bs-2" d={`M870 ${H.top + 6} Q975 196 ${H.x1} 296`} {...stroke} stroke="currentColor" strokeWidth={1} />
+      </g>
 
-      {/* the deck joins in step 3: two lanes */}
+      {/* the deck joins in step 3: two lanes, a railing, and lamp posts */}
       <g className="bs-3">
         <path className="bs-draw bs-deck" d={`M${H.x0} ${H.deck} H${H.x1}`} {...stroke} stroke="currentColor" strokeOpacity="0.85" strokeWidth={1.8} />
         <path className="bs-draw bs-deck" d={`M${H.x0} ${H.deck + 16} H${H.x1}`} {...stroke} stroke="currentColor" strokeOpacity="0.3" />
         <path className="bs-draw bs-deck" d={`M${H.x0} ${H.deck + 8} H${H.x1}`} {...stroke} stroke="currentColor" strokeOpacity="0.2" strokeDasharray="8 10" />
+        <path className="bs-draw bs-deck" d={`M${H.x0 + 6} ${H.deck - 13} H${H.x1 - 6}`} {...stroke} stroke="currentColor" strokeOpacity="0.26" strokeWidth={1} />
+        <path className="bs-draw bs-deck" d={railTicks} {...stroke} stroke="currentColor" strokeOpacity="0.2" strokeWidth={1} />
+        <path className="bs-draw bs-deck" d={lampPosts} {...stroke} stroke="currentColor" strokeOpacity="0.45" strokeWidth={1.2} />
       </g>
+      {/* lamps: lit once the deck joins */}
+      {lampX.map((x) => (
+        <circle key={`lamp${x}`} className="bs-lamp" cx={x} cy={H.deck - 32} r="2.6" fill="var(--brand-b)" filter="url(#bs-glow)" />
+      ))}
 
       {/* two-way traffic (runs once the bridge is complete) */}
       <g className="bs-traffic">
@@ -333,6 +361,7 @@ export function BridgeStory() {
           .from(q(".bs-stage .bs-2.bs-draw, .bs-stage .bs-2 .bs-draw"), { drawSVG: "0%", duration: 0.65, stagger: 0.008 }, 1.05)
           .from(q(".bs-stage .bs-2 .bs-pop, .bs-stage .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2 }, 1.6)
           .from(q(".bs-stage .bs-deck"), { drawSVG: "50% 50%", duration: 0.45 }, 2.0)
+          .from(q(".bs-stage .bs-lamp"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.2, stagger: 0.03 }, 2.15)
           .from(q(".bs-stage .bs-nine"), { autoAlpha: 0, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25 }, 2.35)
           .from(q(".bs-stage .bs-result"), { autoAlpha: 0, y: 10, duration: 0.2 }, 2.45)
           .to({}, { duration: 0.55 });
@@ -384,6 +413,7 @@ export function BridgeStory() {
         gsap.set(q(".bs-phone .bs-2 .bs-pop, .bs-phone .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3 });
 
         gsap.set(q(".bs-phone .bs-deck"), { drawSVG: "50% 50%", autoAlpha: 0 });
+        gsap.set(q(".bs-phone .bs-lamp"), { autoAlpha: 0, scale: 0.3 });
         gsap.set(q(".bs-phone .bs-nine"), { autoAlpha: 0, scale: 0.4 });
         gsap.set(q(".bs-phone .bs-result"), { autoAlpha: 0, y: 10 });
 
@@ -413,6 +443,7 @@ export function BridgeStory() {
           .to(q(".bs-quote-2"), { autoAlpha: 1, y: 0, duration: 10 }, 62)
           .to(q(".bs-tab-pill"), { xPercent: 200, duration: 18, ease: "power2.inOut" }, 54)
           .to(q(".bs-phone .bs-deck"), { autoAlpha: 1, drawSVG: "0% 100%", duration: 14 }, 56)
+          .to(q(".bs-phone .bs-lamp"), { autoAlpha: 1, scale: 1, duration: 8, stagger: 1 }, 58)
           .to(q(".bs-phone .bs-nine"), { autoAlpha: 1, scale: 1, duration: 10 }, 62)
           .to(q(".bs-phone .bs-result"), { autoAlpha: 1, y: 0, duration: 8 }, 64);
 
@@ -507,6 +538,9 @@ export function BridgeStory() {
           <div className="bs-stage mt-3 flex items-center gap-3">
             <UsBank className="w-[150px] shrink-0" />
             <div className="relative mx-auto min-w-0 max-w-[calc((100svh_-_var(--nav-h)_-_150px)*2.72)] flex-1">
+              <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                <Skyline />
+              </div>
               <SideBridge />
               <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
                 {story.result}
@@ -516,6 +550,9 @@ export function BridgeStory() {
           </div>
         ) : wide ? (
           <div className="bs-stage relative mx-auto mt-8 w-full max-w-[min(100%,calc((100svh_-_var(--nav-h)_-_210px)*2.72))]">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+              <Skyline />
+            </div>
             <SideBridge />
             <UsBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
             <YouBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />

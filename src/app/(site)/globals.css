@@ -1505,6 +1505,28 @@ html[data-motion-resolved="reduce"] .bs-nudge {
 @keyframes bs-step-in {
   from { opacity: 0; transform: translateY(8px); }
 }
+.bs-shimmer {
+  animation: bs-shimmer 4.2s ease-in-out infinite;
+}
+.bs-shimmer-b {
+  animation-duration: 5.6s;
+  animation-delay: -2.4s;
+}
+@keyframes bs-shimmer {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+/* lamps light up once the deck joins (data-live), then breathe gently */
+.bridge-story[data-live="true"] .bs-lamp {
+  animation: bs-lamp-glow 2.4s ease-in-out infinite;
+}
+@keyframes bs-lamp-glow {
+  50% { opacity: 0.8; }
+}
+html[data-motion-resolved="reduce"] .bs-shimmer,
+html[data-motion-resolved="reduce"] .bs-lamp {
+  animation: none;
+}
 
 /* The 9 Quiz — a chosen answer card fills with the logo gradient */
 .quiz-option[data-on="true"] {
