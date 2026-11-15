@@ -13,6 +13,12 @@ import { SplitFlap } from "./SplitFlap";
 const LAST = 2;
 const stroke = { fill: "none", vectorEffect: "non-scaling-stroke" as const, strokeLinecap: "round" as const };
 
+/** Nine Labs is shown first now, "your side" second — the content is written per-side, not per-position, so reorder it here once and every index below (steps[0], steps[step], the reduced-motion list) just reads correctly. */
+function forNineFirst<T extends { n: string }>(steps: T[]): T[] {
+  const [yours, ours, ...rest] = steps;
+  return [{ ...ours, n: yours.n }, { ...yours, n: ours.n }, ...rest];
+}
+
 /* ---------------------------------------------------------------- side view (laptop / tablet) */
 const quad = (a: number, c: number, b: number, t: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * c + t * t * b;
 const H = { deck: 300, top: 70, water: 380, towers: [330, 870], x0: 120, x1: 1080 };
@@ -123,7 +129,7 @@ function SideBridge() {
 function YouBank({ className = "" }: { className?: string }) {
   const { story } = useSite().about;
   return (
-    <div className={`bs-card bs-1 ${className}`}>
+    <div className={`bs-card bs-2 ${className}`}>
       <p className="label-mono !text-[10.5px]">{story.yourSideLabel}</p>
       <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">{story.yourSideTitle}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -140,7 +146,7 @@ function UsBank({ className = "" }: { className?: string }) {
   const site = useSite();
   const { story } = site.about;
   return (
-    <div className={`bs-card bs-2 ${className}`}>
+    <div className={`bs-card bs-1 ${className}`}>
       <p className="label-mono !text-[10.5px]">{story.ourSideLabel}</p>
       <p className="mt-1 font-display text-[15px] font-semibold leading-tight text-white sm:text-base">{story.ourSideTitle}</p>
       <div className="mt-2 grid w-max grid-cols-3 gap-1">
@@ -175,9 +181,9 @@ function Skyline() {
 /**
  * Phone: smooth cinematic camera across the bridge.
  * Sequence:
- *   1. Stop 1 (Left bank): focused on "Your business" card and left suspension tower (Quote 1).
+ *   1. Stop 1 (Left bank): focused on the "Nine Labs" card with 9 service icons and left suspension tower (Quote 1).
  *   2. Pan from Left to Right: smooth glide across the suspension cables.
- *   3. Stop 2 (Right bank): focused on "Nine Labs" card with 9 service icons and right tower (Quote 2).
+ *   3. Stop 2 (Right bank): focused on "Your business" card and right tower (Quote 2).
  *   4. Pan from Right to Center: reveals the joined deck, glowing "9" medallion, and "Results" badge (Quote 3).
  *   5. Zoom Out: smoothly pulls back from center to reveal the glorious full bridge spanning from bank to bank!
  * All camera transforms and crossfades run natively via GSAP ScrollTrigger for 60/120fps fluid scrolling.
@@ -193,11 +199,12 @@ function PhoneBridge({
   onGo: (index: number) => void;
   reduced: boolean;
 }) {
-  const { story, steps } = useSite().about;
+  const { story, steps: rawSteps } = useSite().about;
+  const steps = forNineFirst(rawSteps);
 
   const STOPS = [
-    { label: story.yourSideLabel, s: steps[0] },
-    { label: story.ourSideLabel, s: steps[1] },
+    { label: story.ourSideLabel, s: steps[0] },
+    { label: story.yourSideLabel, s: steps[1] },
     { label: story.result || "Results", s: steps[LAST] },
   ];
 
@@ -224,10 +231,10 @@ function PhoneBridge({
           <div className="relative w-[1200px] h-[440px]">
             <SideBridge />
             <div className="bs-card-1 absolute left-[28px] top-[24px] w-[224px]">
-              <YouBank />
+              <UsBank />
             </div>
             <div className="bs-card-2 absolute left-[948px] top-[24px] w-[224px]">
-              <UsBank />
+              <YouBank />
             </div>
             <p className="bs-result absolute left-[600px] top-[180px] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
               {story.result}
@@ -289,14 +296,15 @@ function PhoneBridge({
 
 /**
  * "How we work" — the brand idea (a bridge between your business and your results) in three steps:
- *   1. your side: your business with its goals, ideas and feedback (left tower + cable)
- *   2. our side: Nine Labs and its nine activities (right tower, the main span, hangers)
+ *   1. our side: Nine Labs and its nine activities (left tower + cable)
+ *   2. your side: your business with its goals, ideas and feedback (right tower, the main span, hangers)
  *   3. the deck joins: two-way traffic, the 9 lights up in the middle, "Results".
  * Pinned scroll stage on both desktop and mobile: locks until all three quotes complete.
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
-  const { story, steps } = useSite().about;
+  const { story, steps: rawSteps } = useSite().about;
+  const steps = forNineFirst(rawSteps);
   const wide = useMediaQuery("(min-width: 768px)", true);
   // phones held sideways: too short for cards over the bridge, so cards sit beside it
   const short = useMediaQuery("(orientation: landscape) and (max-height: 520px)");
@@ -493,20 +501,20 @@ export function BridgeStory() {
         {/* the bridge */}
         {wide && short ? (
           <div className="bs-stage mt-3 flex items-center gap-3">
-            <YouBank className="w-[150px] shrink-0" />
+            <UsBank className="w-[150px] shrink-0" />
             <div className="relative mx-auto min-w-0 max-w-[calc((100svh_-_var(--nav-h)_-_150px)*2.72)] flex-1">
               <SideBridge />
               <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
                 {story.result}
               </p>
             </div>
-            <UsBank className="w-[150px] shrink-0" />
+            <YouBank className="w-[150px] shrink-0" />
           </div>
         ) : wide ? (
           <div className="bs-stage relative mx-auto mt-8 w-full max-w-[min(100%,calc((100svh_-_var(--nav-h)_-_210px)*2.72))]">
             <SideBridge />
-            <YouBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
-            <UsBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
+            <UsBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
+            <YouBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
             <p className="bs-result absolute left-1/2 top-[44%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
               {story.result}
             </p>
