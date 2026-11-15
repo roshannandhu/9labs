@@ -6,8 +6,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/layout/ThemeToggle";
 import { useModalLock } from "@/lib/useModalLock";
+import { checkWorkspace } from "@/lib/checks";
 import { autoLabel, diffDeep, humanizeDiff } from "@/lib/diff";
 import { publish } from "@/lib/store";
+import { ApiError } from "./api";
 import { setAdminTheme } from "./theme";
 import { Icon, type IconName } from "./Icon";
 import { KIND_LABEL, toFeed } from "./leads";
@@ -76,7 +78,26 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: "action_new_book", label: "New book", icon: "plus", go: go("/admin/books?new=1") },
       { key: "action_export", label: "Export the inbox as CSV", icon: "download", go: go("/admin/inbox?export=1") },
     ];
-    if (pending > 0) actionList.unshift({ key: "action_publish", label: "Publish changes", icon: "check", go: () => { publish(humanizeDiff(diffDeep(published, draft), autoLabel).slice(0, 40)); toast("ok", "Published — the website is up to date."); onClose(); } });
+    const hasBlockingErrors = checkWorkspace(draft).some((i) => i.level === "error");
+    if (pending > 0 && !hasBlockingErrors) {
+      actionList.unshift({
+        key: "action_publish",
+        label: "Publish changes",
+        icon: "check",
+        go: () => {
+          onClose();
+          void (async () => {
+            try {
+              await publish(humanizeDiff(diffDeep(published, draft), autoLabel).slice(0, 40));
+              toast("ok", "Published — the website is up to date.");
+            } catch (err) {
+              if (err instanceof ApiError && err.status === 409) toast("bad", "Someone else changed the draft — reload.");
+              else toast("bad", err instanceof Error ? err.message : "Could not publish.");
+            }
+          })();
+        },
+      });
+    }
     const actions = actionList.filter((a) => !query || a.label.toLowerCase().includes(query));
 
     return [

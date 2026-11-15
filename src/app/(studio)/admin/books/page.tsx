@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Ebook } from "@/content/site";
 import { setDraft } from "@/lib/store";
 import { BookEditor, TiltCover } from "@/studio/books/BookEditor";
 import { Icon } from "@/studio/Icon";
-import { useFieldArray } from "@/studio/state";
+import { useBookRequests, useFieldArray } from "@/studio/state";
 import { Badge, Button, Drawer, PageHeader, Switch } from "@/studio/ui";
 
 const slugify = (s: string) =>
@@ -31,7 +31,20 @@ function BooksInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const { items: books, add, remove } = useFieldArray<Ebook>(["site", "ebooks"]);
+  const bookRequests = useBookRequests();
   const [openId, setOpenId] = useState<string | null>(null);
+
+  /** Requests/downloads come from the leads themselves now, not a denormalized counter on the book. */
+  const countsBySlug = useMemo(() => {
+    const map = new Map<string, { requests: number; downloads: number }>();
+    for (const r of bookRequests) {
+      const c = map.get(r.bookSlug) ?? { requests: 0, downloads: 0 };
+      c.requests += 1;
+      c.downloads += r.downloads;
+      map.set(r.bookSlug, c);
+    }
+    return map;
+  }, [bookRequests]);
 
   const createBook = () => {
     const title = "New book";
@@ -57,8 +70,8 @@ function BooksInner() {
   const openBook = openIndex >= 0 ? books[openIndex] : undefined;
 
   const live = books.filter((b) => b.enabled).length;
-  const totalRequests = books.reduce((s, b) => s + b.requests, 0);
-  const totalDownloads = books.reduce((s, b) => s + b.downloads, 0);
+  const totalRequests = bookRequests.length;
+  const totalDownloads = bookRequests.reduce((s, r) => s + r.downloads, 0);
   const missingPdf = books.filter((b) => !b.pdfFileId).length;
 
   return (
@@ -81,7 +94,9 @@ function BooksInner() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {books.map((b, i) => (
+        {books.map((b, i) => {
+          const counts = countsBySlug.get(b.slug);
+          return (
           <div key={b.id} className="st-panel flex flex-col gap-3 p-4">
             <button type="button" onClick={() => setOpenId(b.id)} className="text-left">
               <TiltCover book={b} className="w-full max-w-[140px]" />
@@ -95,7 +110,7 @@ function BooksInner() {
                 <Badge tone={b.pdfFileId ? "good" : "warn"} icon={<Icon name={b.pdfFileId ? "check" : "alert"} size={11} />}>
                   {b.pdfFileId ? "PDF" : "No PDF yet"}
                 </Badge>
-                {b.requests > 0 && <Badge>{b.requests} requests</Badge>}
+                {!!counts?.requests && <Badge>{counts.requests} requests</Badge>}
               </div>
             </div>
             <div className="mt-auto flex items-center justify-between border-t border-st-border pt-3">
@@ -103,7 +118,8 @@ function BooksInner() {
               <Switch checked={b.enabled} onChange={(v) => setDraft(["site", "ebooks", i, "enabled"], v)} />
             </div>
           </div>
-        ))}
+          );
+        })}
 
         <button type="button" onClick={createBook} className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-st-border-strong text-st-dim transition-colors hover:border-st-purple/50 hover:text-st-ink">
           <Icon name="plus" size={22} />

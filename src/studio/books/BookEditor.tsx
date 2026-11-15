@@ -9,7 +9,7 @@ import { checkpoint, setDraft } from "@/lib/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, ImageField, ListField, NumField, PdfField, TextField } from "../Field";
 import { Panel, Segmented, Button, useConfirm, useToast } from "../ui";
-import { useField } from "../state";
+import { useBookRequests, useField } from "../state";
 import { useFileUrl } from "../useFileUrl";
 
 /** A cover with a perspective hover tilt and a spine-ish shadow — the book list card and the editor's preview both use it. */
@@ -38,10 +38,15 @@ export function BookEditor({ index, onDelete }: { index: number; onDelete: () =>
   const [coverMode, setCoverMode] = useState<"designed" | "own">(book?.cover ? "own" : "designed");
   const confirm = useConfirm();
   const toast = useToast();
+  const bookRequests = useBookRequests();
 
   // `book` is briefly undefined while this drawer animates closed after its own delete (the array has
   // already shrunk below `index`, but this instance hasn't unmounted yet).
   if (!book) return null;
+
+  /** Requests/downloads come from the leads themselves now, not a denormalized counter on the book. */
+  const requests = bookRequests.filter((r) => r.bookSlug === book.slug);
+  const downloads = requests.reduce((s, r) => s + r.downloads, 0);
 
   const path = (...rest: (string | number)[]): Path => ["site", "ebooks", index, ...rest];
 
@@ -134,12 +139,12 @@ export function BookEditor({ index, onDelete }: { index: number; onDelete: () =>
 
         <Panel label="Requests">
           <p className="text-[13px] text-st-sub">
-            {book.requests} request{book.requests === 1 ? "" : "s"} · {book.downloads} download{book.downloads === 1 ? "" : "s"} — see them in the{" "}
+            {requests.length} request{requests.length === 1 ? "" : "s"} · {downloads} download{downloads === 1 ? "" : "s"} — see them in the{" "}
             <Link href="/admin/inbox?tab=books" className="font-medium text-st-purple hover:underline">
               Inbox →
             </Link>
           </p>
-          <p className="st-help">Requests are saved in the Inbox. Automatic sending will be connected to the backend later.</p>
+          <p className="st-help">Every request is sent the PDF automatically, as soon as it has one.</p>
         </Panel>
 
         <Panel label="Danger zone">
