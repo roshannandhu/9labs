@@ -1516,6 +1516,30 @@ html[data-motion-resolved="reduce"] .bs-nudge {
 @keyframes bs-step-in {
   from { opacity: 0; transform: translateY(8px); }
 }
+/* the bridge scene's small life: floating goal bubbles, flapping birds, a bobbing boat, the studio's signal */
+:is(.bs-float, .bs-bird, .bs-boat, .bs-signal) {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.bs-float { animation: bs-float 4.2s ease-in-out infinite; }
+.bs-bird { animation: bs-flap 0.9s ease-in-out infinite; }
+.bs-boat { animation: bs-bob 5s ease-in-out infinite; }
+.bs-signal { animation: bs-signal 2.2s ease-out infinite; }
+.bs-signal + .bs-signal { animation-delay: 0.5s; }
+@keyframes bs-float { 50% { transform: translateY(-6px); } }
+@keyframes bs-flap { 50% { transform: scaleY(0.45); } }
+@keyframes bs-bob {
+  0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+  50% { transform: translate(14px, -2px) rotate(2deg); }
+}
+@keyframes bs-signal {
+  0% { opacity: 0; transform: scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+html[data-motion-resolved="reduce"] :is(.bs-float, .bs-bird, .bs-boat, .bs-signal) {
+  animation: none;
+}
 
 /* The 9 Quiz — a chosen answer card fills with the logo gradient */
 .quiz-option[data-on="true"] {
