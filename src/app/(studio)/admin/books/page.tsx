@@ -4,19 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Ebook } from "@/content/site";
 import { setDraft } from "@/lib/store";
-import { BookEditor, TiltCover } from "@/studio/books/BookEditor";
+import { BookEditor, TiltCover, slugify, uniqueSlug } from "@/studio/books/BookEditor";
 import { Icon } from "@/studio/Icon";
 import { useFieldArray } from "@/studio/state";
 import { Badge, Button, Drawer, PageHeader, Switch } from "@/studio/ui";
-
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/[\s_-]+/g, "-")
-    .slice(0, 80);
 
 function StatTileSmall({ label, value, warn }: { label: string; value: string | number; warn?: boolean }) {
   return (
@@ -35,12 +26,11 @@ function BooksInner() {
 
   const createBook = () => {
     const title = "New book";
-    const taken = new Set(books.map((b) => b.slug));
-    let slug = slugify(title);
-    let n = 1;
-    while (taken.has(slug)) slug = `${slugify(title)}-${++n}`;
+    const slug = uniqueSlug(slugify(title), new Set(books.map((b) => b.slug)));
     const id = `book_${Date.now().toString(36)}`;
-    const book: Ebook = { id, slug, n: String(books.length + 1).padStart(2, "0"), title, subtitle: "", oneLiner: "", tone: "blue", pages: 0, readTime: "", chapters: [], enabled: false, approvalMode: "inherit", deliveryMode: "inherit", requests: 0, sent: 0, downloads: 0 };
+    // the next number after the highest one in use (counting would repeat a number after a delete)
+    const n = String(books.reduce((m, b) => Math.max(m, parseInt(b.n, 10) || 0), 0) + 1).padStart(2, "0");
+    const book: Ebook = { id, slug, n, title, subtitle: "", oneLiner: "", tone: "blue", pages: 0, readTime: "", chapters: [], enabled: false, approvalMode: "inherit", deliveryMode: "inherit", requests: 0, sent: 0, downloads: 0 };
     add(book);
     setOpenId(id);
   };
@@ -82,25 +72,33 @@ function BooksInner() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {books.map((b, i) => (
-          <div key={b.id} className="st-panel flex flex-col gap-3 p-4">
-            <button type="button" onClick={() => setOpenId(b.id)} className="text-left">
-              <TiltCover book={b} className="w-full max-w-[140px]" />
+          <div key={b.id} className="st-panel flex gap-4 p-4 sm:flex-col sm:gap-3">
+            {/* the cover on a small stage, turned like a book on the website's shelf */}
+            <button
+              type="button"
+              onClick={() => setOpenId(b.id)}
+              className="grid w-[92px] shrink-0 place-items-center rounded-xl bg-[radial-gradient(ellipse_at_50%_80%,rgb(140_107_255/.16),transparent_70%)] py-2 sm:w-full sm:py-6"
+              aria-label={`Edit “${b.title || "Untitled book"}”`}
+            >
+              <TiltCover book={b} className="w-[72px] sm:w-[128px]" />
             </button>
-            <div>
-              <button type="button" onClick={() => setOpenId(b.id)} className="block w-full truncate text-left text-[13.5px] font-medium text-st-ink hover:underline">
-                {b.title || "Untitled book"}
-              </button>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <Badge tone={b.enabled ? "good" : "default"}>{b.enabled ? "Live" : "Hidden"}</Badge>
-                <Badge tone={b.pdfFileId ? "good" : "warn"} icon={<Icon name={b.pdfFileId ? "check" : "alert"} size={11} />}>
-                  {b.pdfFileId ? "PDF" : "No PDF yet"}
-                </Badge>
-                {b.requests > 0 && <Badge>{b.requests} requests</Badge>}
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              <div>
+                <button type="button" onClick={() => setOpenId(b.id)} className="block w-full truncate text-left text-[13.5px] font-medium text-st-ink hover:underline">
+                  {b.title || "Untitled book"}
+                </button>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <Badge tone={b.enabled ? "good" : "default"}>{b.enabled ? "Live" : "Hidden"}</Badge>
+                  <Badge tone={b.pdfFileId ? "good" : "warn"} icon={<Icon name={b.pdfFileId ? "check" : "alert"} size={11} />}>
+                    {b.pdfFileId ? "PDF" : "No PDF yet"}
+                  </Badge>
+                  {b.requests > 0 && <Badge>{b.requests} requests</Badge>}
+                </div>
               </div>
-            </div>
-            <div className="mt-auto flex items-center justify-between border-t border-st-border pt-3">
-              <span className="text-[12px] text-st-sub">Show on website</span>
-              <Switch checked={b.enabled} onChange={(v) => setDraft(["site", "ebooks", i, "enabled"], v)} />
+              <div className="mt-auto flex items-center justify-between border-t border-st-border pt-3">
+                <span className="text-[12px] text-st-sub">Show on website</span>
+                <Switch checked={b.enabled} onChange={(v) => setDraft(["site", "ebooks", i, "enabled"], v)} />
+              </div>
             </div>
           </div>
         ))}

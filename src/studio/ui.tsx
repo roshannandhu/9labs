@@ -288,6 +288,15 @@ export function Tooltip({ label, children }: { label: string; children: React.Re
 /** A right-hand panel on desktop, a bottom sheet on phone — for lead detail, item editors, anything that needs room to breathe. */
 export function Drawer({ open, onClose, title, children, wide, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; wide?: boolean; footer?: React.ReactNode }) {
   const desktop = useMediaQuery("(min-width: 640px)", true);
+  // Escape closes it, unless a dialog opened on top (a confirm) handles Escape first
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
   if (typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
@@ -377,6 +386,18 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setState(null);
   };
   const blocked = !!state?.typeToConfirm && typed !== state.typeToConfirm;
+  // Escape = Cancel. Capture phase + preventDefault, so a drawer under this dialog stays open.
+  useEffect(() => {
+    if (!state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      state.resolve(false);
+      setState(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [state]);
   return (
     <ConfirmCtx.Provider value={confirm}>
       {children}
