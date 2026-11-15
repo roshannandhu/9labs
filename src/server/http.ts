@@ -2,9 +2,11 @@ import "server-only";
 
 export class HttpError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  details?: Record<string, unknown>;
+  constructor(status: number, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -18,7 +20,7 @@ export function route<Args extends unknown[]>(handler: (...args: Args) => Promis
     try {
       return await handler(...args);
     } catch (err) {
-      if (err instanceof HttpError) return json({ error: err.message }, err.status);
+      if (err instanceof HttpError) return json({ error: err.message, ...err.details }, err.status);
       console.error(err);
       return json({ error: "Something went wrong." }, 500);
     }

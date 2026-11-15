@@ -47,7 +47,7 @@ export const GET = route(async (req: Request) => {
     if (!to) {
       body.mail = { attempted: false, ok: false };
     } else {
-      const result = await sendMail({ kind: "health-check", to, subject: "Nine Labs — test e-mail", html: "<p>This is a test e-mail from /api/health.</p>", text: "This is a test e-mail from /api/health." });
+      const result = await sendMail({ kind: "test", to, subject: "Nine Labs — test e-mail", html: "<p>This is a test e-mail from /api/health.</p>", text: "This is a test e-mail from /api/health." });
       body.mail = { attempted: true, ok: result.ok, logged: !smtpConfigured() };
     }
   }

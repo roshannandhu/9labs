@@ -274,7 +274,7 @@ export function addOutboxMail(m: Omit<OutboxMail, "id" | "createdAt">): OutboxMa
   setState({ outbox: [full, ...state.outbox].slice(0, 300) });
   return full;
 }
-export const outboxKindLabel: Record<OutboxKind, string> = { ebook: "E-book", "ebook-alert": "Admin alert", "quiz-plan": "Quiz plan" };
+export const outboxKindLabel: Record<OutboxKind, string> = { ebook: "E-book", "ebook-alert": "Admin alert", "quiz-plan": "Quiz plan", test: "Test" };
 
 /* ------------------------------------------------------------------ */
 /*  Admins & session (demo sign-in — real Google sign-in is a publish-phase addition)  */

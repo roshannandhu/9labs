@@ -1,9 +1,10 @@
 import "server-only";
+import type { OutboxKind } from "@/content/types";
 import { env, smtpConfigured } from "./env";
+import { insertOutbox } from "./leads";
 
 export type SendMailInput = {
-  /** The outbox row's `kind` — not yet used (see note below). */
-  kind: string;
+  kind: OutboxKind;
   to: string;
   subject: string;
   html: string;
@@ -13,12 +14,12 @@ export type SendMailInput = {
 };
 export type SendMailResult = { ok: boolean; error?: string };
 
-/**
- * TODO (Phase 2, once `src/server/leads.ts` exists): insert the `outbox` row here (status
- * "sent" / "failed" / "logged") before returning, so every call site gets it automatically.
- */
+/** Always writes the outbox row itself, so no call site has to remember to. */
 export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
-  if (!smtpConfigured()) return { ok: true };
+  if (!smtpConfigured()) {
+    await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: "logged" });
+    return { ok: true };
+  }
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_FROM_NAME } = env();
   try {
@@ -41,8 +42,11 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
         attachments: input.attachments,
       },
     );
+    await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: "sent" });
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not send the e-mail." };
+    const error = err instanceof Error ? err.message : "Could not send the e-mail.";
+    await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: "failed", error });
+    return { ok: false, error };
   }
 }
