@@ -5,7 +5,9 @@ import type { EnquiryFieldKey } from "@/content/types";
 import { effectiveApproval, alertAdminNewRequest, deliverBookRequest } from "@/lib/ebooks/deliver";
 import { buildEnquiryMessage, enquiryMissingFields, enquiryNameOk, enquiryWhatsappNumber, type EnquiryAnswers } from "@/lib/enquiry";
 import { esc, mailLayout, paragraphs } from "@/lib/mail";
-import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
+import { runBackup } from "@/lib/quiz/backup";
+import type { AiQuizResult, QuizAnswers } from "@/lib/quiz/types";
+import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { addBookRequest, addEnquiry, addOutboxMail, addQuizResult, bumpEbookCounter, getState, updateBookRequest, updateQuizResult } from "@/lib/store";
 import { shortRef } from "@/lib/text";
 
@@ -50,19 +52,22 @@ export function submitEnquiry(serviceSlug: string, answers: EnquiryAnswers, chan
 /*  The 9 Quiz                                                          */
 /* ------------------------------------------------------------------ */
 
+/** No AI endpoint exists yet on this branch (merging claude/backend adds it) — the quiz runs the
+ *  non-AI backup for now, which already speaks the AiQuizResult shape the AI will return later. */
+function resultFor(answers: QuizAnswers) {
+  const { published } = getState();
+  const ai = runBackup(published.site, answers, {});
+  const top = ai?.matches[0] ? (published.site.services.find((s) => s.slug === ai.matches[0].slug)?.title ?? "") : "";
+  const matches = ai ? ai.matches.map((m, i) => `${i + 1}) ${published.site.services.find((s) => s.slug === m.slug)?.title ?? m.slug}`).join(", ") : "";
+  const lines = buildQuizLines(published.site.quiz.questions, answers, {});
+  return { ai, top, matches, summary: ai ? [ai.wants, "", ...lines].join("\n") : "No recommendation available — no answer points anywhere yet." };
+}
+
 export function submitQuizResult(ref: string, answers: QuizAnswers) {
-  const { published, quizResults } = getState();
+  const { quizResults } = getState();
   if (quizResults.some((r) => r.ref === ref)) return;
-  const result = scoreQuiz(published.site, answers);
-  addQuizResult({
-    ref,
-    top: result.matches[0]?.service.title ?? "",
-    matches: result.matches.map((m) => `${m.service.short} ${m.score}%`).join(" · "),
-    summary: [result.summary, "", ...result.lines].join("\n"),
-    answers,
-    action: "none",
-    email: "",
-  });
+  const { ai, top, matches, summary } = resultFor(answers);
+  addQuizResult({ ref, top, matches, summary, answers, other: {}, name: "", phone: "", ai, source: ai ? "backup" : "none", action: "none", email: "" });
 }
 
 export function submitQuizAction(ref: string, action: "whatsapp") {
@@ -77,32 +82,27 @@ export function submitQuizEmail(ref: string, email: string, answers: QuizAnswers
   const recent = quizResults.filter((r) => r.email.toLowerCase() === email.toLowerCase() && new Date(r.createdAt).getTime() > dayAgo).length;
   if (recent >= 2) return { ok: true };
 
-  const result = scoreQuiz(published.site, answers);
+  const { ai, top, matches, summary } = resultFor(answers);
   const t = published.site.quiz.result;
-  const chat = waLink(published.site.contact.whatsappNumber, result.whatsappText);
-  const matchesHtml = result.matches.map((m, i) => `<p style="margin:0 0 14px;line-height:1.55"><strong style="color:#0e0c20">${i + 1}. ${esc(m.service.title)} — ${m.score}%</strong><br>${esc(m.why)}</p>`).join("");
-  const stepsHtml = result.steps.map((s, i) => `<p style="margin:0 0 12px;line-height:1.55"><strong style="color:#6f55e8">0${i + 1}</strong> <strong style="color:#0e0c20">${esc(s.title)}</strong><br>${esc(s.text)}</p>`).join("");
+  if (ai) {
+    const lines = buildQuizLines(published.site.quiz.questions, answers, {});
+    const chat = waLink(published.site.contact.whatsappNumber, buildQuizWhatsappText(published.site, lines, ai));
+    const titled = (m: AiQuizResult["matches"][number]) => published.site.services.find((s) => s.slug === m.slug)?.title ?? m.slug;
+    const matchesHtml = ai.matches.map((m, i) => `<p style="margin:0 0 14px;line-height:1.55"><strong style="color:#0e0c20">${i + 1}. ${esc(titled(m))}</strong><br>${esc(m.how)}</p>`).join("");
+    const stepsHtml = ai.steps.map((s, i) => `<p style="margin:0 0 12px;line-height:1.55"><strong style="color:#6f55e8">0${i + 1}</strong> <strong style="color:#0e0c20">${esc(s.title)}</strong><br>${esc(s.text)}</p>`).join("");
 
-  addOutboxMail({
-    kind: "quiz-plan",
-    to: email,
-    subject: `${t.label} — ${published.site.name}`,
-    html: mailLayout({ company: published.site.name, heading: t.heading, bodyHtml: paragraphs(result.summary) + matchesHtml + stepsHtml, button: { label: t.whatsappCta, url: chat }, footer: `You asked for this plan on ${published.site.url.replace(/^https?:\/\//, "")}.` }),
-    text: [t.heading, result.summary, ...result.matches.map((m, i) => `${i + 1}. ${m.service.title} — ${m.score}%\n${m.why}`), ...result.steps.map((s, i) => `0${i + 1} ${s.title}\n${s.text}`), `${t.whatsappCta}: ${chat}`].join("\n\n"),
-  });
+    addOutboxMail({
+      kind: "quiz-plan",
+      to: email,
+      subject: `${t.label} — ${published.site.name}`,
+      html: mailLayout({ company: published.site.name, heading: t.heading, bodyHtml: paragraphs(ai.wants) + matchesHtml + stepsHtml, button: { label: t.whatsappCta, url: chat }, footer: `You asked for this plan on ${published.site.url.replace(/^https?:\/\//, "")}.` }),
+      text: [t.heading, ai.wants, ...ai.matches.map((m, i) => `${i + 1}. ${titled(m)}\n${m.how}`), ...ai.steps.map((s, i) => `0${i + 1} ${s.title}\n${s.text}`), `${t.whatsappCta}: ${chat}`].join("\n\n"),
+    });
+  }
 
   const existing = quizResults.find((r) => r.ref === ref);
   if (existing) updateQuizResult(existing.id, { email, action: "email" });
-  else
-    addQuizResult({
-      ref,
-      top: result.matches[0]?.service.title ?? "",
-      matches: result.matches.map((m) => `${m.service.short} ${m.score}%`).join(" · "),
-      summary: [result.summary, "", ...result.lines].join("\n"),
-      answers,
-      action: "email",
-      email,
-    });
+  else addQuizResult({ ref, top, matches, summary, answers, other: {}, name: "", phone: "", ai, source: ai ? "backup" : "none", action: "email", email });
   return { ok: true };
 }
 

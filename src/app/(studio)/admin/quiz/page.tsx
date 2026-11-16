@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { safeWeight, type IconKey, type QuizOption, type QuizQuestion } from "@/content/site";
-import { balanceReport, maxReachable, randomAnswers, totalsFor, type BalanceReport } from "@/lib/quiz/analyze";
-import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
+import type { QuizOption, QuizQuestion } from "@/content/site";
+import { randomAnswers } from "@/lib/quiz/analyze";
+import { runBackup } from "@/lib/quiz/backup";
+import type { QuizAnswers } from "@/lib/quiz/types";
 import { checkpoint, setDraft } from "@/lib/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, NumField, TextField } from "@/studio/Field";
@@ -13,68 +14,21 @@ import { useDraft, useField, useQuizResults } from "@/studio/state";
 import { Box, Button, PageHeader, Row, Tabs, relativeTime, useNow } from "@/studio/ui";
 import { BarList, StatTile, type BarItem } from "@/studio/charts";
 
-const ACTIVITIES: { key: IconKey; label: string }[] = [
-  { key: "social", label: "Social" },
-  { key: "advertising", label: "Ads" },
-  { key: "content", label: "Content" },
-  { key: "photo", label: "Photo" },
-  { key: "events", label: "Events" },
-  { key: "pr", label: "PR" },
-  { key: "strategy", label: "Strategy" },
-  { key: "ai", label: "AI" },
-  { key: "it", label: "IT" },
-];
+const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
 
 const TABS = [
   ["build", "Build"],
-  ["try", "Try it"],
-  ["balance", "Balance"],
+  ["test", "Test"],
+  ["knowledge", "Knowledge"],
+  ["ai", "AI"],
   ["result", "Result"],
   ["insights", "Insights"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
-function PointCell({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const tone = value === 0 ? "transparent" : value === 1 ? "rgb(111 85 232 / .25)" : value === 2 ? "rgb(111 85 232 / .55)" : "rgb(111 85 232 / .9)";
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        checkpoint();
-        onChange((value + 1) % 4);
-      }}
-      className="grid h-8 w-8 place-items-center rounded-lg border border-st-border-strong text-[12px] font-bold"
-      style={{ background: tone, color: value >= 2 ? "#fff" : "var(--st-ink)" }}
-      title={`${value} point${value === 1 ? "" : "s"} — click to change`}
-    >
-      {value}
-    </button>
-  );
-}
-
-function HeatOverview() {
-  const draft = useDraft();
-  const max = useMemo(() => maxReachable(draft.site), [draft.site]);
-  const top = Math.max(1, ...Object.values(max));
-  return (
-    <div className="grid gap-1.5">
-      {ACTIVITIES.map((a) => {
-        const v = max[a.key] ?? 0;
-        return (
-          <div key={a.key} className="flex items-center gap-2.5">
-            <span className="w-[62px] shrink-0 text-[12px] text-st-sub">{a.label}</span>
-            <span className="h-2 flex-1 overflow-hidden rounded-full bg-st-panel-2">
-              <span className="block h-full rounded-full" style={{ width: `${(v / top) * 100}%`, background: v === 0 ? "var(--st-danger)" : "var(--st-grad)" }} />
-            </span>
-            <span className="w-6 text-right text-[11px] text-st-dim">{v}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function OptionEditor({ qi, oi, o }: { qi: number; oi: number; o: QuizOption }) {
+  const draft = useDraft();
+  const services = draft.site.services;
   return (
     <div className="rounded-xl border border-st-border p-3">
       <div className="flex items-center gap-2">
@@ -86,20 +40,24 @@ function OptionEditor({ qi, oi, o }: { qi: number; oi: number; o: QuizOption }) 
           Stands alone
         </label>
       </div>
-      <div className="mt-2.5 overflow-x-auto">
-        <div className="grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>
-          {ACTIVITIES.map((a) => (
-            <PointCell key={a.key} value={safeWeight(o.weights[a.key])} onChange={(v) => setDraft(["site", "quiz", "questions", qi, "options", oi, "weights", a.key] as Path, v || undefined)} />
+      <label className="mt-2.5 block">
+        <span className="st-label">Points to</span>
+        <select
+          className="st-field mt-1.5"
+          value={o.pointsTo ?? ""}
+          onChange={(e) => {
+            checkpoint();
+            setDraft(["site", "quiz", "questions", qi, "options", oi, "pointsTo"] as Path, e.target.value || null);
+          }}
+        >
+          <option value="">— none —</option>
+          {services.map((s) => (
+            <option key={s.slug} value={s.icon}>
+              {s.title}
+            </option>
           ))}
-        </div>
-        <div className="mt-1 grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>
-          {ACTIVITIES.map((a) => (
-            <span key={a.key} className="text-center text-[9px] text-st-dim">
-              {a.label}
-            </span>
-          ))}
-        </div>
-      </div>
+        </select>
+      </label>
     </div>
   );
 }
@@ -137,6 +95,10 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
         <CheckField path={["site", "quiz", "questions", qi, "multi"]} label="Several answers allowed" />
       </Row>
       <TextField path={["site", "quiz", "questions", qi, "hint"]} label="Hint under the question" placeholder="Optional" />
+      <Row>
+        <CheckField path={["site", "quiz", "questions", qi, "allowOther"]} label="Allow &quot;Other&quot; — a free-text answer" />
+        <TextField path={["site", "quiz", "questions", qi, "otherPlaceholder"]} label="Other — placeholder text" placeholder="Optional" />
+      </Row>
 
       <div className="grid gap-2">
         {q.options.map((o, oi) => (
@@ -148,7 +110,7 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
           onClick={() => {
             checkpoint();
             const id = `${q.id}-${Date.now().toString(36)}`;
-            setDraft(["site", "quiz", "questions", qi, "options"] as Path, [...q.options, { id, label: "New answer", weights: {} }]);
+            setDraft(["site", "quiz", "questions", qi, "options"] as Path, [...q.options, { id, label: "New answer" }]);
           }}
         >
           + Add an answer
@@ -163,9 +125,6 @@ function BuildTab() {
   const questions = draft.site.quiz.questions;
   return (
     <>
-      <Box title="How the points work" help="Each answer gives points to activities (0–3, click a cell to change). The activities with the most points are recommended.">
-        <HeatOverview />
-      </Box>
       <SortableList
         items={questions}
         keyOf={(q) => q.id}
@@ -193,7 +152,7 @@ function BuildTab() {
           const n = questions.length + 1;
           setDraft(["site", "quiz", "questions"] as Path, [
             ...questions,
-            { id: `q${Date.now().toString(36)}`, label: `Question ${n}`, q: "New question", multi: false, options: [{ id: `a${Date.now().toString(36)}1`, label: "Answer 1", weights: {} }, { id: `a${Date.now().toString(36)}2`, label: "Answer 2", weights: {} }] },
+            { id: `q${Date.now().toString(36)}`, label: `Question ${n}`, q: "New question", multi: false, options: [{ id: `a${Date.now().toString(36)}1`, label: "Answer 1" }, { id: `a${Date.now().toString(36)}2`, label: "Answer 2" }] },
           ]);
         }}
       >
@@ -203,11 +162,10 @@ function BuildTab() {
   );
 }
 
-function TryTab() {
+function TestTab() {
   const draft = useDraft();
   const [answers, setAnswers] = useState<QuizAnswers>({});
-  const result = useMemo(() => scoreQuiz(draft.site, answers), [draft.site, answers]);
-  const totals = useMemo(() => totalsFor(draft.site, answers), [draft.site, answers]);
+  const result = useMemo(() => runBackup(draft.site, answers, {}), [draft.site, answers]);
   const answered = Object.values(answers).some((a) => a.length);
 
   const pick = (q: QuizQuestion, id: string) =>
@@ -245,89 +203,44 @@ function TryTab() {
           </Button>
         )}
       </Box>
-      <div className="grid gap-4">
-        <Box title="Live scoreboard">
-          <div className="grid gap-1.5">
-            {ACTIVITIES.map((a) => {
-              const v = totals[a.key] ?? 0;
-              const max = Math.max(1, ...Object.values(totals));
-              return (
-                <div key={a.key} className="flex items-center gap-2.5">
-                  <span className="w-[62px] shrink-0 text-[12px] text-st-sub">{a.label}</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-st-panel-2">
-                    <span className="block h-full rounded-full bg-st-grad" style={{ width: `${(v / max) * 100}%`, background: "var(--st-grad)" }} />
-                  </span>
-                  <span className="w-6 text-right text-[11px] text-st-dim">{v}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Box>
-        <Box title="What the visitor would see">
-          {!answered ? (
-            <p className="text-[13px] text-st-sub">Pick some answers to see the recommendation.</p>
-          ) : (
-            <>
-              <p className="text-[13.5px] text-st-ink">{result.summary}</p>
-              <ol className="grid gap-2">
-                {result.matches.map((m) => (
-                  <li key={m.service.slug} className="rounded-lg bg-st-panel-2 p-2.5 text-[12.5px]">
+      <Box title="What the visitor would see" help="This is the no-AI backup result — the AI tab will show the real AI result side by side with this, once it's connected.">
+        {!answered || !result ? (
+          <p className="text-[13px] text-st-sub">{!result ? "No answer points anywhere yet — add a \"Points to\" on the Build tab first." : "Pick some answers to see the recommendation."}</p>
+        ) : (
+          <>
+            <p className="text-[13.5px] text-st-ink">{result.wants}</p>
+            <ol className="grid gap-2">
+              {result.matches.map((m) => {
+                const s = draft.site.services.find((sv) => sv.slug === m.slug);
+                return (
+                  <li key={m.slug} className="rounded-lg bg-st-panel-2 p-2.5 text-[12.5px]">
                     <strong className="text-st-ink">
-                      {m.service.title} — {m.score}%
+                      {s?.title ?? m.slug} — {FIT_LABEL[m.fit]}
                     </strong>
-                    <p className="mt-0.5 text-st-sub">{m.why}</p>
+                    <p className="mt-0.5 text-st-sub">{m.how}</p>
                   </li>
-                ))}
-              </ol>
-            </>
-          )}
-        </Box>
-      </div>
+                );
+              })}
+            </ol>
+          </>
+        )}
+      </Box>
     </div>
   );
 }
 
-function BalanceTab() {
-  const draft = useDraft();
-  const [report, setReport] = useState<BalanceReport | null>(null);
-  const [running, setRunning] = useState(false);
-  const run = () => {
-    setRunning(true);
-    window.setTimeout(() => {
-      setReport(balanceReport(draft.site, 2000));
-      setRunning(false);
-    }, 10);
-  };
+function KnowledgeTab() {
   return (
-    <Box title="Fairness check" help="2,000 simulated random visitors — how often each activity comes first or is shown at all. A fairness check, not a forecast of real visitors.">
-      <Button variant="primary" onClick={run} disabled={running} className="w-fit">
-        {running ? "Running…" : "Run 2,000 simulated visitors"}
-      </Button>
-      {report && (
-        <>
-          {report.neverFirst.length > 0 && (
-            <p className="rounded-xl border border-st-warn/30 bg-st-warn-bg p-3 text-[13px] text-st-warn">Never came first in this run: {report.neverFirst.map((k) => ACTIVITIES.find((a) => a.key === k)?.label).join(", ")}.</p>
-          )}
-          {report.tieAtTop > 0 && <p className="st-help">{report.tieAtTop} of {report.trials} visitors had a tie at the top — card order decided it.</p>}
-          <div className="grid gap-1.5">
-            {ACTIVITIES.map((a) => {
-              const first = report.firstCount[a.key] ?? 0;
-              const shown = report.shownCount[a.key] ?? 0;
-              return (
-                <div key={a.key} className="flex items-center gap-2.5">
-                  <span className="w-[62px] shrink-0 text-[12px] text-st-sub">{a.label}</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-st-panel-2">
-                    <span className="block h-full rounded-full bg-st-grad" style={{ width: `${(shown / report.trials) * 100}%` }} />
-                  </span>
-                  <span className="w-28 text-right text-[11px] text-st-dim">
-                    {first} first · {shown} shown
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+    <Box title="Knowledge base" help="Entries an AI result is grounded in — one per service, plus pricing/FAQ/case notes.">
+      <p className="text-[13px] text-st-sub">Needs the real backend (Supabase) merged in first — coming in the next phase of this build.</p>
+    </Box>
+  );
+}
+
+function AiTab() {
+  return (
+    <Box title="AI providers &amp; keys" help="Groq (primary) and Gemini (fallback), with as many keys per provider as you like — the server rotates between them.">
+      <p className="text-[13px] text-st-sub">Needs the real backend (Supabase) merged in first — coming in the next phase of this build.</p>
     </Box>
   );
 }
@@ -404,12 +317,13 @@ export default function QuizLabPage() {
   const [tab, setTab] = useState<Tab>("build");
   return (
     <div className="grid gap-5">
-      <PageHeader title="Quiz" description="The 9 Quiz — questions, points, the result screen and what visitors chose." />
+      <PageHeader title="Quiz" description="The 9 Quiz — questions, what each answer points to, the AI/backup result and what visitors chose." />
       <Tabs layoutId="quiz-tabs" active={tab} onChange={setTab} tabs={TABS.map(([id, label]) => ({ id, label }))} />
       <div className="grid gap-4">
         {tab === "build" && <BuildTab />}
-        {tab === "try" && <TryTab />}
-        {tab === "balance" && <BalanceTab />}
+        {tab === "test" && <TestTab />}
+        {tab === "knowledge" && <KnowledgeTab />}
+        {tab === "ai" && <AiTab />}
         {tab === "result" && <ResultTab />}
         {tab === "insights" && <InsightsTab />}
       </div>

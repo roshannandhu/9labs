@@ -35,20 +35,14 @@ export type Service = {
   whatsappNumber?: string;
 };
 
-/** A weight read back as a finite number — admin-typed/HMR-stale data can leave a non-number (NaN) in storage. */
-export const safeWeight = (w: unknown): number => (typeof w === "number" && Number.isFinite(w) ? w : 0);
-
 /**
- * The 9 Quiz. `weights` is the old points system, being replaced by an AI + RAG result
- * (docs/AI_RAG_SYSTEM.md); `pointsTo` is its simple-admin replacement — one activity per answer,
- * used both as an AI hint and as the vote-based backup when the AI is unavailable. Both fields
- * exist together during the migration; `weights` is removed once every call site reads `pointsTo`.
+ * The 9 Quiz: each answer points to one activity (or none) — the AI chain uses it as a hint, and
+ * it's the whole vote when the AI is unavailable (src/lib/quiz/backup.ts). Replaces the old
+ * per-activity numeric weights (archive/quiz-scoring-legacy).
  */
 export type QuizOption = {
   id: string;
   label: string;
-  weights: Partial<Record<IconKey, number>>;
-  /** The single activity this answer points to (or none) — replaces `weights`. */
   pointsTo?: IconKey | null;
   /** In a "pick all" question, choosing this clears the others (e.g. "Nothing yet"). */
   only?: boolean;
@@ -374,11 +368,11 @@ export const site: SiteData = {
         label: "About us",
         q: "What best describes you?",
         options: [
-          { id: "startup", label: "A new business or startup", weights: { strategy: 2, social: 1, content: 1, it: 1 }, pointsTo: "strategy" },
-          { id: "small", label: "A small business that wants to grow", weights: { social: 2, advertising: 1, content: 1 }, pointsTo: "social" },
-          { id: "established", label: "An established company", weights: { strategy: 1, pr: 1, ai: 1, it: 1 }, pointsTo: "pr" },
-          { id: "brand", label: "A brand launching a product", weights: { advertising: 2, events: 1, pr: 1, content: 1 }, pointsTo: "advertising" },
-          { id: "events", label: "An organiser, exhibitor or venue", weights: { events: 3, photo: 1 }, pointsTo: "events" },
+          { id: "startup", label: "A new business or startup", pointsTo: "strategy" },
+          { id: "small", label: "A small business that wants to grow", pointsTo: "social" },
+          { id: "established", label: "An established company", pointsTo: "pr" },
+          { id: "brand", label: "A brand launching a product", pointsTo: "advertising" },
+          { id: "events", label: "An organiser, exhibitor or venue", pointsTo: "events" },
         ],
       },
       {
@@ -387,11 +381,11 @@ export const site: SiteData = {
         label: "Main goal",
         q: "What is your main goal right now?",
         options: [
-          { id: "sales", label: "More customers and sales", weights: { advertising: 3, social: 2 }, pointsTo: "advertising" },
-          { id: "known", label: "Make our brand known", weights: { social: 2, pr: 2, content: 1 }, pointsTo: "social" },
-          { id: "launch", label: "Launch something new", weights: { events: 2, pr: 2, advertising: 1, content: 1 }, pointsTo: "events" },
-          { id: "event", label: "Run an event or exhibition", weights: { events: 3, photo: 2 }, pointsTo: "events" },
-          { id: "smarter", label: "Work smarter with AI and tech", weights: { ai: 3, it: 2 }, pointsTo: "ai" },
+          { id: "sales", label: "More customers and sales", pointsTo: "advertising" },
+          { id: "known", label: "Make our brand known", pointsTo: "social" },
+          { id: "launch", label: "Launch something new", pointsTo: "events" },
+          { id: "event", label: "Run an event or exhibition", pointsTo: "events" },
+          { id: "smarter", label: "Work smarter with AI and tech", pointsTo: "ai" },
         ],
       },
       {
@@ -399,11 +393,11 @@ export const site: SiteData = {
         label: "Customers",
         q: "Where do your customers find you?",
         options: [
-          { id: "social", label: "On social media", weights: { social: 3, content: 1 }, pointsTo: "social" },
-          { id: "search", label: "Searching on Google", weights: { advertising: 3 }, pointsTo: "advertising" },
-          { id: "b2b", label: "Other businesses (B2B)", weights: { strategy: 2, pr: 1, events: 1 }, pointsTo: "strategy" },
-          { id: "local", label: "Nearby, in person", weights: { advertising: 1, social: 1, events: 1 }, pointsTo: "social" },
-          { id: "unsure", label: "We are not sure yet", weights: { strategy: 3 }, pointsTo: "strategy" },
+          { id: "social", label: "On social media", pointsTo: "social" },
+          { id: "search", label: "Searching on Google", pointsTo: "advertising" },
+          { id: "b2b", label: "Other businesses (B2B)", pointsTo: "strategy" },
+          { id: "local", label: "Nearby, in person", pointsTo: "social" },
+          { id: "unsure", label: "We are not sure yet", pointsTo: "strategy" },
         ],
       },
       {
@@ -411,10 +405,10 @@ export const site: SiteData = {
         label: "Online today",
         q: "How is your online presence today?",
         options: [
-          { id: "zero", label: "We are starting from zero", weights: { strategy: 2, content: 2, it: 1 }, pointsTo: "content" },
-          { id: "quiet", label: "We have pages, but they are quiet", weights: { social: 3, content: 2 }, pointsTo: "social" },
-          { id: "flat", label: "Active, but not growing", weights: { advertising: 2, strategy: 2 }, pointsTo: "advertising" },
-          { id: "strong", label: "Strong, and we want to scale", weights: { advertising: 2, ai: 1, pr: 1 }, pointsTo: "advertising" },
+          { id: "zero", label: "We are starting from zero", pointsTo: "content" },
+          { id: "quiet", label: "We have pages, but they are quiet", pointsTo: "social" },
+          { id: "flat", label: "Active, but not growing", pointsTo: "advertising" },
+          { id: "strong", label: "Strong, and we want to scale", pointsTo: "advertising" },
         ],
       },
       {
@@ -424,11 +418,11 @@ export const site: SiteData = {
         hint: "Pick all that apply.",
         multi: true,
         options: [
-          { id: "photo", label: "Photos and video", weights: { photo: 3, content: 1 }, pointsTo: "photo" },
-          { id: "posts", label: "Social posts and reels", weights: { social: 2, content: 2 }, pointsTo: "social" },
-          { id: "ads", label: "Ads and campaigns", weights: { advertising: 3 }, pointsTo: "advertising" },
-          { id: "press", label: "Press and PR stories", weights: { pr: 3 }, pointsTo: "pr" },
-          { id: "advice", label: "Nothing yet, advice first", weights: { strategy: 3 }, pointsTo: "strategy", only: true },
+          { id: "photo", label: "Photos and video", pointsTo: "photo" },
+          { id: "posts", label: "Social posts and reels", pointsTo: "social" },
+          { id: "ads", label: "Ads and campaigns", pointsTo: "advertising" },
+          { id: "press", label: "Press and PR stories", pointsTo: "pr" },
+          { id: "advice", label: "Nothing yet, advice first", pointsTo: "strategy", only: true },
         ],
       },
       {
@@ -436,10 +430,10 @@ export const site: SiteData = {
         label: "Events",
         q: "Do you have an event coming up?",
         options: [
-          { id: "soon", label: "Yes, within 3 months", weights: { events: 3, photo: 2 }, pointsTo: "events" },
-          { id: "later", label: "Later this year", weights: { events: 2, photo: 1 }, pointsTo: "events" },
-          { id: "regular", label: "We run events regularly", weights: { events: 2, photo: 2, pr: 1 }, pointsTo: "photo" },
-          { id: "none", label: "No events planned", weights: {}, pointsTo: null },
+          { id: "soon", label: "Yes, within 3 months", pointsTo: "events" },
+          { id: "later", label: "Later this year", pointsTo: "events" },
+          { id: "regular", label: "We run events regularly", pointsTo: "photo" },
+          { id: "none", label: "No events planned", pointsTo: null },
         ],
       },
       {
@@ -447,10 +441,10 @@ export const site: SiteData = {
         label: "Tech & AI",
         q: "How does your team use tech and AI?",
         options: [
-          { id: "little", label: "Hardly at all", weights: { it: 2, ai: 1 }, pointsTo: "it" },
-          { id: "manual", label: "Basic tools, lots of manual work", weights: { ai: 3, it: 1 }, pointsTo: "ai" },
-          { id: "ai", label: "We want automation and AI", weights: { ai: 3 }, pointsTo: "ai" },
-          { id: "systems", label: "We need better systems or IT support", weights: { it: 3 }, pointsTo: "it" },
+          { id: "little", label: "Hardly at all", pointsTo: "it" },
+          { id: "manual", label: "Basic tools, lots of manual work", pointsTo: "ai" },
+          { id: "ai", label: "We want automation and AI", pointsTo: "ai" },
+          { id: "systems", label: "We need better systems or IT support", pointsTo: "it" },
         ],
       },
       {
@@ -458,11 +452,11 @@ export const site: SiteData = {
         label: "Monthly budget",
         q: "What monthly budget can you put into growth?",
         options: [
-          { id: "lt5", label: "Under AED 5,000", weights: { social: 1, strategy: 1 }, pointsTo: "social" },
-          { id: "5to20", label: "AED 5,000 – 20,000", weights: { social: 1, advertising: 1, content: 1 }, pointsTo: "social" },
-          { id: "20to50", label: "AED 20,000 – 50,000", weights: { advertising: 1, events: 1, photo: 1 }, pointsTo: "advertising" },
-          { id: "gt50", label: "AED 50,000+", weights: { events: 1, pr: 1, advertising: 1, ai: 1 }, pointsTo: "advertising" },
-          { id: "unsure", label: "Not sure yet", weights: { strategy: 1 }, pointsTo: "strategy" },
+          { id: "lt5", label: "Under AED 5,000", pointsTo: "social" },
+          { id: "5to20", label: "AED 5,000 – 20,000", pointsTo: "social" },
+          { id: "20to50", label: "AED 20,000 – 50,000", pointsTo: "advertising" },
+          { id: "gt50", label: "AED 50,000+", pointsTo: "advertising" },
+          { id: "unsure", label: "Not sure yet", pointsTo: "strategy" },
         ],
       },
       {
@@ -471,10 +465,10 @@ export const site: SiteData = {
         label: "Start",
         q: "When would you like to start?",
         options: [
-          { id: "asap", label: "As soon as possible", weights: {}, pointsTo: null },
-          { id: "month", label: "Within a month", weights: {}, pointsTo: null },
-          { id: "quarter", label: "In 1–3 months", weights: {}, pointsTo: null },
-          { id: "exploring", label: "Just exploring for now", weights: { strategy: 1 }, pointsTo: "strategy" },
+          { id: "asap", label: "As soon as possible", pointsTo: null },
+          { id: "month", label: "Within a month", pointsTo: null },
+          { id: "quarter", label: "In 1–3 months", pointsTo: null },
+          { id: "exploring", label: "Just exploring for now", pointsTo: "strategy" },
         ],
       },
     ] satisfies QuizQuestion[],

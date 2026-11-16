@@ -1,4 +1,4 @@
-import { safeWeight, type Ebook } from "@/content/site";
+import type { Ebook } from "@/content/site";
 import type { Workspace } from "@/content/types";
 import type { Path } from "./path";
 
@@ -26,10 +26,11 @@ function checkQuiz(ws: Workspace): Issue[] {
   const reachable = new Set<string>();
   qs.forEach((q, qi) => {
     if (q.options.length < 2) out.push({ path: ["site", "quiz", "questions", qi], message: `"${q.q || `Question ${qi + 1}`}" needs at least two answers.`, level: "error" });
-    for (const o of q.options) for (const [k, v] of Object.entries(o.weights)) if (safeWeight(v) > 0) reachable.add(k);
+    for (const o of q.options) if (o.pointsTo) reachable.add(o.pointsTo);
   });
+  // a warning, not an error: the AI result doesn't depend on pointsTo, only the non-AI backup does
   for (const [key, label] of Object.entries(ACTIVITY_LABELS)) {
-    if (!reachable.has(key)) out.push({ path: ["site", "quiz", "questions"], message: `No answer gives points to ${label} — it could never be recommended.`, level: "error" });
+    if (!reachable.has(key)) out.push({ path: ["site", "quiz", "questions"], message: `No answer points to ${label} — the backup could never recommend it.`, level: "warning" });
   }
   const roles = qs.filter((q) => q.role).map((q) => q.role);
   if (new Set(roles).size !== roles.length) out.push({ path: ["site", "quiz", "questions"], message: "Only one question should be marked for each part of the result sentence (who / goal / timing).", level: "warning" });

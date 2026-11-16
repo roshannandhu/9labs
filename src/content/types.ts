@@ -1,3 +1,4 @@
+import type { AiQuizResult, QuizSource } from "@/lib/quiz/types";
 import type { Ebook, QuizQuestion, Service, Value } from "./site";
 
 /**
@@ -413,6 +414,12 @@ export type QuizResult = {
   matches: string;
   summary: string;
   answers: Record<string, string[]>;
+  /** Free-text "Other" answers, keyed by question id. */
+  other: Record<string, string>;
+  name: string;
+  phone: string;
+  ai: AiQuizResult | null;
+  source: QuizSource | "none";
   action: QuizAction;
   email: string;
   status: FollowUp;

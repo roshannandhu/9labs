@@ -6,7 +6,9 @@ import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
 import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/lib/local/backend";
 import { opaqueRef } from "@/lib/text";
-import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
+import { runBackup } from "@/lib/quiz/backup";
+import type { QuizAnswers } from "@/lib/quiz/types";
+import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { scrollToId } from "@/lib/scroll";
 import { useModalLock } from "@/lib/useModalLock";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -14,6 +16,7 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 
 const ease = [0.16, 1, 0.3, 1] as const;
+const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
 
 /**
  * The 9 Quiz: the admin's questions, one per screen, answered with big tap cards (keys 1–5 work too).
@@ -122,7 +125,8 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     return () => window.removeEventListener("keydown", onKey);
   }, [open, q, idx, choose, go, next]);
 
-  const result = useMemo(() => (idx >= COUNT ? scoreQuiz(site, answers) : null), [idx, answers, site, COUNT]);
+  const result = useMemo(() => (idx >= COUNT ? runBackup(site, answers, {}) : null), [idx, answers, site, COUNT]);
+  const whatsappText = useMemo(() => (result ? buildQuizWhatsappText(site, buildQuizLines(questions, answers, {}), result) : ""), [result, site, questions, answers]);
 
   // a finished quiz is saved once for the admin; the result never waits for it
   const done = Boolean(result);
@@ -269,39 +273,35 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       <h2 className="mt-2 text-[clamp(1.8rem,5vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white">
                         {t.heading}
                       </h2>
-                      <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.summary}</p>
+                      <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
 
                       <ul className="mt-6 grid gap-3">
-                        {result.matches.map((m, i) => (
-                          <motion.li
-                            key={m.service.slug}
-                            initial={{ opacity: 0, y: 14 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15 + i * 0.1, duration: 0.5, ease }}
-                            className="flex items-start gap-4 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5"
-                          >
-                            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white">
-                              <ActivityIcon icon={m.service.icon} size={26} play />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center justify-between gap-3">
-                                <span className="font-display text-[16px] font-semibold text-white sm:text-[17px]">
-                                  {i + 1}. {m.service.title}
+                        {result.matches.map((m, i) => {
+                          const s = site.services.find((sv) => sv.slug === m.slug);
+                          if (!s) return null;
+                          return (
+                            <motion.li
+                              key={m.slug}
+                              initial={{ opacity: 0, y: 14 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.15 + i * 0.1, duration: 0.5, ease }}
+                              className="flex items-start gap-4 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5"
+                            >
+                              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white">
+                                <ActivityIcon icon={s.icon} size={26} play />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-center justify-between gap-3">
+                                  <span className="font-display text-[16px] font-semibold text-white sm:text-[17px]">
+                                    {i + 1}. {s.title}
+                                  </span>
+                                  <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
                                 </span>
-                                <span className="shrink-0 font-digits text-xs font-black text-[color:var(--brand-a)]">{m.score}%</span>
+                                <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.how}</span>
                               </span>
-                              <span className="mt-2 block h-1 overflow-hidden rounded-full bg-white/10">
-                                <motion.span
-                                  className="block h-full rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]"
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${m.score}%` }}
-                                  transition={{ delay: 0.35 + i * 0.1, duration: 0.9, ease }}
-                                />
-                              </span>
-                              <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.why}</span>
-                            </span>
-                          </motion.li>
-                        ))}
+                            </motion.li>
+                          );
+                        })}
                       </ul>
 
                       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -316,7 +316,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
 
                       <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5">
                         <a
-                          href={wa(result.whatsappText)}
+                          href={wa(whatsappText)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-primary w-full"

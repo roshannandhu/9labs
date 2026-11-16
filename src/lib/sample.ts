@@ -134,11 +134,12 @@ function makeQuizResults(): QuizResult[] {
   const out: QuizResult[] = [];
   for (let i = 0; i < 70; i++) {
     const shuffled = [...site.services].sort(() => rng() - 0.5).slice(0, 3);
-    const scores = [int(88, 99), int(55, 80), int(35, 60)].sort((a, b) => b - a);
-    const matches = shuffled.map((s, j) => `${s.short} ${scores[j]}%`).join(" · ");
+    const fit = ["best", "also", "consider"] as const;
+    const matches = shuffled.map((s, j) => `${j + 1}) ${s.title}`).join(", ");
     const roll = rng();
     const action: QuizResult["action"] = roll < 0.45 ? "none" : roll < 0.8 ? "whatsapp" : "email";
     const name = fullName();
+    const source: QuizResult["source"] = rng() < 0.55 ? "groq" : rng() < 0.85 ? "backup" : "gemini";
     out.push({
       id: `quiz_sample_${i}`,
       ref: shortRef(),
@@ -146,6 +147,18 @@ function makeQuizResults(): QuizResult[] {
       matches,
       summary: `You're exploring ${shuffled[0].short.toLowerCase()}, and your main goal is "grow the business".\n\nWhy: it matched most of your answers.`,
       answers: { who: ["business"], goal: ["grow"] },
+      other: {},
+      name,
+      phone: "",
+      ai: {
+        wants: `You're exploring ${shuffled[0].short.toLowerCase()}, and your main goal is "grow the business".`,
+        highlights: [],
+        matches: shuffled.map((s, j) => ({ slug: s.slug, fit: fit[j], how: s.description })),
+        steps: site.quiz.result.steps,
+        tags: { who: "business", goal: "grow" },
+        source,
+      },
+      source,
       action,
       email: action === "email" ? emailFor(name) : "",
       status: action === "none" ? "new" : rng() < 0.6 ? "contacted" : "new",

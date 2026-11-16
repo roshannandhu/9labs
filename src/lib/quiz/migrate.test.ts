@@ -29,11 +29,3 @@ test("migrateQuizOptionsInPlace: not a workspace-shaped object is a safe no-op",
   assert.doesNotThrow(() => migrateQuizOptionsInPlace({}));
   assert.doesNotThrow(() => migrateQuizOptionsInPlace({ site: {} }));
 });
-
-test("every live default option's pointsTo matches a fresh derivePointsTo over its own weights", () => {
-  for (const q of site.quiz.questions) {
-    for (const o of q.options) {
-      assert.equal(o.pointsTo, derivePointsTo(o.weights, site.services), `${q.id}.${o.id}`);
-    }
-  }
-});
