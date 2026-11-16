@@ -218,6 +218,15 @@ function TestTab() {
                       {s?.title ?? m.slug} — {FIT_LABEL[m.fit]}
                     </strong>
                     <p className="mt-0.5 text-st-sub">{m.how}</p>
+                    {!!s?.tags.length && (
+                      <p className="mt-1.5 flex flex-wrap gap-1">
+                        {s.tags.map((tag) => (
+                          <span key={tag} className="rounded-full border border-st-border-strong px-2 py-0.5 text-[10.5px] text-st-dim">
+                            {tag}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </li>
                 );
               })}

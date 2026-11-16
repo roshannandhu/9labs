@@ -298,6 +298,15 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                                   <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
                                 </span>
                                 <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.how}</span>
+                                {s.tags.length > 0 && (
+                                  <span className="mt-2.5 flex flex-wrap gap-1.5">
+                                    {s.tags.map((tag) => (
+                                      <span key={tag} className="rounded-full border border-white/12 px-2 py-0.5 text-[11px] text-white/65">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </span>
+                                )}
                               </span>
                             </motion.li>
                           );
