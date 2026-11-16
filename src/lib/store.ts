@@ -1,6 +1,7 @@
 "use client";
 
 import { defaultWorkspace, WORKSPACE_SCHEMA } from "@/content/defaults";
+import { migrateQuizOptionsInPlace } from "./quiz/migrate";
 import type { AdminRole, AdminUser, BookRequest, Enquiry, FollowUp, OutboxKind, OutboxMail, QuizResult, Version, Workspace } from "@/content/types";
 import { diffDeep } from "./diff";
 import { getIn, insertIntoArray, moveInArray, removeFromArray, setIn, type Path } from "./path";
@@ -43,6 +44,7 @@ function freshState(): StoreState {
 
 /** Lays a freshly loaded workspace over today's defaults, so an older save never crashes a newer build. */
 function normalizeWorkspace(saved: unknown): Workspace {
+  migrateQuizOptionsInPlace(saved); // weights → pointsTo, once, before anything reads site.quiz
   const d = defaultWorkspace();
   if (!saved || typeof saved !== "object") return d;
   const s = saved as Partial<Workspace>;

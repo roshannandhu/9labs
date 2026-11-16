@@ -156,6 +156,19 @@ export interface SiteData {
       retake: string;
       ebooksCta: string;
     };
+    /** AI + RAG result settings (docs/AI_RAG_SYSTEM.md). Provider order is fixed (Groq then Gemini),
+     *  not admin-configurable — everything here is behavior, not secrets; the API keys themselves
+     *  live in the database, outside this versioned content. */
+    ai: {
+      enabled: boolean;
+      tone: "friendly" | "professional" | "short";
+      /** Free text about Nine Labs injected into the prompt. */
+      notes: string;
+      maxOtherChars: number;
+      allowPrices: boolean;
+      /** Gemini has no queryable quota — the admin types a daily estimate so the Dashboard can show a % used. */
+      geminiDailyLimitEstimate: number;
+    };
   };
 
   enquiry: {
