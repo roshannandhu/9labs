@@ -1,20 +1,10 @@
-"use client";
-
 import type { SiteData } from "@/content/types";
-import { fileUrl } from "./files";
+import { mediaUrl } from "./fileRefs";
 
-/** A stored file lives under `idb:<fileId>` in a content field until it's resolved to a real URL. */
-export const idbRef = (fileId: string) => `idb:${fileId}`;
-export const isIdbRef = (v: string | undefined): v is string => !!v && v.startsWith("idb:");
+const resolve = (ref?: string): string | undefined => (ref ? (mediaUrl(ref) ?? ref) : ref);
 
-async function resolve(v?: string): Promise<string | undefined> {
-  if (!isIdbRef(v)) return v;
-  return fileUrl(v.slice(4));
-}
-
-/** Swaps every `idb:` reference (logo, favicon, OG image, book covers) for a usable object URL. */
-export async function resolveSiteFiles(site: SiteData): Promise<SiteData> {
-  const [logo, favicon, ogImage] = await Promise.all([resolve(site.logo), resolve(site.favicon), resolve(site.seo.ogImage)]);
-  const ebooks = await Promise.all(site.ebooks.map(async (b) => ({ ...b, cover: await resolve(b.cover), coverLogo: await resolve(b.coverLogo) })));
-  return { ...site, logo, favicon, seo: { ...site.seo, ogImage }, ebooks };
+/** Swaps every stored-file reference (logo, favicon, OG image, book covers) for a servable URL. */
+export function resolveSiteFiles(site: SiteData): SiteData {
+  const ebooks = site.ebooks.map((b) => ({ ...b, cover: resolve(b.cover), coverLogo: resolve(b.coverLogo) }));
+  return { ...site, logo: resolve(site.logo), favicon: resolve(site.favicon), seo: { ...site.seo, ogImage: resolve(site.seo.ogImage) }, ebooks };
 }

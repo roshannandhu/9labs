@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { fontVariables } from "@/lib/fonts";
-import { site } from "@/content/site";
 import { SiteProvider } from "@/components/providers/SiteProvider";
 import { ThemeColors } from "@/components/providers/ThemeColors";
 import { DemoSettingsProvider } from "@/components/providers/DemoSettings";
@@ -14,24 +13,30 @@ import { INTRO_BOOT_SCRIPT } from "@/components/intro/introBus";
 import { EnquiryProvider } from "@/components/enquiry/EnquiryProvider";
 import { Tracking } from "@/components/layout/Tracking";
 import { themeBootScript } from "@/lib/theme";
+import { getPublicContent } from "@/server/content";
 
 /**
- * Fully static export: there is no server at request time to read the admin's saved content, so
- * SEO metadata and the pre-paint boot scripts use the built-in defaults (`src/content/site.ts`).
- * The page itself is admin-content-driven once it reaches the browser (`SiteProvider`).
+ * Reads the published workspace on every request (no server at build time any more — see
+ * `src/server/content.ts`, memoized 60s and de-duplicated per request via React `cache()`, so
+ * this and `generateMetadata` below share one fetch).
  */
-export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
-  title: { default: site.seo.title, template: site.seo.titleTemplate.includes("%s") ? site.seo.titleTemplate : `%s · ${site.name}` },
-  description: site.seo.description,
-  applicationName: site.name,
-  keywords: site.seo.keywords,
-  alternates: { canonical: "/" },
-  openGraph: { type: "website", url: "/", siteName: site.name, title: site.seo.title, description: site.seo.description, locale: "en_AE" },
-  twitter: { card: "summary_large_image", title: site.seo.title, description: site.seo.description },
-  robots: site.seo.index && process.env.NEXT_PUBLIC_NOINDEX !== "1" ? { index: true, follow: true } : { index: false, follow: false },
-  formatDetection: { telephone: false },
-};
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { site } = await getPublicContent();
+  return {
+    metadataBase: new URL(site.url),
+    title: { default: site.seo.title, template: site.seo.titleTemplate.includes("%s") ? site.seo.titleTemplate : `%s · ${site.name}` },
+    description: site.seo.description,
+    applicationName: site.name,
+    keywords: site.seo.keywords,
+    alternates: { canonical: "/" },
+    openGraph: { type: "website", url: "/", siteName: site.name, title: site.seo.title, description: site.seo.description, locale: "en_AE" },
+    twitter: { card: "summary_large_image", title: site.seo.title, description: site.seo.description },
+    robots: site.seo.index && process.env.NEXT_PUBLIC_NOINDEX !== "1" ? { index: true, follow: true } : { index: false, follow: false },
+    formatDetection: { telephone: false },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#e9ddeb",
@@ -40,7 +45,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
+export default async function SiteLayout({ children }: { children: React.ReactNode }) {
+  const { site, pages, faqs } = await getPublicContent();
   return (
     // suppressHydrationWarning: the pre-paint scripts set data-theme / data-intro on <html> before React loads
     <html lang="en" className={fontVariables} suppressHydrationWarning>
@@ -52,7 +58,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
           Skip to content
         </a>
-        <SiteProvider>
+        <SiteProvider site={site} pages={pages} faqs={faqs}>
           <ThemeColors />
           <DemoSettingsProvider>
             <QuizProvider>

@@ -13,12 +13,18 @@ import { SplitFlap } from "./SplitFlap";
 const LAST = 2;
 const stroke = { fill: "none", vectorEffect: "non-scaling-stroke" as const, strokeLinecap: "round" as const };
 
+/** Nine Labs is shown first now, "your side" second — the content is written per-side, not per-position, so reorder it here once and every index below (steps[0], steps[step], the reduced-motion list) just reads correctly. */
+function forNineFirst<T extends { n: string }>(steps: T[]): T[] {
+  const [yours, ours, ...rest] = steps;
+  return [{ ...ours, n: yours.n }, { ...yours, n: ours.n }, ...rest];
+}
+
 /* ---------------------------------------------------------------- the scene (one drawing for phone and laptop) */
 const quad = (a: number, c: number, b: number, t: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * c + t * t * b;
 const H = { deck: 300, top: 70, water: 380, towers: [330, 870], x0: 120, x1: 1080, mid: 600 };
 /** Deck lamps: clear of the towers and the 9 in the middle; they light from both ends inward. */
 const LAMPS = [170, 230, 290, 380, 440, 500, 700, 760, 820, 910, 970, 1030];
-/** Your side: a small town on the left bank (x, width, height, window columns). */
+/** Your side: a small town, drawn here on the left bank then mirrored onto the right (bs-2) since Nine Labs is first now. */
 const TOWN = [
   { x: 10, w: 30, h: 98, cols: 2 },
   { x: 44, w: 22, h: 64, cols: 1 },
@@ -27,7 +33,7 @@ const TOWN = [
 
 /**
  * The 3 timeline beats. Times are in timeline units; both layouts share them, the phone only adds a
- * camera on top. `rightAt`/`spanAt` let the phone build the cable while it pans, before our side shows.
+ * camera on top. `secondAt`/`spanAt` let the phone build the cable while it pans, before your side shows.
  */
 const T = { span: 0.7, deck: 2.1, nine: 2.4, live: 2.5, end: 3.0 };
 
@@ -99,9 +105,38 @@ function SideBridge() {
         <path d={`M476 ${H.water - 2} V${H.water - 40} L496 ${H.water - 8} Z`} fill="var(--brand-b)" fillOpacity="0.35" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       </g>
 
-      {/* ------------------------------------------------ step 1: your side */}
+      {/* ------------------------------------------------ step 1: our side (now first — mirrored onto the left bank) */}
       <path className="bs-draw bs-1 bs-bank" d={`M0 ${H.deck} H${H.x0} L${H.x0 + 26} ${H.water}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" strokeWidth={1.4} />
-      <g className="bs-1">
+      <g className="bs-1" transform="translate(1200,0) scale(-1,1)">
+        <g className="bs-rise">
+          <rect x="1096" y={H.deck - 104} width="66" height="104" rx="3" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <rect x="1162" y={H.deck - 48} width="30" height="48" rx="2" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <path d={`M1129 ${H.deck - 104} V${H.deck - 128}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" />
+          <circle cx="1129" cy={H.deck - 130} r="2.5" fill="var(--brand-b)" />
+          {[10, 18].map((r) => (
+            <path key={r} className="bs-signal" d={`M${1129 - r} ${H.deck - 130 - r * 0.6} A${r} ${r} 0 0 1 ${1129 + r} ${H.deck - 130 - r * 0.6}`} {...stroke} stroke="var(--brand-b)" strokeOpacity="0.6" />
+          ))}
+          <rect className="bs-win" x="1170" y={H.deck - 22} width="14" height="22" fill="var(--brand-a)" fillOpacity="0.5" />
+        </g>
+        {/* the nine activities: a 3 × 3 grid of windows */}
+        {Array.from({ length: 9 }, (_, k) => (
+          <rect
+            key={k}
+            className="bs-nine-win"
+            x={1105 + (k % 3) * 17}
+            y={H.deck - 92 + Math.floor(k / 3) * 22}
+            width="13"
+            height="15"
+            rx="2"
+            fill={k % 2 ? "var(--brand-b)" : "var(--brand-a)"}
+            fillOpacity="0.85"
+          />
+        ))}
+      </g>
+
+      {/* ------------------------------------------------ step 2: your side (now second — mirrored onto the right bank) */}
+      <path className="bs-draw bs-2 bs-bank" d={`M1200 ${H.deck} H${H.x1} L${H.x1 - 26} ${H.water}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" strokeWidth={1.4} />
+      <g className="bs-2" transform="translate(1200,0) scale(-1,1)">
         {TOWN.map((b, i) => (
           <g key={b.x} className="bs-rise">
             <rect x={b.x} y={H.deck - b.h} width={b.w} height={b.h} rx="2" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1" vectorEffect="non-scaling-stroke" />
@@ -135,35 +170,6 @@ function SideBridge() {
         ))}
       </g>
 
-      {/* ------------------------------------------------ step 2: our side — the studio and its nine lit windows */}
-      <path className="bs-draw bs-2 bs-bank" d={`M1200 ${H.deck} H${H.x1} L${H.x1 - 26} ${H.water}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" strokeWidth={1.4} />
-      <g className="bs-2">
-        <g className="bs-rise">
-          <rect x="1096" y={H.deck - 104} width="66" height="104" rx="3" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <rect x="1162" y={H.deck - 48} width="30" height="48" rx="2" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <path d={`M1129 ${H.deck - 104} V${H.deck - 128}`} {...stroke} stroke="currentColor" strokeOpacity="0.5" />
-          <circle cx="1129" cy={H.deck - 130} r="2.5" fill="var(--brand-b)" />
-          {[10, 18].map((r) => (
-            <path key={r} className="bs-signal" d={`M${1129 - r} ${H.deck - 130 - r * 0.6} A${r} ${r} 0 0 1 ${1129 + r} ${H.deck - 130 - r * 0.6}`} {...stroke} stroke="var(--brand-b)" strokeOpacity="0.6" />
-          ))}
-          <rect className="bs-win" x="1170" y={H.deck - 22} width="14" height="22" fill="var(--brand-a)" fillOpacity="0.5" />
-        </g>
-        {/* the nine activities: a 3 × 3 grid of windows */}
-        {Array.from({ length: 9 }, (_, k) => (
-          <rect
-            key={k}
-            className="bs-nine-win"
-            x={1105 + (k % 3) * 17}
-            y={H.deck - 92 + Math.floor(k / 3) * 22}
-            width="13"
-            height="15"
-            rx="2"
-            fill={k % 2 ? "var(--brand-b)" : "var(--brand-a)"}
-            fillOpacity="0.85"
-          />
-        ))}
-      </g>
-
       {/* towers (left builds in step 1, right in step 2) */}
       {H.towers.map((x, i) => (
         <g key={x} className={i === 0 ? "bs-1" : "bs-2"}>
@@ -181,7 +187,7 @@ function SideBridge() {
         </g>
       ))}
 
-      {/* hangers: the back spans with their side, the main span is strung left → right toward our side */}
+      {/* hangers: the back spans with their side, the main span is strung left → right (now toward your side) */}
       {hangers.map((h) => (
         <path
           key={`${h.side}${h.x}`}
@@ -324,16 +330,17 @@ const PH = 340;
 
 /**
  * Phone: the same three beats as the laptop, with a camera.
- *   1. on your side (your town, the left tower, "Your business");
- *   2. the cable is strung toward our side and the camera follows it right, onto the Nine Labs studio;
+ *   1. on our side (the Nine Labs studio, the left tower);
+ *   2. the cable is strung toward your side and the camera follows it right, onto your town, "Your business";
  *   3. the camera moves to the middle: the deck meets, the 9 lights up and the result appears;
  *      then it pulls back to the whole bridge, with the two sides and the result labelled.
  */
 function PhoneBridge({ stop, flap, onGo, reduced }: { stop: number; flap: { cur: number; prev: number; k: number }; onGo: (index: number) => void; reduced: boolean }) {
-  const { story, steps } = useSite().about;
+  const { story, steps: rawSteps } = useSite().about;
+  const steps = forNineFirst(rawSteps);
   const STOPS = [
-    { label: story.yourSideLabel, s: steps[0] },
-    { label: story.ourSideLabel, s: steps[1] },
+    { label: story.ourSideLabel, s: steps[0] },
+    { label: story.yourSideLabel, s: steps[1] },
     { label: story.result || "Results", s: steps[LAST] },
   ];
 
@@ -359,10 +366,10 @@ function PhoneBridge({ stop, flap, onGo, reduced }: { stop: number; flap: { cur:
             <div className="relative h-[440px] w-[1200px]">
               <SideBridge />
               <div className="bs-stage-card absolute left-[24px] top-[22px] w-[224px]">
-                <YouBank />
+                <UsBank />
               </div>
               <div className="bs-stage-card absolute left-[952px] top-[22px] w-[224px]">
-                <UsBank />
+                <YouBank />
               </div>
               <p className="bs-result absolute left-[600px] top-[188px] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lg">
                 {story.result}
@@ -371,11 +378,11 @@ function PhoneBridge({ stop, flap, onGo, reduced }: { stop: number; flap: { cur:
           </div>
 
           {/* the pulled-back view: labels at readable size, outside the scaled stage */}
-          <p className="bs-wide-tag pointer-events-none absolute left-4 top-3 rounded-full border border-[color:var(--brand-a)]/40 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white">
-            {story.yourSideTitle}
-          </p>
-          <p className="bs-wide-tag pointer-events-none absolute right-4 top-3 rounded-full border border-[color:var(--brand-b)]/50 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white">
+          <p className="bs-wide-tag pointer-events-none absolute left-4 top-3 rounded-full border border-[color:var(--brand-b)]/50 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white">
             {story.ourSideTitle}
+          </p>
+          <p className="bs-wide-tag pointer-events-none absolute right-4 top-3 rounded-full border border-[color:var(--brand-a)]/40 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white">
+            {story.yourSideTitle}
           </p>
           <p className="bs-wide-result pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded-full bg-[linear-gradient(120deg,var(--nl-purple),var(--nl-blue))] px-4 py-1.5 text-[14px] font-semibold text-[#fff] shadow-[0_14px_34px_-14px_rgba(53,51,203,.7)]">
             {story.result}
@@ -423,33 +430,35 @@ function PhoneBridge({ stop, flap, onGo, reduced }: { stop: number; flap: { cur:
 
 /**
  * Builds the three beats into `tl` (shared by phone and laptop). `scope` is the layout's own wrapper;
- * `rightAt` is when our side appears and `spanAt` when the main cable starts toward it.
+ * `secondAt` is when the second side appears and `spanAt` when the main cable starts toward it.
+ * Nine Labs goes first (left bank, mirrored studio scene); your side is second (right bank, mirrored
+ * town). Each scene keeps its own original pacing/stagger, just reanchored to its new slot's start time.
  */
-function buildBeats(tl: gsap.core.Timeline, q: (s: string) => Element[], scope: string, rightAt: number, spanAt: number) {
+function buildBeats(tl: gsap.core.Timeline, q: (s: string) => Element[], scope: string, secondAt: number, spanAt: number) {
   const $ = (s: string) => q(s.split(",").map((p) => `${scope} ${p.trim()}`).join(", "));
   const span = $(".bs-span")[0];
 
-  // 1 · your side
-  tl.from($(".bs-card-you"), { autoAlpha: 0, y: 18, duration: 0.3 }, 0)
-    .from($(".bs-1.bs-bank"), { drawSVG: "0%", duration: 0.3 }, 0.05)
-    .from($(".bs-1 .bs-rise"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.3, stagger: 0.07, ease: "back.out(1.6)" }, 0.12)
-    .from($(".bs-1 .bs-win"), { autoAlpha: 0, duration: 0.04, stagger: 0.012 }, 0.32)
-    .from($(".bs-bubble"), { autoAlpha: 0, y: 24, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25, stagger: 0.08, ease: "back.out(2)" }, 0.4)
-    .from($(".bs-1 .bs-draw:not(.bs-hang-l):not(.bs-cable-l)"), { drawSVG: "0%", duration: 0.4, stagger: 0.01 }, 0.25)
-    .from($(".bs-1 .bs-pop, .bs-1.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.15 }, 0.65)
-    .from($(".bs-cable-l"), { drawSVG: "0%", duration: 0.3 }, 0.55)
-    .from($(".bs-hang-l"), { drawSVG: "0%", duration: 0.12, stagger: 0.03 }, 0.6);
+  // 1 · our side (first) — the studio, mirrored onto the left
+  tl.from($(".bs-card-us"), { autoAlpha: 0, y: 18, duration: 0.3 }, 0)
+    .from($(".bs-1.bs-bank"), { drawSVG: "0%", duration: 0.3 }, 0)
+    .from($(".bs-1 .bs-rise"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.3, ease: "back.out(1.4)" }, 0.08)
+    .from($(".bs-nine-win"), { autoAlpha: 0, scale: 0.2, transformOrigin: "50% 50%", duration: 0.08, stagger: 0.04 }, 0.3)
+    .from($(".bs-1 .bs-win"), { autoAlpha: 0, duration: 0.06 }, 0.3)
+    .from($(".bs-1 .bs-draw:not(.bs-hang-l):not(.bs-cable-l)"), { drawSVG: "0%", duration: 0.4, stagger: 0.01 }, 0.1)
+    .from($(".bs-1 .bs-pop, .bs-1.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.15 }, 0.5)
+    .from($(".bs-cable-l"), { drawSVG: "0%", duration: 0.25 }, 0.45)
+    .from($(".bs-hang-l"), { drawSVG: "0%", duration: 0.1, stagger: 0.025 }, 0.5);
 
-  // 2 · our side + the main span strung toward it
-  tl.from($(".bs-card-us"), { autoAlpha: 0, y: 18, duration: 0.3 }, rightAt)
-    .from($(".bs-2.bs-bank"), { drawSVG: "0%", duration: 0.3 }, rightAt)
-    .from($(".bs-2 .bs-rise"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.3, ease: "back.out(1.4)" }, rightAt + 0.08)
-    .from($(".bs-nine-win"), { autoAlpha: 0, scale: 0.2, transformOrigin: "50% 50%", duration: 0.08, stagger: 0.04 }, rightAt + 0.3)
-    .from($(".bs-2 .bs-win"), { autoAlpha: 0, duration: 0.06 }, rightAt + 0.3)
-    .from($(".bs-2 .bs-draw:not(.bs-hang-r):not(.bs-cable-r)"), { drawSVG: "0%", duration: 0.4, stagger: 0.01 }, rightAt + 0.1)
-    .from($(".bs-2 .bs-pop, .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.15 }, rightAt + 0.5)
-    .from($(".bs-cable-r"), { drawSVG: "0%", duration: 0.25 }, rightAt + 0.45)
-    .from($(".bs-hang-r"), { drawSVG: "0%", duration: 0.1, stagger: 0.025 }, rightAt + 0.5)
+  // 2 · your side (second) + the main span strung toward it — the town, mirrored onto the right
+  tl.from($(".bs-card-you"), { autoAlpha: 0, y: 18, duration: 0.3 }, secondAt)
+    .from($(".bs-2.bs-bank"), { drawSVG: "0%", duration: 0.3 }, secondAt + 0.05)
+    .from($(".bs-2 .bs-rise"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.3, stagger: 0.07, ease: "back.out(1.6)" }, secondAt + 0.12)
+    .from($(".bs-2 .bs-win"), { autoAlpha: 0, duration: 0.04, stagger: 0.012 }, secondAt + 0.32)
+    .from($(".bs-bubble"), { autoAlpha: 0, y: 24, scale: 0.4, transformOrigin: "50% 50%", duration: 0.25, stagger: 0.08, ease: "back.out(2)" }, secondAt + 0.4)
+    .from($(".bs-2 .bs-draw:not(.bs-hang-r):not(.bs-cable-r)"), { drawSVG: "0%", duration: 0.4, stagger: 0.01 }, secondAt + 0.25)
+    .from($(".bs-2 .bs-pop, .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.15 }, secondAt + 0.65)
+    .from($(".bs-cable-r"), { drawSVG: "0%", duration: 0.3 }, secondAt + 0.55)
+    .from($(".bs-hang-r"), { drawSVG: "0%", duration: 0.12, stagger: 0.03 }, secondAt + 0.6)
     .from(span, { drawSVG: "0%", duration: T.span }, spanAt)
     .from($(".bs-hang-c"), { drawSVG: "0%", duration: 0.12, stagger: (T.span - 0.12) / 16 }, spanAt);
   if (span) {
@@ -471,14 +480,15 @@ function buildBeats(tl: gsap.core.Timeline, q: (s: string) => Element[], scope: 
 
 /**
  * "How we work" — the brand idea (a bridge between your business and your results) in three scroll steps:
- *   1. your side: your business — a small town with its goals, ideas and feedback (left tower + cable)
- *   2. our side: the Nine Labs studio with nine lit windows; the cable is strung across toward it
+ *   1. our side: the Nine Labs studio with nine lit windows (left tower + cable)
+ *   2. your side: your business — a small town with its goals, ideas and feedback; the cable is strung across toward it
  *   3. the deck meets in the middle: the 9 lights up, lamps come on, the sun rises on "Results".
- * Pinned on both phone and laptop; the phone adds a camera (your side → our side → middle → whole bridge).
+ * Pinned on both phone and laptop; the phone adds a camera (our side → your side → middle → whole bridge).
  */
 export function BridgeStory() {
   const { reduced } = useDemo();
-  const { story, steps } = useSite().about;
+  const { story, steps: rawSteps } = useSite().about;
+  const steps = forNineFirst(rawSteps);
   const wide = useMediaQuery("(min-width: 768px)", true);
   // phones held sideways: too short for cards over the bridge, so cards sit beside it
   const short = useMediaQuery("(orientation: landscape) and (max-height: 520px)");
@@ -521,7 +531,7 @@ export function BridgeStory() {
             .to(q(".bs-phone-stage"), { x, y, scale, duration, ease: "power2.inOut" }, at)
             .to(q(".bs-skyline"), { x: (focus(170) - x) * 0.25, duration, ease: "power2.inOut" }, at);
 
-        // 1 → 2: follow the cable toward our side
+        // 1 → 2: follow the cable toward your side
         cam(focus(1030), y0, 1, 0.95, 0.95);
         tl.to(q(".bs-quote-0"), { autoAlpha: 0, y: -10, duration: 0.12 }, 0.95)
           .to(q(".bs-quote-1"), { autoAlpha: 1, y: 0, duration: 0.2 }, 1.08)
@@ -620,20 +630,20 @@ export function BridgeStory() {
         {/* the bridge */}
         {wide && short ? (
           <div className="bs-stage mt-3 flex items-center gap-3">
-            <YouBank className="w-[150px] shrink-0" />
+            <UsBank className="w-[150px] shrink-0" />
             <div className="relative mx-auto min-w-0 max-w-[calc((100svh_-_var(--nav-h)_-_150px)*2.72)] flex-1">
               <SideBridge />
               <p className="bs-result absolute left-1/2 top-[38%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
                 {story.result}
               </p>
             </div>
-            <UsBank className="w-[150px] shrink-0" />
+            <YouBank className="w-[150px] shrink-0" />
           </div>
         ) : wide ? (
           <div className="bs-stage relative mx-auto mt-8 w-full max-w-[min(100%,calc((100svh_-_var(--nav-h)_-_210px)*2.72))]">
             <SideBridge />
-            <YouBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
-            <UsBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
+            <UsBank className="absolute left-0 top-0 w-[20%] min-w-[132px]" />
+            <YouBank className="absolute right-0 top-0 w-[20%] min-w-[132px]" />
             <p className="bs-result absolute left-1/2 top-[38%] -translate-x-1/2 rounded-full border border-white/15 bg-[var(--chip-bg)] px-3 py-1 text-[12px] font-semibold text-white shadow-lg">
               {story.result}
             </p>

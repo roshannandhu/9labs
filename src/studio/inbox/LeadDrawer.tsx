@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { waLink } from "@/content/site";
-import { removeLead } from "@/lib/store";
+import { getOutboxHtml, removeLead } from "@/studio/store";
 import { Icon } from "../Icon";
 import type { LeadKind } from "../leads";
 import { KIND_LABEL } from "../leads";
@@ -136,10 +137,14 @@ function EnquiryBody({ id, onClose }: { id: string; onClose: () => void }) {
       </div>
 
       <DeleteFooter
-        onDelete={() => {
-          removeLead("enquiry", e.id);
-          toast("ok", "Deleted.");
-          onClose();
+        onDelete={async () => {
+          try {
+            await removeLead("enquiry", e.id);
+            toast("ok", "Deleted.");
+            onClose();
+          } catch (err) {
+            toast("bad", err instanceof Error ? err.message : "Could not delete that.");
+          }
         }}
       />
     </div>
@@ -152,9 +157,23 @@ function BookBody({ id, onClose }: { id: string; onClose: () => void }) {
   const outbox = useOutbox();
   const toast = useToast();
   const r = bookRequests.find((x) => x.id === id);
+  const mail = r ? outbox.filter((m) => m.kind === "ebook" && m.to.toLowerCase() === r.email.toLowerCase()).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : undefined;
+  const [mailHtml, setMailHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mail) return;
+    let cancelled = false;
+    void getOutboxHtml(mail.id).then((html) => {
+      if (!cancelled) setMailHtml(html);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch only when the matched mail actually changes, not its object identity
+  }, [mail?.id]);
+
   if (!r) return null;
   const book = draft.site.ebooks.find((b) => b.slug === r.bookSlug);
-  const mail = outbox.filter((m) => m.kind === "ebook" && m.to.toLowerCase() === r.email.toLowerCase()).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const digits = r.phone.replace(/\D/g, "");
   const firstName = r.name.trim().split(/\s+/)[0] || "there";
   const waMessage = `Hi ${firstName}, this is ${draft.site.shortName} about your request for "${book?.title ?? r.bookSlug}".`;
@@ -214,17 +233,26 @@ function BookBody({ id, onClose }: { id: string; onClose: () => void }) {
       {mail && (
         <div>
           <p className="st-micro mb-1.5">The e-mail they received</p>
-          <div className="overflow-hidden rounded-xl border border-st-border">
-            <iframe title="E-mail preview" srcDoc={mail.html} className="h-[280px] w-full bg-white" />
-          </div>
+          {mail.status === "logged" && <p className="mb-2 text-[12.5px] text-st-warn">Not sent — e-mail sending isn&apos;t set up yet. This is what it would have said.</p>}
+          {mailHtml ? (
+            <div className="overflow-hidden rounded-xl border border-st-border">
+              <iframe title="E-mail preview" srcDoc={mailHtml} className="h-[280px] w-full bg-white" />
+            </div>
+          ) : (
+            <p className="st-help">Loading…</p>
+          )}
         </div>
       )}
 
       <DeleteFooter
-        onDelete={() => {
-          removeLead("book", r.id);
-          toast("ok", "Deleted.");
-          onClose();
+        onDelete={async () => {
+          try {
+            await removeLead("book", r.id);
+            toast("ok", "Deleted.");
+            onClose();
+          } catch (err) {
+            toast("bad", err instanceof Error ? err.message : "Could not delete that.");
+          }
         }}
       />
     </div>
@@ -278,10 +306,14 @@ function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
       </div>
 
       <DeleteFooter
-        onDelete={() => {
-          removeLead("quiz", r.id);
-          toast("ok", "Deleted.");
-          onClose();
+        onDelete={async () => {
+          try {
+            await removeLead("quiz", r.id);
+            toast("ok", "Deleted.");
+            onClose();
+          } catch (err) {
+            toast("bad", err instanceof Error ? err.message : "Could not delete that.");
+          }
         }}
       />
     </div>

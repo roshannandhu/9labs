@@ -552,7 +552,7 @@ export const site: SiteData = {
     ],
     defaultCode: "+971",
     successTitle: "You’re on the list{name}!",
-    successPending: "We’ll send “{title}” to {email} as soon as it’s approved. Keep an eye on your inbox.",
+    successPending: "We’ll send “{title}” to {email} in a few minutes. Keep an eye on your inbox.",
     successSent: "“{title}” is on its way to {email}. Check your inbox (and the spam folder, just in case).",
     error: "Sorry, that didn’t go through. Please try again in a moment.",
     back: "Back to the shelf",

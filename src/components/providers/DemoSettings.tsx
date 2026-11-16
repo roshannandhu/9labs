@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getState, subscribe } from "@/lib/store";
+import { useSite } from "./SiteProvider";
 
 export type MotionPref = "system" | "full" | "reduce";
 
@@ -50,6 +50,7 @@ function readStored(): Partial<DemoSettings> {
 export const LAB_ENABLED = process.env.NEXT_PUBLIC_DEMO_LAB === "true";
 
 export function DemoSettingsProvider({ children, initial }: { children: React.ReactNode; initial?: Partial<DemoSettings> }) {
+  const site = useSite();
   const base = useMemo(() => ({ ...DEFAULT_SETTINGS, ...initial }), [initial]);
   const [settings, setSettings] = useState<DemoSettings>(base);
   const [systemReduced, setSystemReduced] = useState(false);
@@ -74,17 +75,12 @@ export function DemoSettingsProvider({ children, initial }: { children: React.Re
   }, [base]);
 
   // The grid strength, brand colours and WhatsApp-button toggle follow the published site (Look,
-  // SEO & tracking), live — every save re-applies this. The Concept Lab, when it's on, keeps its
-  // own stored choices instead.
+  // SEO & tracking). The Concept Lab, when it's on, keeps its own stored choices instead.
   useEffect(() => {
     if (LAB_ENABLED) return;
-    const apply = () => {
-      const s = getState().published.site;
-      setSettings((cur) => ({ ...cur, grid: s.theme.grid, blue: s.theme.colors.blue || DEFAULT_SETTINGS.blue, purple: s.theme.colors.purple || DEFAULT_SETTINGS.purple, whatsapp: s.contact.whatsappFab }));
-    };
-    apply();
-    return subscribe(apply);
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- applies the server-provided site's values over the client-only defaults, once ready
+    setSettings((cur) => ({ ...cur, grid: site.theme.grid, blue: site.theme.colors.blue || DEFAULT_SETTINGS.blue, purple: site.theme.colors.purple || DEFAULT_SETTINGS.purple, whatsapp: site.contact.whatsappFab }));
+  }, [site]);
 
   const reduced = settings.motion === "reduce" || (settings.motion === "system" && systemReduced);
 

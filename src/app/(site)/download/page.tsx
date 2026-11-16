@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
 import { PageHeader, PageShell } from "@/components/pages/PageShell";
-import { checkDownloadLink, recordDownload, type LinkState } from "@/lib/ebooks/deliver";
-import { fileUrl } from "@/lib/files";
+
+type LinkState = { ok: true; book: { title: string; subtitle: string; oneLiner: string; slug: string }; expiresAt: string | null; left: number } | { ok: false; reason: "invalid" | "expired" | "used" | "missing" };
 
 const PROBLEMS: Record<Exclude<LinkState, { ok: true }>["reason"], { title: string; text: string }> = {
   invalid: { title: "This link is not valid.", text: "It may have been replaced by a newer e-mail from us. Please use the link in the latest e-mail." },
@@ -15,18 +15,27 @@ const PROBLEMS: Record<Exclude<LinkState, { ok: true }>["reason"], { title: stri
   missing: { title: "This book is not available right now.", text: "Please message us and we will send it to you." },
 };
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 function DownloadInner() {
   const token = useSearchParams().get("t") ?? "";
   const site = useSite();
   const wa = useWhatsApp();
   const [state, setState] = useState<LinkState | null>(null);
-  const [fileHref, setFileHref] = useState<string>();
 
   useEffect(() => {
-    const link = checkDownloadLink(token);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the token can only be checked against the browser's own store, after mount
-    setState(link);
-    if (link.ok) void fileUrl(link.book.pdfFileId!).then(setFileHref);
+    let cancelled = false;
+    fetch(`${basePath}/api/public/download/?t=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((data: LinkState) => {
+        if (!cancelled) setState(data);
+      })
+      .catch(() => {
+        if (!cancelled) setState({ ok: false, reason: "invalid" });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (!state) return null;
@@ -48,15 +57,19 @@ function DownloadInner() {
     );
   }
 
-  const { book, request, left } = state;
-  const until = request.expiresAt ? new Date(request.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const { book, expiresAt, left } = state;
+  const until = expiresAt ? new Date(expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
+
   return (
     <PageShell>
       <PageHeader eyebrow={site.ebooksSection.label} title={book.title} intro={book.subtitle || book.oneLiner} />
       <div className="container-x mt-8 max-w-[920px]">
-        <a href={fileHref} download={`${book.slug || "e-book"}.pdf`} className="btn btn-primary" onClick={() => recordDownload(request.id)}>
-          Download the e-book (PDF)
-        </a>
+        <form method="post" action={`${basePath}/api/public/download/`} onSubmit={() => setState({ ...state, left: left - 1 })}>
+          <input type="hidden" name="t" value={token} />
+          <button type="submit" className="btn btn-primary">
+            Download the e-book (PDF)
+          </button>
+        </form>
         <p className="mt-4 text-[13.5px] text-nl-ink">
           This is your personal link{until ? ` — it works until ${until}` : ""}. {left} {left === 1 ? "download" : "downloads"} left.
         </p>

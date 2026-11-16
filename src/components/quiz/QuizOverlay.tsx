@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/lib/local/backend";
+import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/site/backend";
 import { opaqueRef } from "@/lib/text";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
 import { scrollToId } from "@/lib/scroll";

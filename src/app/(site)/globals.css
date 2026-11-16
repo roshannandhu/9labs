@@ -1607,7 +1607,14 @@ html[data-motion-resolved="reduce"] .bs-nudge {
   40% { opacity: 1; }
   100% { opacity: 0; transform: scale(1.25); }
 }
-html[data-motion-resolved="reduce"] :is(.bs-float, .bs-bird, .bs-boat, .bs-signal) {
+/* lamps light up once the deck joins, then breathe gently */
+.bridge-story[data-live="true"] .bs-lamp {
+  animation: bs-lamp-glow 2.4s ease-in-out infinite;
+}
+@keyframes bs-lamp-glow {
+  50% { opacity: 0.8; }
+}
+html[data-motion-resolved="reduce"] :is(.bs-float, .bs-bird, .bs-boat, .bs-signal, .bs-lamp) {
   animation: none;
 }
 
