@@ -28,9 +28,24 @@ test("runBackup + buildQuizLines: a zero-signal pick (pointsTo: null) plus Other
   const result = runBackup(site, { event: ["none"] }, { event: "We're planning something unusual, not a normal event" });
   assert.ok(result);
   assert.equal(result.matches.length, 3); // tied at 0 votes, still a ranked (arbitrary) list
+  // "none" has no pointsTo, so it contributes nothing to highlights — only the typed text does
+  assert.deepEqual(result.highlights, ["We're planning something unusual, not a normal event"]);
 
   const lines = buildQuizLines(site.quiz.questions, { event: ["none"] }, { event: "We're planning something unusual, not a normal event" });
   assert.ok(lines.some((l) => l.includes("We're planning something unusual, not a normal event")));
+});
+
+test("runBackup: highlights quote the picked answers' own labels, in order, deduplicated, capped at 6 — no AI, just echo", () => {
+  const result = runBackup(site, { who: ["startup"], goal: ["sales"], where: ["social"], online: ["zero"], make: ["photo"], event: ["soon"], tech: ["little"] }, {});
+  assert.ok(result);
+  assert.equal(result.highlights.length, 6); // capped
+  assert.deepEqual(result.highlights, ["A new business or startup", "More customers and sales", "On social media", "We are starting from zero", "Photos and video", "Yes, within 3 months"]);
+});
+
+test("runBackup: a typed Other answer joins highlights alongside picked labels", () => {
+  const result = runBackup(site, { who: ["startup"] }, { goal: "Honestly just trying to figure out where to even start" });
+  assert.ok(result);
+  assert.deepEqual(result.highlights, ["A new business or startup", "Honestly just trying to figure out where to even start"]);
 });
 
 test("buildQuizWhatsappText: no percentages, just numbered titles between the admin's intro/outro", () => {

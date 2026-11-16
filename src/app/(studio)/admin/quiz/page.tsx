@@ -209,6 +209,15 @@ function TestTab() {
         ) : (
           <>
             <p className="text-[13.5px] text-st-ink">{result.wants}</p>
+            {result.highlights.length > 0 && (
+              <p className="flex flex-wrap gap-1">
+                {result.highlights.map((h) => (
+                  <span key={h} className="rounded-full border border-st-purple/30 bg-st-purple/10 px-2 py-0.5 text-[11px] font-medium text-st-ink">
+                    {h}
+                  </span>
+                ))}
+              </p>
+            )}
             <ol className="grid gap-2">
               {result.matches.map((m) => {
                 const s = draft.site.services.find((sv) => sv.slug === m.slug);

@@ -274,6 +274,15 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         {t.heading}
                       </h2>
                       <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
+                      {result.highlights.length > 0 && (
+                        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="From your answers">
+                          {result.highlights.map((h) => (
+                            <li key={h} className="rounded-full border border-[color:var(--brand-a)]/30 bg-gradient-to-r from-[color:var(--brand-a)]/15 to-[color:var(--brand-b)]/15 px-2.5 py-1 text-[12px] font-medium text-white">
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
 
                       <ul className="mt-6 grid gap-3">
                         {result.matches.map((m, i) => {
