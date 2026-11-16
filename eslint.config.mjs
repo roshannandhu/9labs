@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored React Bits components (copied from github.com/DavidHDev/react-bits)
     "src/components/reactbits/**",
+    // Archived weights-based quiz scoring — a historical safety copy, not live code
+    "archive/**",
     // Files Payload generates (pnpm generate:types, generate:importmap, payload migrate:create)
     "src/payload-types.ts",
     "src/migrations/**",
