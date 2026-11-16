@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import type { EnquiryFieldKey } from "@/content/types";
 import { useSite } from "@/components/providers/SiteProvider";
-import { submitEnquiry } from "@/lib/local/backend";
+import { submitEnquiry } from "@/site/backend";
 import { useModalLock } from "@/lib/useModalLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -46,7 +46,7 @@ const field = "mt-1.5 block w-full rounded-2xl border border-white/14 bg-[var(--
  * "Talk to us about this": a quick enquiry window. The blocks shown, their order, which are
  * required, the WhatsApp message and what happens right after sending are all set in the admin
  * (The 9 cards → Talk-to-us window). The message itself comes from `buildEnquiryMessage` via
- * `submitEnquiry` (`src/lib/local/backend.ts`), which also saves the enquiry for the admin.
+ * `submitEnquiry` (`src/site/backend.ts`), which also saves the enquiry for the admin.
  */
 export default function EnquirySheet({ open, slug, onClose }: { open: boolean; slug: string; onClose: () => void }) {
   const { reduced } = useDemo();
@@ -87,7 +87,7 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
 
   const send = (how: "wa" | "mail") => {
     setTried(true);
-    const res = submitEnquiry(svc.slug, { needs, budget: budget[0] ?? "", timeline: when[0] ?? "", name, company, message }, how === "wa" ? "whatsapp" : "email");
+    const res = submitEnquiry(site, svc.slug, { needs, budget: budget[0] ?? "", timeline: when[0] ?? "", name, company, message }, how === "wa" ? "whatsapp" : "email");
     if (!res.ok) {
       setMissing(res.missing);
       if (res.missing.includes("name")) panel.current?.querySelector<HTMLInputElement>(`#${CSS.escape(id)}-name`)?.focus();

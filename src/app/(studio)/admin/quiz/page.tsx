@@ -6,7 +6,7 @@ import type { QuizOption, QuizQuestion } from "@/content/site";
 import { randomAnswers } from "@/lib/quiz/analyze";
 import { runBackup } from "@/lib/quiz/backup";
 import type { QuizAnswers } from "@/lib/quiz/types";
-import { checkpoint, setDraft } from "@/lib/store";
+import { checkpoint, setDraft } from "@/studio/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, NumField, TextField } from "@/studio/Field";
 import { SortableList } from "@/studio/Sortable";

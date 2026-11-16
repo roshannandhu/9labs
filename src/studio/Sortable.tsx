@@ -1,7 +1,7 @@
 "use client";
 
 import { Reorder, useDragControls } from "motion/react";
-import { checkpoint } from "@/lib/store";
+import { checkpoint } from "@/studio/store";
 import { DragHandle, MoveButtons } from "./ui";
 
 /**

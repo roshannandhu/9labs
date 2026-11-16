@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { fill, type Ebook } from "@/content/site";
 import type { SiteData } from "@/content/types";
 import { useSite } from "@/components/providers/SiteProvider";
-import { submitEbookRequest } from "@/lib/local/backend";
+import { submitEbookRequest } from "@/site/backend";
 
 export type LeadValues = {
   name: string;

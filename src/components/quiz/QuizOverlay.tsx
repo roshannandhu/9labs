@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/lib/local/backend";
+import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/site/backend";
 import { opaqueRef } from "@/lib/text";
 import { runBackup } from "@/lib/quiz/backup";
 import type { QuizAnswers } from "@/lib/quiz/types";
@@ -21,7 +21,7 @@ const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth cons
 /**
  * The 9 Quiz: the admin's questions, one per screen, answered with big tap cards (keys 1–5 work too).
  * Single-answer questions move on by themselves; "pick all that apply" ones get a Next button.
- * The result is worked out in the browser (src/lib/quiz/score.ts): the top three activities with
+ * The result is worked out in the browser (src/lib/quiz/backup.ts): the top three activities with
  * a match score and why, a three-step plan, and one tap to send it all to Nine Labs on WhatsApp.
  * Each finished quiz is also saved for the admin (Quiz → Quiz results), in the background.
  */

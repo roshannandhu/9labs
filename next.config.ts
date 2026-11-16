@@ -1,23 +1,21 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 /**
- * Fully static export (`out/`), deployable to any static host (Cloudflare Pages/Workers static
- * assets, Netlify, S3, GitHub Pages…). The admin ("The Bridge", `src/studio`) is part of this
- * same static build, at `/admin/` — it runs entirely in the browser (see `src/lib/store.ts`).
- *
- * NEXT_BASE_PATH lets the same build serve from a sub-path (e.g. GitHub Pages' `/9labs/`).
+ * Runs on Cloudflare Workers via the OpenNext adapter (`wrangler.jsonc`, `open-next.config.ts`).
+ * Public pages render per request; the admin ("The Bridge", `src/studio`) still prerenders as a
+ * static client shell at `/admin/` — it talks to the server through `src/server/*` instead of
+ * localStorage. NEXT_BASE_PATH lets the same build serve from a sub-path if ever needed.
  */
 const nextConfig: NextConfig = {
-  output: "export",
   basePath: process.env.NEXT_BASE_PATH ?? "",
   trailingSlash: true,
   env: {
     NEXT_PUBLIC_BASE_PATH: process.env.NEXT_BASE_PATH ?? "",
-    // shown small in the footer, so a stale cached copy of the demo is easy to spot
-    NEXT_PUBLIC_BUILD: new Date().toISOString().slice(0, 16).replace("T", " "),
   },
   reactStrictMode: true,
   images: { unoptimized: true },
+  serverExternalPackages: ["worker-mailer"],
   turbopack: {
     rules: {
       "*.css": {
@@ -27,5 +25,7 @@ const nextConfig: NextConfig = {
     },
   },
 };
+
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

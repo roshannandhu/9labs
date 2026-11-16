@@ -427,7 +427,7 @@ export type QuizResult = {
   createdAt: string;
 };
 
-export type OutboxKind = "ebook" | "ebook-alert" | "quiz-plan";
+export type OutboxKind = "ebook" | "ebook-alert" | "quiz-plan" | "test";
 export type OutboxMail = {
   id: string;
   kind: OutboxKind;
@@ -436,6 +436,9 @@ export type OutboxMail = {
   html: string;
   text: string;
   createdAt: string;
+  /** Whether it actually sent, or was only logged because SMTP isn't configured yet. */
+  status?: "sent" | "failed" | "logged";
+  error?: string;
 };
 
 /* ------------------------------------------------------------------ */

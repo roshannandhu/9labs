@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { checkWorkspace, type Issue } from "@/lib/checks";
 import { autoLabel, diffDeep, humanizeDiff } from "@/lib/diff";
-import { discardDraft, publish } from "@/lib/store";
+import { discardDraft, publish } from "@/studio/store";
+import { ApiError } from "./api";
 import { Icon } from "./Icon";
 import { useDraft, usePendingChanges, usePublished } from "./state";
 import { Button, LiveDot, useConfirm, useToast } from "./ui";
@@ -25,20 +26,30 @@ export function PublishBar() {
   const toast = useToast();
   const confirm = useConfirm();
   const [issuesOpen, setIssuesOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const issues = useMemo(() => checkWorkspace(draft), [draft]);
   const errors = issues.filter((i) => i.level === "error");
 
   if (!pending) return null;
 
-  const doPublish = () => {
+  const doPublish = async () => {
     if (errors.length) {
       toast("bad", `Can't publish yet: ${errors[0].message}`);
       return;
     }
-    const summary = humanizeDiff(diffDeep(published, draft), autoLabel);
-    publish(summary.slice(0, 40));
-    toast("ok", "Published — the website is up to date.");
+    setBusy(true);
+    try {
+      const summary = humanizeDiff(diffDeep(published, draft), autoLabel);
+      await publish(summary.slice(0, 40));
+      toast("ok", "Published — the website is up to date.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) toast("bad", "Someone else changed the draft — reload.");
+      else if (err instanceof ApiError && err.status === 422) toast("bad", `Can't publish yet: ${((err.details?.issues as Issue[] | undefined) ?? [])[0]?.message ?? err.message}`);
+      else toast("bad", err instanceof Error ? err.message : "Could not publish.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doDiscard = async () => {
@@ -64,9 +75,11 @@ export function PublishBar() {
             <p className="truncate text-[12px] text-st-dim">Visitors still see the previous version.</p>
           )}
         </div>
-        <Button onClick={() => void doDiscard()}>Discard</Button>
-        <Button variant="primary" onClick={doPublish} disabled={errors.length > 0} title={errors.length ? errors[0].message : undefined}>
-          Publish
+        <Button onClick={() => void doDiscard()} disabled={busy}>
+          Discard
+        </Button>
+        <Button variant="primary" onClick={() => void doPublish()} disabled={errors.length > 0 || busy} title={errors.length ? errors[0].message : undefined}>
+          {busy ? "Publishing…" : "Publish"}
         </Button>
 
         {issuesOpen && errors.length > 0 && (

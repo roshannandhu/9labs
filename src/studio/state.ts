@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { diffDeep } from "@/lib/diff";
 import { getIn, type Path } from "@/lib/path";
-import * as store from "@/lib/store";
+import * as store from "@/studio/store";
 
 /** The whole store, reactive: any component using this (directly or via a hook below) re-renders on every save. */
 export function useStoreState() {
@@ -13,12 +13,14 @@ export function useStoreState() {
 export const useDraft = () => useStoreState().draft;
 export const usePublished = () => useStoreState().published;
 export const useSession = () => useStoreState().session;
+export const useAccess = () => useStoreState().access;
+export const useSync = () => useStoreState().sync;
+export const useDeniedEmail = () => useStoreState().deniedEmail;
 export const useEnquiries = () => useStoreState().enquiries;
 export const useBookRequests = () => useStoreState().bookRequests;
 export const useQuizResults = () => useStoreState().quizResults;
 export const useOutbox = () => useStoreState().outbox;
 export const useAdmins = () => useStoreState().admins;
-export const useVersions = () => useStoreState().versions;
 
 /** How many leaf values differ between what's live and what's drafted. 0 = nothing to publish. */
 export function usePendingChanges(): number {
