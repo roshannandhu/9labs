@@ -10,7 +10,7 @@ import { SpringHeading } from "@/components/layout/SpringHeading";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
-import { OrbitArc, OrbitFloorTrack, OrbitChevrons, OrbitCapsuleDock } from "./OrbitNav";
+import { OrbitArc, OrbitFloorTrack, OrbitCapsuleDock } from "./OrbitNav";
 import { Scene1Social } from "./scenes/Scene1Social";
 import { Scene2Advertising } from "./scenes/Scene2Advertising";
 import { Scene3Content } from "./scenes/Scene3Content";
@@ -110,6 +110,15 @@ function ServicesTrack({ heading, services, t }: Part) {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // laptop: the focused card's light follows the mouse (CSS reads --mx/--my; phones never get it)
+    if (e.pointerType === "mouse") {
+      const card = (e.target as HTMLElement).closest<HTMLElement>(".scene-card");
+      if (card) {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", `${(e.clientX - r.left).toFixed(0)}px`);
+        card.style.setProperty("--my", `${(e.clientY - r.top).toFixed(0)}px`);
+      }
+    }
     if (!pointerDownPos.current) return;
     const dx = Math.abs(e.clientX - pointerDownPos.current.x);
     const dy = Math.abs(e.clientY - pointerDownPos.current.y);
@@ -154,7 +163,6 @@ function ServicesTrack({ heading, services, t }: Part) {
       {/* 3D orbital stage: floor track, chevrons and centered carousel */}
       <div className="svc-stage">
         <OrbitFloorTrack />
-        <OrbitChevrons active={active} goTo={goTo} services={services} />
         <div
           ref={scrollerRef}
           onPointerDown={handlePointerDown}

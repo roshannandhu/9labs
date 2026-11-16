@@ -1,4 +1,4 @@
-import { fill, type IconKey, type QuizQuestion, type Service } from "@/content/site";
+import { fill, safeWeight, type IconKey, type QuizQuestion, type Service } from "@/content/site";
 import type { SiteData } from "@/content/types";
 
 /** Chosen option ids per question id. */
@@ -32,8 +32,9 @@ export function scoreQuiz(site: QuizSite, a: QuizAnswers): QuizResult {
   for (const q of questions) {
     for (const o of chosen(q, a)) {
       for (const [k, w] of Object.entries(o.weights) as [IconKey, number][]) {
-        totals.set(k, (totals.get(k) ?? 0) + w);
-        reasons.set(k, [...(reasons.get(k) ?? []), { label: o.label, w }]);
+        const sw = safeWeight(w);
+        totals.set(k, (totals.get(k) ?? 0) + sw);
+        reasons.set(k, [...(reasons.get(k) ?? []), { label: o.label, w: sw }]);
       }
     }
   }

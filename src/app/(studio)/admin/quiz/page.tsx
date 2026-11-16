@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { IconKey, QuizOption, QuizQuestion } from "@/content/site";
+import { safeWeight, type IconKey, type QuizOption, type QuizQuestion } from "@/content/site";
 import { balanceReport, maxReachable, randomAnswers, totalsFor, type BalanceReport } from "@/lib/quiz/analyze";
 import { scoreQuiz, type QuizAnswers } from "@/lib/quiz/score";
 import { checkpoint, setDraft } from "@/studio/store";
@@ -89,7 +89,7 @@ function OptionEditor({ qi, oi, o }: { qi: number; oi: number; o: QuizOption }) 
       <div className="mt-2.5 overflow-x-auto">
         <div className="grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>
           {ACTIVITIES.map((a) => (
-            <PointCell key={a.key} value={o.weights[a.key] ?? 0} onChange={(v) => setDraft(["site", "quiz", "questions", qi, "options", oi, "weights", a.key] as Path, v || undefined)} />
+            <PointCell key={a.key} value={safeWeight(o.weights[a.key])} onChange={(v) => setDraft(["site", "quiz", "questions", qi, "options", oi, "weights", a.key] as Path, v || undefined)} />
           ))}
         </div>
         <div className="mt-1 grid grid-cols-9 gap-1" style={{ minWidth: 320 }}>

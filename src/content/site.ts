@@ -35,6 +35,9 @@ export type Service = {
   whatsappNumber?: string;
 };
 
+/** A weight read back as a finite number — admin-typed/HMR-stale data can leave a non-number (NaN) in storage. */
+export const safeWeight = (w: unknown): number => (typeof w === "number" && Number.isFinite(w) ? w : 0);
+
 /** The 9 Quiz: each answer adds points to activities (by their icon key); the top 3 are suggested. */
 export type QuizOption = {
   id: string;
@@ -675,3 +678,11 @@ export const waLink = (number: string, text: string) => `https://wa.me/${number.
 /** Fill `{name}` style placeholders in admin-edited text. Unknown placeholders are left as they are. */
 export const fill = (template: string, values: Record<string, string | number | undefined>) =>
   template.replace(/\{(\w+)\}/g, (m, k: string) => (values[k] === undefined ? m : String(values[k])));
+
+/** A book card's label ("E-book 04 · 40 pages"); a part that needs the page count is dropped while it's still 0. */
+export const bookCardLabel = (template: string, book: { n: string; pages: number }) =>
+  template
+    .split("·")
+    .filter((part) => book.pages > 0 || !part.includes("{pages}"))
+    .map((part) => fill(part, { n: book.n, pages: book.pages }).trim())
+    .join(" · ");

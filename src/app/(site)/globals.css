@@ -758,9 +758,15 @@ html[data-motion="reduce"] *::after {
   }
 }
 
-.shelf-item .book {
+.shelf-item .book,
+.book-landing .book {
   --ry: 28deg;
   --rx: 4deg;
+}
+.book-landing:hover .book {
+  --ry: 8deg;
+  --rx: 2deg;
+  --bz: 24px;
 }
 .shelf-item:hover .book,
 .shelf-item:focus-within .book,
@@ -1071,6 +1077,118 @@ html[data-intro="playing"] [data-logo-9] {
     display: none;
   }
 }
+/* ---- laptop "wow" layer: same cards, same positions and motion — only light and life added ----
+   The focused card gets a slowly turning brand-gradient rim, a glow beneath, a light that follows
+   the mouse (--mx/--my, set in Services.tsx) and a halo behind its picture; its caption rises in
+   line by line each time it comes into focus. Peeking cards lose a little colour so it stands out.
+   Phones are untouched (this whole block is the orbit query). */
+.scene-halo {
+  display: none;
+}
+@property --svc-rim {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@media (min-width: 768px) and (min-height: 560px) {
+  .scene-card {
+    --mx: 50%;
+    --my: 30%;
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgb(140 83 254 / 0.07), transparent 60%),
+      linear-gradient(180deg, var(--surface-1), color-mix(in srgb, var(--surface-1) 82%, var(--surface-2)));
+    transition: box-shadow 0.8s var(--ease-out-expo), filter 0.8s ease;
+    filter: saturate(0.75);
+  }
+  .scene-card[data-active="true"] {
+    filter: none;
+    box-shadow:
+      0 40px 80px -40px rgb(90 72 245 / 0.55),
+      0 18px 40px -28px rgb(92 224 230 / 0.35);
+  }
+  /* the turning rim: a conic gradient shown only in a 2px ring (mask), fading in on focus */
+  .scene-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(from var(--svc-rim), transparent 0deg, var(--brand-a) 70deg, var(--brand-b) 130deg, transparent 200deg, transparent 250deg, var(--brand-a) 320deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    animation: svc-rim 7s linear infinite;
+    pointer-events: none;
+  }
+  /* the mouse light */
+  .scene-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(420px circle at var(--mx) var(--my), rgb(140 83 254 / 0.12), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  .scene-card[data-active="true"]::before {
+    opacity: 1;
+  }
+  .scene-card[data-active="true"]:hover::after {
+    opacity: 1;
+  }
+
+  /* the halo behind the picture */
+  .scene-halo {
+    display: block;
+    position: absolute;
+    inset: -6%;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+      radial-gradient(closest-side, rgb(140 83 254 / 0.16), rgb(92 224 230 / 0.06) 62%, transparent 72%);
+    box-shadow: inset 0 0 0 1px rgb(140 83 254 / 0.14);
+    opacity: 0;
+    transform: scale(0.82);
+    transition: opacity 0.9s ease, transform 1.2s var(--ease-out-expo);
+  }
+  .scene-card[data-active="true"] .scene-halo {
+    opacity: 1;
+    transform: scale(1);
+    animation: svc-halo 4.5s ease-in-out 1.2s infinite;
+  }
+
+  /* the caption rises in, line by line, on focus */
+  .scene-card .scene-caption > * {
+    opacity: 0.55;
+    transform: translateY(10px);
+    transition: opacity 0.6s ease, transform 0.8s var(--ease-out-expo);
+  }
+  .scene-card[data-active="true"] .scene-caption > * {
+    opacity: 1;
+    transform: none;
+  }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(2) { transition-delay: 0.07s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(3) { transition-delay: 0.14s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(4) { transition-delay: 0.21s; }
+  .scene-card[data-active="true"] .scene-caption > :nth-child(5) { transition-delay: 0.28s; }
+}
+@keyframes svc-rim {
+  to { --svc-rim: 360deg; }
+}
+@keyframes svc-halo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+html[data-motion-resolved="reduce"] .scene-card::before,
+html[data-motion-resolved="reduce"] .scene-halo {
+  animation: none;
+}
+
 /* ---- 3B Frosted Capsule Dock (Laptop / Desktop) -------------------------------------------- */
 .orbit-dock-wrap {
   position: relative;
@@ -1143,83 +1261,46 @@ html[data-intro="playing"] [data-logo-9] {
     stroke-dashoffset: 0;
   }
 }
-.orbit-chev {
-  position: relative;
+/* the dock's previous / next buttons */
+.orbit-dock-step {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--nl-panel) 84%, transparent);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  color: rgb(var(--fg-rgb) / 0.8);
+  background: transparent;
   border: 1px solid rgb(var(--fg-rgb) / 0.12);
-  color: rgb(var(--fg-rgb) / 0.85);
-  box-shadow:
-    0 10px 28px -6px rgba(0, 0, 0, 0.09),
-    0 2px 6px -1px rgba(0, 0, 0, 0.04),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.orbit-chev--left {
-  position: absolute;
-  left: max(14px, calc(50% - var(--card-w) / 2 - 38px));
+.orbit-dock-step--prev {
+  margin-right: 6px;
 }
-.orbit-chev--right {
-  position: absolute;
-  right: max(14px, calc(50% - var(--card-w) / 2 - 38px));
+.orbit-dock-step--next {
+  margin-left: 2px;
 }
-.orbit-chev:hover {
-  background: var(--nl-indigo);
-  color: #ffffff;
-  border-color: var(--nl-indigo);
-  transform: scale(1.1) translateY(-1px);
-  box-shadow:
-    0 14px 36px -4px color-mix(in srgb, var(--nl-indigo) 45%, transparent),
-    0 0 0 4px color-mix(in srgb, var(--nl-indigo) 16%, transparent);
-}
-.orbit-chev:active {
-  transform: scale(0.92);
-  transition-duration: 0.1s;
-}
-.orbit-chev-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.orbit-dock-step svg {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.orbit-arrow-stem {
-  transition: stroke-dashoffset 0.25s ease, opacity 0.25s ease;
+.orbit-dock-step:hover {
+  color: #fff;
+  background: linear-gradient(120deg, var(--nl-purple), var(--nl-indigo));
+  border-color: transparent;
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--nl-indigo) 70%, transparent);
 }
-.orbit-chev:hover .orbit-chev-arrow--left {
-  transform: translateX(-3px);
+.orbit-dock-step--prev:hover svg {
+  transform: translateX(-2px);
 }
-.orbit-chev:hover .orbit-chev-arrow--right {
-  transform: translateX(3px);
+.orbit-dock-step--next:hover svg {
+  transform: translateX(2px);
 }
-.orbit-chev-badge {
-  position: absolute;
-  top: -34px;
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  white-space: nowrap;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nl-panel) 90%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgb(var(--fg-rgb) / 0.1);
-  font-size: 11px;
-  font-weight: 600;
-  color: rgb(var(--fg-rgb) / 0.9);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  opacity: 0;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.orbit-dock-step:active {
+  transform: scale(0.92);
 }
-.orbit-chev:hover .orbit-chev-badge {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+.orbit-dock-step:focus-visible {
+  outline: 2px solid var(--nl-purple);
+  outline-offset: 2px;
 }
 .orbital-floor-track {
   perspective: 1400px;
@@ -1505,26 +1586,35 @@ html[data-motion-resolved="reduce"] .bs-nudge {
 @keyframes bs-step-in {
   from { opacity: 0; transform: translateY(8px); }
 }
-.bs-shimmer {
-  animation: bs-shimmer 4.2s ease-in-out infinite;
+/* the bridge scene's small life: floating goal bubbles, flapping birds, a bobbing boat, the studio's signal */
+:is(.bs-float, .bs-bird, .bs-boat, .bs-signal) {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
 }
-.bs-shimmer-b {
-  animation-duration: 5.6s;
-  animation-delay: -2.4s;
+.bs-float { animation: bs-float 4.2s ease-in-out infinite; }
+.bs-bird { animation: bs-flap 0.9s ease-in-out infinite; }
+.bs-boat { animation: bs-bob 5s ease-in-out infinite; }
+.bs-signal { animation: bs-signal 2.2s ease-out infinite; }
+.bs-signal + .bs-signal { animation-delay: 0.5s; }
+@keyframes bs-float { 50% { transform: translateY(-6px); } }
+@keyframes bs-flap { 50% { transform: scaleY(0.45); } }
+@keyframes bs-bob {
+  0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+  50% { transform: translate(14px, -2px) rotate(2deg); }
 }
-@keyframes bs-shimmer {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1; }
+@keyframes bs-signal {
+  0% { opacity: 0; transform: scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
 }
-/* lamps light up once the deck joins (data-live), then breathe gently */
+/* lamps light up once the deck joins, then breathe gently */
 .bridge-story[data-live="true"] .bs-lamp {
   animation: bs-lamp-glow 2.4s ease-in-out infinite;
 }
 @keyframes bs-lamp-glow {
   50% { opacity: 0.8; }
 }
-html[data-motion-resolved="reduce"] .bs-shimmer,
-html[data-motion-resolved="reduce"] .bs-lamp {
+html[data-motion-resolved="reduce"] :is(.bs-float, .bs-bird, .bs-boat, .bs-signal, .bs-lamp) {
   animation: none;
 }
 

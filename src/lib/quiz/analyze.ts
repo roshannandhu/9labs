@@ -1,4 +1,4 @@
-import type { IconKey } from "@/content/site";
+import { safeWeight, type IconKey } from "@/content/site";
 import type { SiteData } from "@/content/types";
 import { scoreQuiz, type QuizAnswers } from "./score";
 
@@ -10,7 +10,7 @@ export function totalsFor(site: QuizSite, a: QuizAnswers): Record<IconKey, numbe
   for (const q of site.quiz.questions) {
     for (const o of q.options) {
       if (!a[q.id]?.includes(o.id)) continue;
-      for (const [k, w] of Object.entries(o.weights) as [IconKey, number][]) totals[k] = (totals[k] ?? 0) + w;
+      for (const [k, w] of Object.entries(o.weights) as [IconKey, number][]) totals[k] = (totals[k] ?? 0) + safeWeight(w);
     }
   }
   return totals;
@@ -23,8 +23,9 @@ export function maxReachable(site: QuizSite): Record<IconKey, number> {
     const perActivity: Partial<Record<IconKey, number>> = {};
     for (const o of q.options) {
       for (const [k, w] of Object.entries(o.weights) as [IconKey, number][]) {
-        if (q.multi && !o.only) perActivity[k] = (perActivity[k] ?? 0) + w; // several answers can stack
-        else perActivity[k] = Math.max(perActivity[k] ?? 0, w); // single-choice: only one answer counts
+        const sw = safeWeight(w);
+        if (q.multi && !o.only) perActivity[k] = (perActivity[k] ?? 0) + sw; // several answers can stack
+        else perActivity[k] = Math.max(perActivity[k] ?? 0, sw); // single-choice: only one answer counts
       }
     }
     for (const [k, v] of Object.entries(perActivity) as [IconKey, number][]) max[k] = (max[k] ?? 0) + v;

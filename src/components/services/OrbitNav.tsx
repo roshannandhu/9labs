@@ -17,61 +17,6 @@ export function OrbitFloorTrack() {
   );
 }
 
-/** Desktop: Floating circular glass chevron buttons flanking the carousel with premium hover effect */
-export function OrbitChevrons({
-  active,
-  goTo,
-  services,
-}: {
-  active: number;
-  goTo: (i: number) => void;
-  services?: Service[];
-}) {
-  const prevIdx = (active - 1 + 9) % 9;
-  const nextIdx = (active + 1) % 9;
-  const prevTitle = services?.[prevIdx]?.short || "Previous";
-  const nextTitle = services?.[nextIdx]?.short || "Next";
-
-  return (
-    <div className="pointer-events-none absolute inset-y-0 inset-x-3 lg:inset-x-6 z-30 hidden md:flex items-center justify-between">
-      <button
-        type="button"
-        onClick={() => goTo(prevIdx)}
-        aria-label={`Previous service: ${prevTitle}`}
-        className="orbit-chev orbit-chev--left pointer-events-auto group"
-        data-cursor="Prev"
-      >
-        <span className="orbit-chev-arrow orbit-chev-arrow--left">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="19" y1="12" x2="6" y2="12" className="orbit-arrow-stem" />
-            <polyline points="12 18 6 12 12 6" />
-          </svg>
-        </span>
-        <span className="orbit-chev-badge pointer-events-none">
-          {prevTitle}
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => goTo(nextIdx)}
-        aria-label={`Next service: ${nextTitle}`}
-        className="orbit-chev orbit-chev--right pointer-events-auto group"
-        data-cursor="Next"
-      >
-        <span className="orbit-chev-arrow orbit-chev-arrow--right">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="5" y1="12" x2="18" y2="12" className="orbit-arrow-stem" />
-            <polyline points="12 6 18 12 12 18" />
-          </svg>
-        </span>
-        <span className="orbit-chev-badge pointer-events-none">
-          {nextTitle}
-        </span>
-      </button>
-    </div>
-  );
-}
-
 /** Laptop / Desktop: 3B Frosted capsule dock with countdown ring and 02/09 counter */
 export function OrbitCapsuleDock({
   services,
@@ -84,9 +29,11 @@ export function OrbitCapsuleDock({
   goTo: (i: number) => void;
   running: boolean;
 }) {
+  const n = services.length;
   return (
     <div className="orbit-dock-wrap hidden md:flex" role="group" aria-label="Choose a service">
       <div className="orbit-capsule-dock">
+        <DockStep dir={-1} title={services[(active - 1 + n) % n]?.short} onClick={() => goTo((active - 1 + n) % n)} />
         {services.map((s, i) => {
           const isActive = i === active;
           return (
@@ -128,8 +75,37 @@ export function OrbitCapsuleDock({
         <div className="dock-counter pl-3 pr-1 text-[12px] font-bold font-mono text-nl-indigo dark:text-nl-purple select-none border-l border-black/[0.08] dark:border-white/10">
           {String(active + 1).padStart(2, "0")} / 09
         </div>
+        <DockStep dir={1} title={services[(active + 1) % n]?.short} onClick={() => goTo((active + 1) % n)} />
       </div>
     </div>
+  );
+}
+
+/** The dock's previous / next buttons (they used to float over the card's edges). */
+function DockStep({ dir, title, onClick }: { dir: -1 | 1; title?: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${dir < 0 ? "Previous" : "Next"} service${title ? `: ${title}` : ""}`}
+      title={title}
+      className={`orbit-dock-step group ${dir < 0 ? "orbit-dock-step--prev" : "orbit-dock-step--next"}`}
+      data-cursor={dir < 0 ? "Prev" : "Next"}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {dir < 0 ? (
+          <>
+            <line x1="19" y1="12" x2="6" y2="12" />
+            <polyline points="12 18 6 12 12 6" />
+          </>
+        ) : (
+          <>
+            <line x1="5" y1="12" x2="18" y2="12" />
+            <polyline points="12 6 18 12 12 18" />
+          </>
+        )}
+      </svg>
+    </button>
   );
 }
 

@@ -55,7 +55,8 @@ function SettingsInner() {
 
       <div className="sm:grid sm:grid-cols-[220px_1fr] sm:gap-6 lg:grid-cols-[260px_1fr]">
         <div className={`${mobileShowList ? "block" : "hidden"} sm:block`}>
-          <div className="grid gap-4">
+          {/* grid-cols-1 (minmax 0): the search input's built-in min width otherwise widens this track past its column */}
+          <div className="grid grid-cols-1 gap-4">
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-st-dim">
                 <Icon name="search" size={14} />

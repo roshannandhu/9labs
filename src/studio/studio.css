@@ -159,7 +159,8 @@ h3 {
 :root:not([data-theme="dark"]) .st-canvas::after {
   opacity: 0.5;
 }
-.st-canvas > * {
+/* lift content above the grid/glow layers — but leave absolute/fixed children (decor blobs) where they are */
+.st-canvas > :not(.absolute):not(.fixed) {
   position: relative;
   z-index: 1;
 }
@@ -254,6 +255,10 @@ h3 {
     cursor: not-allowed;
     transform: none;
   }
+}
+/* the brand gradient as a background: segmented-control pills, the Settings nav marker, bars */
+@utility bg-st-grad {
+  background: var(--st-grad);
 }
 @utility st-btn-primary {
   border-color: transparent;

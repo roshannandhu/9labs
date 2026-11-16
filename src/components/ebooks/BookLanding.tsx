@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Ebook } from "@/content/site";
 import { useSite } from "@/components/providers/SiteProvider";
-import { BookCover } from "./BookCover";
+import { Book3D } from "./Book3D";
 import { Success } from "./BookDialog";
 import { LeadForm, type LeadValues } from "./LeadForm";
+
+const BW = "clamp(160px, 44vw, 200px)";
+const BH = `calc(${BW} * 1.45)`;
 
 /** A book's own page (/ebooks/<name>): the cover, what's inside, and the same request form as the shelf. */
 export function BookLanding({ book }: { book: Ebook }) {
@@ -18,8 +21,18 @@ export function BookLanding({ book }: { book: Ebook }) {
     <div className="container-x grid max-w-[1040px] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-14">
       <div>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-          <div className="on-dark relative aspect-[200/290] w-[180px] shrink-0 overflow-hidden rounded-[4px_12px_12px_4px] shadow-[0_30px_60px_-28px_rgb(14_12_32/0.55)] sm:w-[210px]">
-            <BookCover book={book} />
+          {/* the same 3D book as the shelf: tilted, floating, straightening up on hover */}
+          <div className="book-landing relative ml-3 shrink-0 sm:ml-4">
+            <span
+              className="pointer-events-none absolute -bottom-5 left-1/2 h-10 w-[120%] -translate-x-1/2 rounded-[50%] opacity-60 blur-xl"
+              style={{ background: book.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)" }}
+              aria-hidden="true"
+            />
+            <span className="book-scene block" style={{ width: BW, height: BH }}>
+              <span className="block h-full w-full motion-safe:animate-[book-float_6s_ease-in-out_infinite]">
+                <Book3D book={book} w={BW} h={BH} d="26px" />
+              </span>
+            </span>
           </div>
           <div className="min-w-0">
             <p className="label-mono">{t.label}</p>

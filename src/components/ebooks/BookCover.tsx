@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { Ebook } from "@/content/site";
 import { NINE_PATH } from "@/components/hero/nine-path";
 
@@ -14,14 +14,32 @@ function titleLines(title: string, max = 14) {
 }
 
 /**
+ * An uploaded cover's print finish (inline, so the admin's previews get it as well as the site): the
+ * hinge groove (as the designed covers' 10/200 spine band), a soft top-left light falling to a darker
+ * bottom-right, and a thin inner edge.
+ */
+const COVER_FINISH: CSSProperties = {
+  background:
+    "linear-gradient(90deg, rgb(0 0 0 / 0.42) 0, rgb(0 0 0 / 0.3) 4%, rgb(255 255 255 / 0.16) 5%, rgb(255 255 255 / 0) 7.5%), linear-gradient(150deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 38%, rgb(0 0 0 / 0) 60%, rgb(0 0 0 / 0.26))",
+  boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.1), inset -10px 0 18px -12px rgb(0 0 0 / 0.35)",
+};
+
+/**
  * The cover. If the admin uploaded an image (`book.cover`) it is used as-is; otherwise a designed
  * cover is drawn in code from the book's tone and order (viewBox 200×290).
  */
 export function BookCover({ book }: { book: Ebook }) {
   const uid = useId();
   if (book.cover) {
-    // eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers
-    return <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />;
+    // An uploaded image is flat artwork: give it the same hinge groove, light and edge the designed
+    // covers draw in their SVG, so it reads as a printed cover on the 3D book, not a pasted card.
+    return (
+      <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]">
+        {/* eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers */}
+        <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />
+        <span className="pointer-events-none absolute inset-0" style={COVER_FINISH} aria-hidden="true" />
+      </span>
+    );
   }
   // unique per drawing: the same book is drawn more than once (phone carousel + desktop shelf), and
   // duplicate ids make covers paint from a hidden copy's gradients — i.e. not at all
@@ -140,6 +158,15 @@ export function BookCover({ book }: { book: Ebook }) {
 /** Spine art: vertical title. */
 export function BookSpine({ book }: { book: Ebook }) {
   const accent = book.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)";
+  if (book.cover) {
+    // a printed wrap: the spine stretches a thin strip of the cover's left edge (no stray lettering), darkened where it curves away
+    return (
+      <div className="relative flex h-full w-full flex-col items-center justify-center py-3" style={{ backgroundImage: `url("${book.cover}")`, backgroundSize: "2500% 100%", backgroundPosition: "left center" }}>
+        <span className="absolute inset-0 bg-[linear-gradient(90deg,rgb(0_0_0/.55),rgb(0_0_0/.18)_45%,rgb(0_0_0/.45))]" aria-hidden="true" />
+        <span className="relative font-display text-[9px] font-semibold uppercase tracking-[0.18em] text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/.6)] [writing-mode:vertical-rl] rotate-180">{book.title}</span>
+      </div>
+    );
+  }
   return (
     <div className="flex h-full w-full flex-col items-center justify-between bg-[linear-gradient(90deg,#07080d,#141729_55%,#0a0b12)] py-3">
       <span className="h-6 w-[2px] rounded" style={{ background: accent, boxShadow: `0 0 8px ${accent}` }} />
