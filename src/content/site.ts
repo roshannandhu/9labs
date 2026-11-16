@@ -35,6 +35,9 @@ export type Service = {
   whatsappNumber?: string;
 };
 
+/** A weight read back as a finite number — admin-typed/HMR-stale data can leave a non-number (NaN) in storage. */
+export const safeWeight = (w: unknown): number => (typeof w === "number" && Number.isFinite(w) ? w : 0);
+
 /** The 9 Quiz: each answer adds points to activities (by their icon key); the top 3 are suggested. */
 export type QuizOption = {
   id: string;
