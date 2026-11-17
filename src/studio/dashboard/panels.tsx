@@ -38,6 +38,7 @@ export function LeadsOverTimePanel({ data }: { data: DashboardData }) {
   return (
     <Panel label="Leads over time">
       <LineChart series={[data.overTime.enquiries, data.overTime.ebooks, data.overTime.quiz]} />
+      {[data.overTime.enquiries, data.overTime.ebooks, data.overTime.quiz].every((s) => s.points.every((p) => p.count === 0)) && <p className="text-[12px] text-st-dim">No leads in this period yet — the lines rise as people get in touch.</p>}
     </Panel>
   );
 }

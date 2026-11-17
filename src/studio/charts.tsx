@@ -74,11 +74,11 @@ export function StatTile({ label, value, delta, compareLabel, spark, color, href
         {delta === null ? (
           <span className="rounded-full bg-st-panel-3 px-1.5 py-0.5 font-medium text-st-dim">New</span>
         ) : (
-          <span className={`font-medium ${delta >= 0 ? "text-st-good" : "text-st-danger"}`}>
+          <span className={`shrink-0 whitespace-nowrap font-medium ${delta >= 0 ? "text-st-good" : "text-st-danger"}`}>
             {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
           </span>
         )}
-        <span className="truncate text-st-dim">{compareLabel}</span>
+        <span className="min-w-0 truncate text-st-dim">{compareLabel}</span>
       </div>
     </>
   );
@@ -240,7 +240,8 @@ export function SegmentedBar({ parts, tall }: { parts: SegmentPart[]; tall?: boo
 
   return (
     <div>
-      <div className={`flex overflow-hidden rounded-full`} style={{ height: h, gap: 2 }}>
+      {/* the track shows even at zero, so an empty period reads as "nothing yet", not a missing chart */}
+      <div className="flex overflow-hidden rounded-full bg-st-panel-3" style={{ height: h, gap: 2 }}>
         {shown.map((p) => {
           const pct = (p.value / total) * 100;
           return (
@@ -263,7 +264,7 @@ export function SegmentedBar({ parts, tall }: { parts: SegmentPart[]; tall?: boo
         })}
       </div>
       <div className="mt-2.5">
-        <Legend items={shown.map((p) => ({ label: `${p.label} · ${p.value}`, color: p.color }))} />
+        {shown.length ? <Legend items={shown.map((p) => ({ label: `${p.label} · ${p.value}`, color: p.color }))} /> : <p className="text-[12px] text-st-dim">Nothing in this period yet.</p>}
       </div>
     </div>
   );
@@ -291,7 +292,7 @@ export function BarList({ items, color, unit = "", ranked = true }: { items: Bar
       )}
       <div className="grid gap-2.5">
         {sorted.map((item) => (
-          <div key={item.key} className="grid grid-cols-[minmax(100px,34%)_1fr_auto] items-center gap-2.5" aria-label={`${item.label}: ${item.value}${unit}`}>
+          <div key={item.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(100px,34%)_1fr_auto]" aria-label={`${item.label}: ${item.value}${unit}`}>
             <span className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-st-ink" title={item.label}>
               {item.icon && <span className="shrink-0 text-st-dim">{item.icon}</span>}
               <span className="truncate">{item.label}</span>
@@ -323,7 +324,7 @@ export function MeterList({ items, color }: { items: MeterItem[]; color: string 
       {items.map((it) => {
         const pct = it.total > 0 ? Math.round((it.value / it.total) * 100) : 0;
         return (
-          <div key={it.key} className="grid grid-cols-[minmax(110px,40%)_1fr_auto] items-center gap-2.5">
+          <div key={it.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(110px,40%)_1fr_auto]">
             <span className="truncate text-[12.5px] text-st-ink">{it.label}</span>
             <span className="h-[10px] overflow-hidden rounded-full" style={{ background: `color-mix(in oklab, ${color} 18%, var(--st-panel-2))` }}>
               <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />

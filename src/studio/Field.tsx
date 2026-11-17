@@ -5,7 +5,7 @@ import type { Path } from "@/lib/path";
 import { checkpoint } from "@/studio/store";
 import { Icon } from "./Icon";
 import { useField } from "./state";
-import { useFileUrl } from "./useFileUrl";
+import { rememberUpload, useFileUrl } from "./useFileUrl";
 import { resizeImage, uploadFile } from "./upload";
 import { useToast } from "./ui";
 
@@ -103,7 +103,8 @@ export function SelectField<T extends string>({ path, label, help, options }: Ba
 const expand3 = (hex: string) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex);
 
 /** A colour (hex) field: a native picker swatch, a hex input, and a reset to the built-in colour. */
-export function ColorField({ path, label, help }: Base) {
+/** `fallback`: the built-in colour an empty value means — shown in the swatch and as the placeholder. */
+export function ColorField({ path, label, help, fallback = "#6f55e8" }: Base & { fallback?: string }) {
   const [value, setValue] = useField<string>(path);
   const id = useId();
   const valid = !value || /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
@@ -114,12 +115,12 @@ export function ColorField({ path, label, help }: Base) {
         <input
           type="color"
           aria-label={`${label} — pick a colour`}
-          value={valid && value ? expand3(value) : "#6f55e8"}
+          value={valid && value ? expand3(value) : fallback}
           onFocus={onFocusCheckpoint}
           onChange={(e) => setValue(e.target.value)}
           className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-st-border-strong bg-transparent p-0.5"
         />
-        <input id={id} className={`st-field ${valid ? "" : "!border-st-danger"}`} value={value ?? ""} placeholder="#6f55e8" onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
+        <input id={id} className={`st-field ${valid ? "" : "!border-st-danger"}`} value={value ?? ""} placeholder={`${fallback} (built-in)`} onFocus={onFocusCheckpoint} onChange={(e) => setValue(e.target.value)} />
         {value && (
           <button type="button" title="Reset to the built-in colour" aria-label="Reset to the built-in colour" onClick={() => { checkpoint(); setValue(""); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-st-dim hover:bg-st-panel-2 hover:text-st-ink">
             <Icon name="close" size={13} />
@@ -201,17 +202,28 @@ export function Dropzone({ accept, label, hint, onFile, current, busy }: { accep
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          onFile(e.dataTransfer.files?.[0]);
+          if (!busy) onFile(e.dataTransfer.files?.[0]);
         }}
-        className={`mt-1.5 flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${dragOver ? "border-st-purple bg-st-panel-3" : "border-st-border-strong bg-st-panel-2 hover:border-st-purple/50"}`}
+        aria-busy={busy}
+        className={`relative mt-1.5 flex flex-col ${busy ? "pointer-events-none cursor-wait opacity-70" : "cursor-pointer"} items-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${dragOver ? "border-st-purple bg-st-panel-3" : "border-st-border-strong bg-st-panel-2 hover:border-st-purple/50"}`}
         style={dragOver ? { boxShadow: "var(--st-glow)" } : undefined}
       >
-        <span className="text-st-dim">
+        <span className={`text-st-dim ${busy ? "animate-pulse" : ""}`}>
           <Icon name="upload" size={20} />
         </span>
         <span className="text-[13px] font-medium text-st-ink">{busy ? "Uploading…" : "Drop a file, or click to choose"}</span>
         {hint && <span className="text-[11.5px] text-st-dim">{hint}</span>}
-        <input id={id} type="file" accept={accept} className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
+        <input
+          id={id}
+          type="file"
+          accept={accept}
+          disabled={busy}
+          className="sr-only"
+          onChange={(e) => {
+            onFile(e.target.files?.[0]);
+            e.target.value = ""; // picking the same file again still uploads it
+          }}
+        />
       </label>
       {current && <div className="mt-2.5">{current}</div>}
     </div>
@@ -225,21 +237,30 @@ export function Dropzone({ accept, label, hint, onFile, current, busy }: { accep
  */
 export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Base & { maxSide?: number; keepFormat?: boolean }) {
   const [value, setValue] = useField<string>(path);
-  const { url: preview } = useFileUrl(value);
+  const { url: stored } = useFileUrl(value);
   const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<string>();
+  const preview = picked ?? stored;
   const toast = useToast();
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("bad", "That isn't an image.");
     setBusy(true);
+    const shown = URL.createObjectURL(file);
+    setPicked(shown);
     checkpoint();
     try {
       const skip = keepFormat && /^image\/(png|svg\+xml|webp)$/.test(file.type);
       const blob = !skip && file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
-      setValue(await uploadFile(blob, file.name, "image"));
-    } catch {
-      toast("bad", "Could not upload that image. Try again.");
+      const ref = await uploadFile(blob, file.name, "image");
+      rememberUpload(ref, blob);
+      setValue(ref);
+    } catch (err) {
+      toast("bad", err instanceof Error && err.message ? err.message : "Could not upload that image. Try again.");
     } finally {
+      URL.revokeObjectURL(shown);
+      setPicked(undefined);
       setBusy(false);
     }
   };
@@ -253,7 +274,7 @@ export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Ba
       onFile={(f) => void onFile(f)}
       current={
         <div className="flex items-center gap-3">
-          <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-st-border-strong bg-st-panel">
+          <span className={`grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-st-border-strong bg-st-panel ${busy ? "animate-pulse" : ""}`}>
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element -- a blob: URL from IndexedDB; next/image can't load it
               <img src={preview} alt="" className="h-full w-full object-cover" />
@@ -261,7 +282,8 @@ export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Ba
               <span className="text-[10px] text-st-dim">None</span>
             )}
           </span>
-          {value && (
+          {busy && <span className="text-[12px] text-st-sub">Uploading…</span>}
+          {value && !busy && (
             <button
               type="button"
               onClick={() => {
@@ -296,8 +318,8 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
       setFileId(ref);
       setName(file.name);
       setSize(file.size);
-    } catch {
-      toast("bad", "Could not upload that PDF. Try again.");
+    } catch (err) {
+      toast("bad", err instanceof Error && err.message ? err.message : "Could not upload that PDF. Try again.");
     } finally {
       setBusy(false);
     }
@@ -311,7 +333,9 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
       busy={busy}
       onFile={(f) => void onFile(f)}
       current={
-        fileId ? (
+        busy ? (
+          <span className="text-[12.5px] text-st-sub">Uploading {"…"}</span>
+        ) : fileId ? (
           <span className="flex items-center justify-center gap-1.5 text-[12.5px] text-st-ink">
             <span className="text-st-good">
               <Icon name="check" size={13} />

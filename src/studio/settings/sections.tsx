@@ -165,14 +165,14 @@ export function GoogleSection() {
 
 /* ------------------------------------------------------------------ Brand & theme */
 
-const COLOR_FIELDS: { path: ["site", "theme", "colors", string]; label: string }[] = [
-  { path: ["site", "theme", "colors", "blue"], label: "Main colour — buttons and links" },
-  { path: ["site", "theme", "colors", "purple"], label: "Accent colour — highlights" },
-  { path: ["site", "theme", "colors", "indigo"], label: "Deep colour — headings on light" },
-  { path: ["site", "theme", "colors", "bg"], label: "Light background" },
-  { path: ["site", "theme", "colors", "darkBg"], label: "Dark background" },
-  { path: ["site", "theme", "colors", "logoFrom"], label: "Logo gradient — start" },
-  { path: ["site", "theme", "colors", "logoTo"], label: "Logo gradient — end" },
+const COLOR_FIELDS: { path: ["site", "theme", "colors", string]; label: string; fallback: string }[] = [
+  { path: ["site", "theme", "colors", "blue"], fallback: "#5a48f5", label: "Main colour — buttons and links" },
+  { path: ["site", "theme", "colors", "purple"], fallback: "#6f55e8", label: "Accent colour — highlights" },
+  { path: ["site", "theme", "colors", "indigo"], fallback: "#3530d0", label: "Deep colour — headings on light" },
+  { path: ["site", "theme", "colors", "bg"], fallback: "#e9ddeb", label: "Light background" },
+  { path: ["site", "theme", "colors", "darkBg"], fallback: "#050507", label: "Dark background" },
+  { path: ["site", "theme", "colors", "logoFrom"], fallback: "#8c53fe", label: "Logo gradient — start" },
+  { path: ["site", "theme", "colors", "logoTo"], fallback: "#5ce0e6", label: "Logo gradient — end" },
 ];
 
 export function BrandSection() {
@@ -191,7 +191,7 @@ export function BrandSection() {
       <SettingCard title="Colours" help="Empty keeps the built-in colour.">
         <div className="grid gap-3.5 sm:grid-cols-2">
           {COLOR_FIELDS.map((f) => (
-            <ColorField key={f.path.join(".")} path={f.path} label={f.label} />
+            <ColorField key={f.path.join(".")} path={f.path} label={f.label} fallback={f.fallback} />
           ))}
         </div>
         <Button

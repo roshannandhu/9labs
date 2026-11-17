@@ -34,9 +34,13 @@ export function BookCover({ book }: { book: Ebook }) {
     // An uploaded image is flat artwork: give it the same hinge groove, light and edge the designed
     // covers draw in their SVG, so it reads as a printed cover on the 3D book, not a pasted card.
     return (
-      <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]">
+      <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]" role="img" aria-label={`${book.title} — cover`}>
+        {/* the designed cover sits underneath: while the image loads, or if it can't be fetched, that shows instead of an empty box */}
+        <span className="absolute inset-0" aria-hidden="true">
+          <BookCover book={{ ...book, cover: undefined }} />
+        </span>
         {/* eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers */}
-        <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />
+        <img src={book.cover} alt="" className="relative block h-full w-full object-cover" />
         <span className="pointer-events-none absolute inset-0" style={COVER_FINISH} aria-hidden="true" />
       </span>
     );
@@ -161,7 +165,7 @@ export function BookSpine({ book }: { book: Ebook }) {
   if (book.cover) {
     // a printed wrap: the spine stretches a thin strip of the cover's left edge (no stray lettering), darkened where it curves away
     return (
-      <div className="relative flex h-full w-full flex-col items-center justify-center py-3" style={{ backgroundImage: `url("${book.cover}")`, backgroundSize: "2500% 100%", backgroundPosition: "left center" }}>
+      <div className="relative flex h-full w-full flex-col items-center justify-center bg-[#0a0b12] py-3" style={{ backgroundImage: `url("${book.cover}")`, backgroundSize: "2500% 100%", backgroundPosition: "left center" }}>
         <span className="absolute inset-0 bg-[linear-gradient(90deg,rgb(0_0_0/.55),rgb(0_0_0/.18)_45%,rgb(0_0_0/.45))]" aria-hidden="true" />
         <span className="relative font-display text-[9px] font-semibold uppercase tracking-[0.18em] text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/.6)] [writing-mode:vertical-rl] rotate-180">{book.title}</span>
       </div>

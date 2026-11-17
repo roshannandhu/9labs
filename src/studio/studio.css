@@ -91,6 +91,8 @@
   --color-st-danger-bg: var(--st-danger-bg);
   --color-st-good: var(--st-good);
   --color-st-warn: var(--st-warn);
+  --color-st-border: var(--st-border);
+  --color-st-border-strong: var(--st-border-strong);
   --font-display: var(--font-display-src), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-sans-src), ui-sans-serif, system-ui, sans-serif;
   --font-accent: var(--font-accent-src), ui-serif, Georgia, serif;
