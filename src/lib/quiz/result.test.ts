@@ -64,8 +64,9 @@ test("extractJson: tolerates prose around the object", () => {
 
 test("cleanQuizInput: drops unknown ids, keeps one pick on single questions, Other only where allowed", () => {
   const q = site.quiz.questions.find((x) => !x.multi)!;
-  const multi = site.quiz.questions.find((x) => x.multi)!;
-  const s = { quiz: { ...site.quiz, ai: { ...site.quiz.ai, maxOtherChars: 20 }, questions: site.quiz.questions.map((x) => (x.id === q.id ? { ...x, allowOther: true } : x)) } };
+  // the defaults are all single-answer now; make the last question a "pick all" one for this test
+  const multi = { ...site.quiz.questions.at(-1)!, multi: true };
+  const s = { quiz: { ...site.quiz, ai: { ...site.quiz.ai, maxOtherChars: 20 }, questions: site.quiz.questions.map((x) => (x.id === q.id ? { ...x, allowOther: true } : x.id === multi.id ? multi : x)) } };
   const out = cleanQuizInput(
     s,
     { [q.id]: [q.options[0].id, q.options[1].id, "nope"], ghost: ["x"], [multi.id]: multi.options.slice(0, 2).map((o) => o.id) },

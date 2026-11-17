@@ -414,15 +414,13 @@ export const site: SiteData = {
       {
         id: "make",
         label: "Needs made",
-        q: "What do you need made?",
-        hint: "Pick all that apply.",
-        multi: true,
+        q: "What do you need made most?",
         options: [
           { id: "photo", label: "Photos and video", pointsTo: "photo" },
           { id: "posts", label: "Social posts and reels", pointsTo: "social" },
           { id: "ads", label: "Ads and campaigns", pointsTo: "advertising" },
           { id: "press", label: "Press and PR stories", pointsTo: "pr" },
-          { id: "advice", label: "Nothing yet, advice first", pointsTo: "strategy", only: true },
+          { id: "advice", label: "Nothing yet, advice first", pointsTo: "strategy" },
         ],
       },
       {

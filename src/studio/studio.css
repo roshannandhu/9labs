@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* `dark:` follows the admin's own theme switch (data-theme on <html>), not the OS setting */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
  * The Bridge — "Command Center". The admin's own stylesheet: dark by default (an admin tool, used

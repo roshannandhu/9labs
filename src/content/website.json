@@ -610,9 +610,8 @@
         {
           "id": "make",
           "label": "Needs made",
-          "q": "What do you need made?",
-          "hint": "Pick all that apply.",
-          "multi": true,
+          "q": "What do you need made most?",
+          "multi": false,
           "options": [
             {
               "id": "make-photo",
@@ -647,7 +646,6 @@
             {
               "id": "make-advice",
               "label": "Nothing yet, advice first",
-              "only": true,
               "weights": {
                 "strategy": 3
               }

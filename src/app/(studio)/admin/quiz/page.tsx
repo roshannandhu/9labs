@@ -13,7 +13,7 @@ import type { Path } from "@/lib/path";
 import { AreaField, CheckField, NumField, SelectField, TextField } from "@/studio/Field";
 import { SortableList } from "@/studio/Sortable";
 import { useDraft, useField, useQuizResults } from "@/studio/state";
-import { Box, Button, PageHeader, Row, Tabs, relativeTime, useNow } from "@/studio/ui";
+import { Box, Button, PageHeader, Row, Segmented, Tabs, relativeTime, useNow } from "@/studio/ui";
 import { BarList, StatTile, type BarItem } from "@/studio/charts";
 import { AiHealthView, OUTCOME_LABEL } from "@/studio/AiHealth";
 
@@ -95,7 +95,7 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
       <Row>
         <TextField path={["site", "quiz", "questions", qi, "label"]} label="Short name" help="Used in the WhatsApp summary." />
         <RoleField qi={qi} />
-        <CheckField path={["site", "quiz", "questions", qi, "multi"]} label="Several answers allowed" />
+        <CheckField path={["site", "quiz", "questions", qi, "multi"]} label="Several answers allowed" help="Off (recommended): the quiz moves on by itself after a tap. On: visitors must press Next." />
       </Row>
       <TextField path={["site", "quiz", "questions", qi, "hint"]} label="Hint under the question" placeholder="Optional" />
       <Row>
@@ -333,9 +333,9 @@ function TestTab() {
             </>
           )}
         </Box>
-        <Box title="Built-in backup" help="What visitors get when the AI is off, out of quota or fails — worked out from each answer's “Points to”.">
+        <Box title="Scoring result" help="What visitors get in “Scoring only” mode, or when the AI is out of quota or fails — worked out from each answer's “Points to”.">
           {!answered ? (
-            <p className="text-[13px] text-st-sub">Pick some answers to see the backup.</p>
+            <p className="text-[13px] text-st-sub">Pick some answers to see the scoring result.</p>
           ) : !backup ? (
             <p className="text-[13px] text-st-sub">No answer points anywhere yet — add a “Points to” on the Build tab.</p>
           ) : (
@@ -348,13 +348,13 @@ function TestTab() {
 }
 
 const KIND_COLORS: Record<KbKind, { bg: string; text: string; border: string }> = {
-  service: { bg: "bg-purple-500/10", text: "text-purple-300", border: "border-purple-500/30" },
-  note: { bg: "bg-cyan-500/10", text: "text-cyan-300", border: "border-cyan-500/30" },
-  pricing: { bg: "bg-amber-500/10", text: "text-amber-300", border: "border-amber-500/30" },
-  faq: { bg: "bg-emerald-500/10", text: "text-emerald-300", border: "border-emerald-500/30" },
-  case: { bg: "bg-indigo-500/10", text: "text-indigo-300", border: "border-indigo-500/30" },
-  ebook: { bg: "bg-rose-500/10", text: "text-rose-300", border: "border-rose-500/30" },
-  process: { bg: "bg-slate-500/10", text: "text-slate-300", border: "border-slate-500/30" },
+  service: { bg: "bg-purple-500/10", text: "text-purple-700 dark:text-purple-300", border: "border-purple-500/30" },
+  note: { bg: "bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-500/30" },
+  pricing: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-300", border: "border-amber-500/30" },
+  faq: { bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-500/30" },
+  case: { bg: "bg-indigo-500/10", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-500/30" },
+  ebook: { bg: "bg-rose-500/10", text: "text-rose-700 dark:text-rose-300", border: "border-rose-500/30" },
+  process: { bg: "bg-slate-500/10", text: "text-slate-700 dark:text-slate-300", border: "border-slate-500/30" },
 };
 
 function KnowledgeTab() {
@@ -605,7 +605,7 @@ function KnowledgeTab() {
                         </span>
                       )}
                       {e.allowPrices ? (
-                        <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-300">
+                        <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-700 dark:text-amber-300">
                           Prices Allowed
                         </span>
                       ) : (
@@ -614,7 +614,7 @@ function KnowledgeTab() {
                         </span>
                       )}
                       {!e.enabled && (
-                        <span className="rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-red-400">
+                        <span className="rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-st-danger">
                           Paused
                         </span>
                       )}
@@ -645,7 +645,7 @@ function KnowledgeTab() {
                       title={e.enabled ? "Click to pause" : "Click to enable"}
                       className={`rounded-lg px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
                         e.enabled
-                          ? "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
                           : "bg-st-panel-2 text-st-dim hover:bg-st-panel-3 hover:text-st-sub"
                       }`}
                     >
@@ -664,7 +664,7 @@ function KnowledgeTab() {
                     <button
                       type="button"
                       onClick={() => handleDelete(e.id)}
-                      className="rounded-lg border border-st-border bg-st-panel-2 px-2.5 py-1 text-[11.5px] font-medium text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/10"
+                      className="rounded-lg border border-st-border bg-st-panel-2 px-2.5 py-1 text-[11.5px] font-medium text-st-danger transition-colors hover:border-red-500/40 hover:bg-red-500/10"
                     >
                       Delete
                     </button>
@@ -830,14 +830,41 @@ function KnowledgeTab() {
   );
 }
 
+/** AI + scoring together, or scoring alone. Scoring always stands behind the AI, so a limit or outage never shows. */
+function ModeSwitch() {
+  const [on, setOn] = useField<boolean>(["site", "quiz", "ai", "enabled"]);
+  return (
+    <div className="grid gap-2">
+      <span className="st-label">Result mode</span>
+      <Segmented
+        layoutId="quiz-mode"
+        value={on ? "ai" : "scoring"}
+        onChange={(v) => {
+          checkpoint();
+          setOn(v === "ai");
+        }}
+        options={[
+          { value: "ai", label: "AI + scoring" },
+          { value: "scoring", label: "Scoring only" },
+        ]}
+      />
+      <p className="st-help">
+        {on
+          ? "The AI writes each visitor's plan from their answers and your knowledge base. If it hits its daily limit, is slow or fails, that visitor automatically gets the scoring result instead — they never see an error."
+          : "Every visitor gets the scoring result: each answer votes for the activity its “Points to” names, the most-voted win. No AI calls, no limits."}
+      </p>
+    </div>
+  );
+}
+
 function AiTab() {
   const draft = useDraft();
   const ai = draft.site.quiz.ai;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-      <Box title="How the AI answers" help="Behaviour only — the API keys are Worker secrets (GROQ_API_KEY, GEMINI_API_KEY), never stored here. Publish to apply.">
-        <CheckField path={["site", "quiz", "ai", "enabled"]} label="Use AI for quiz results" help="Off: every visitor gets the built-in backup result." />
+      <Box title="How results are worked out" help="Publish to apply. The API keys are Worker secrets (GROQ_API_KEY, GEMINI_API_KEY), never stored here.">
+        <ModeSwitch />
         <SelectField
           path={["site", "quiz", "ai", "tone"]}
           label="Tone"

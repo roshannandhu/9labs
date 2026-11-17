@@ -192,6 +192,8 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     [result, site, lines, t.whatsappIntro, t.whatsappOutro],
   );
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
+  /** The visitor's own picks that point at an activity — the "you said → we do" link on each match. */
+  const saidFor = (icon: string) => questions.flatMap((qq) => qq.options.filter((o) => o.pointsTo === icon && answers[qq.id]?.includes(o.id)).map((o) => o.label)).slice(0, 3);
   // the form step: save name + phone with the lead, hand back the chat link to open in the same click
   const sendWhatsApp = (contact: { name: string; phone: string }) => {
     submitQuizContact(ref.current, contact, latest.current, latestOther.current);
@@ -425,16 +427,17 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       <h2 className="mt-2 text-[clamp(1.8rem,5vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white">
                         {t.heading}
                       </h2>
+                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-[var(--chip-bg)] px-2.5 py-1 text-[11.5px] font-medium text-white/75">
+                        <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]" aria-hidden="true" />
+                        {result.source === "backup" ? "Matched from your answers" : "Written for you by our AI"}
+                      </p>
                       <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
-                      {result.highlights.length > 0 && (
-                        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="From your answers">
-                          {result.highlights.map((h) => (
-                            <li key={h} className="rounded-full border border-[color:var(--brand-a)]/30 bg-gradient-to-r from-[color:var(--brand-a)]/15 to-[color:var(--brand-b)]/15 px-2.5 py-1 text-[12px] font-medium text-white">
-                              {h}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <Bridge
+                        said={result.highlights.length ? result.highlights : lines.map((l) => l.slice(l.indexOf(":") + 1).trim()).filter(Boolean).slice(0, 6)}
+                        solves={result.matches.flatMap((m) => site.services.filter((sv) => sv.slug === m.slug))}
+                        brand={site.shortName}
+                        reduced={reduced}
+                      />
 
                       <ul className="mt-6 grid gap-3">
                         {result.matches.map((m, i) => {
@@ -458,6 +461,16 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                                   </span>
                                   <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
                                 </span>
+                                {saidFor(s.icon).length > 0 && (
+                                  <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-white/55">
+                                    You said
+                                    {saidFor(s.icon).map((said) => (
+                                      <span key={said} className="rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-white/85">
+                                        {said}
+                                      </span>
+                                    ))}
+                                  </span>
+                                )}
                                 <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.how}</span>
                                 {s.tags.length > 0 && (
                                   <span className="mt-2.5 flex flex-wrap gap-1.5">
@@ -599,5 +612,64 @@ function WhatsAppStep({ cta, onSend, className = "" }: { cta: string; onSend: (c
       </button>
       <p className="text-[12px] text-white/45">We save your name and number with your answers so we can reply.</p>
     </form>
+  );
+}
+
+/**
+ * The result at a glance: what the visitor told us on the left, how Nine Labs answers it on the
+ * right, a light running across the bridge between them.
+ */
+function Bridge({ said, solves, brand, reduced }: { said: string[]; brand: string; solves: { slug: string; icon: Parameters<typeof ActivityIcon>[0]["icon"]; short: string }[]; reduced: boolean }) {
+  if (!said.length || !solves.length) return null;
+  return (
+    <div className="mt-5 grid items-stretch gap-2 sm:grid-cols-[1fr_56px_1fr] sm:gap-0">
+      <div className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4">
+        <p className="label-mono !text-[10px] !text-white/55">What you told us</p>
+        <ul className="mt-2.5 flex flex-wrap gap-1.5">
+          {said.map((h, i) => (
+            <motion.li
+              key={h}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.06, duration: 0.4, ease }}
+              className="rounded-full border border-[color:var(--brand-a)]/30 bg-gradient-to-r from-[color:var(--brand-a)]/15 to-[color:var(--brand-b)]/15 px-2.5 py-1 text-[12px] font-medium text-white"
+            >
+              {h}
+            </motion.li>
+          ))}
+        </ul>
+      </div>
+      <div className="relative flex h-8 items-center justify-center sm:h-auto" aria-hidden="true">
+        <motion.span
+          className="absolute h-full w-px origin-left bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)] sm:h-px sm:w-full sm:bg-gradient-to-r"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25, duration: 0.5 }}
+        />
+        <span className="relative grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] text-[13px] text-white shadow-[0_0_24px_var(--brand-a)]">
+          <span className="sm:hidden">↓</span>
+          <span className="hidden sm:inline">→</span>
+        </span>
+      </div>
+      <div className="rounded-2xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 p-4">
+        <p className="label-mono !text-[10px] !text-white/55">How {brand} solves it</p>
+        <ul className="mt-2.5 grid gap-2">
+          {solves.map((s, i) => (
+            <motion.li
+              key={s.slug}
+              initial={{ opacity: 0, x: reduced ? 0 : 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35 + i * 0.1, duration: 0.45, ease }}
+              className="flex items-center gap-2.5 text-[14px] font-medium text-white"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/5">
+                <ActivityIcon icon={s.icon} size={18} play />
+              </span>
+              {s.short}
+            </motion.li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

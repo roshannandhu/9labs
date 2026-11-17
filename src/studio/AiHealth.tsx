@@ -6,7 +6,7 @@ import { ApiError, api } from "./api";
 import { BarList } from "./charts";
 import { relativeTime } from "./ui";
 
-export const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Built-in backup", none: "Last resort" } as const;
+export const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Scoring (AI stepped aside)", none: "Last resort" } as const;
 const REASON_LABEL: Record<string, string> = { limit: "Limit reached", slow: "Too slow", bad: "Bad answer", key: "Key invalid", down: "Service down", blocked: "Blocked content" };
 
 function KeyChip({ name, set }: { name: string; set: boolean }) {
@@ -15,13 +15,13 @@ function KeyChip({ name, set }: { name: string; set: boolean }) {
 
 /** One line on top: is the AI actually answering visitors right now? */
 function verdict(h: AiHealth, enabled: boolean): { tone: string; text: string } {
-  if (!enabled) return { tone: "text-st-warn", text: "AI is switched off — every visitor gets the built-in backup. Turn it on in Quiz → AI." };
-  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key set — every visitor gets the built-in backup. Add GROQ_API_KEY and/or GEMINI_API_KEY as Worker secrets." };
+  if (!enabled) return { tone: "text-st-warn", text: "Scoring only — every visitor gets the scoring result. Switch to “AI + scoring” in Quiz → AI." };
+  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key set — every visitor gets the scoring result. Add GROQ_API_KEY and/or GEMINI_API_KEY as Worker secrets." };
   const t = h.today;
   if (t.total === 0) return { tone: "text-st-sub", text: "AI ready — no quiz results yet today." };
   const aiShare = Math.round(((t.ok + t.failover) / t.total) * 100);
   if (aiShare >= 90) return { tone: "text-st-good", text: `AI working — ${aiShare}% of today's results came from the AI.` };
-  return { tone: "text-st-warn", text: `AI struggling — only ${aiShare}% of today's results came from the AI; the rest got the backup. See the reasons below.` };
+  return { tone: "text-st-warn", text: `AI struggling — only ${aiShare}% of today's results came from the AI; the rest automatically got the scoring result. See the reasons below.` };
 }
 
 /**

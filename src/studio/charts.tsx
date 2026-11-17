@@ -62,23 +62,23 @@ export function StatTile({ label, value, delta, compareLabel, spark, color, href
   const shown = useCountUp(value);
   const content = (
     <>
-      <div className="flex items-center gap-1.5">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
-        <span className="st-micro truncate">{label}</span>
+      <div className="flex items-start gap-1.5">
+        <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
+        <span className="st-micro min-w-0 leading-snug">{label}</span>
       </div>
       <div className="mt-2 flex items-end justify-between gap-2">
         <span className="font-digits text-[26px] font-black text-st-ink sm:text-[30px]">{shown}</span>
         <Sparkline values={spark.length ? spark : [0, 0]} color={color} />
       </div>
-      <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px]">
         {delta === null ? (
           <span className="rounded-full bg-st-panel-3 px-1.5 py-0.5 font-medium text-st-dim">New</span>
         ) : (
-          <span className={`shrink-0 whitespace-nowrap font-medium ${delta >= 0 ? "text-st-good" : "text-st-danger"}`}>
-            {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
+          <span className={`shrink-0 whitespace-nowrap font-medium ${delta > 0 ? "text-st-good" : delta < 0 ? "text-st-danger" : "text-st-dim"}`}>
+            {delta > 0 ? "▲" : delta < 0 ? "▼" : "–"} {Math.abs(delta)}%
           </span>
         )}
-        <span className="min-w-0 truncate text-st-dim">{compareLabel}</span>
+        <span className="min-w-0 text-st-dim">{compareLabel}</span>
       </div>
     </>
   );
@@ -293,9 +293,9 @@ export function BarList({ items, color, unit = "", ranked = true }: { items: Bar
       <div className="grid gap-2.5">
         {sorted.map((item) => (
           <div key={item.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(100px,34%)_1fr_auto]" aria-label={`${item.label}: ${item.value}${unit}`}>
-            <span className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-st-ink" title={item.label}>
+            <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] leading-snug text-st-ink" title={item.label}>
               {item.icon && <span className="shrink-0 text-st-dim">{item.icon}</span>}
-              <span className="truncate">{item.label}</span>
+              <span className="min-w-0 break-words">{item.label}</span>
             </span>
             <span className="flex h-[14px] overflow-hidden rounded-full bg-st-panel-2">
               {item.segments?.length
@@ -324,8 +324,8 @@ export function MeterList({ items, color }: { items: MeterItem[]; color: string 
       {items.map((it) => {
         const pct = it.total > 0 ? Math.round((it.value / it.total) * 100) : 0;
         return (
-          <div key={it.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(110px,40%)_1fr_auto]">
-            <span className="truncate text-[12.5px] text-st-ink">{it.label}</span>
+          <div key={it.key} className="grid grid-cols-[minmax(0,1.4fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(0,45%)_1fr_auto]">
+            <span className="min-w-0 break-words text-[12.5px] leading-snug text-st-ink">{it.label}</span>
             <span className="h-[10px] overflow-hidden rounded-full" style={{ background: `color-mix(in oklab, ${color} 18%, var(--st-panel-2))` }}>
               <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
             </span>

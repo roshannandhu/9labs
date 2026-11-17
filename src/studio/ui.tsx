@@ -77,7 +77,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 /** An underline tab bar whose indicator slides between tabs. `layoutId` must be unique per tab group on screen. */
 export function Tabs<T extends string>({ tabs, active, onChange, layoutId }: { tabs: { id: T; label: string; count?: number; dot?: string }[]; active: T; onChange: (id: T) => void; layoutId: string }) {
   return (
-    <div role="tablist" className="st-scrollbox flex gap-5 overflow-x-auto border-b border-st-border">
+    <div role="tablist" className="flex flex-wrap gap-x-5 gap-y-1 border-b border-st-border">
       {tabs.map((t) => (
         <button
           key={t.id}
