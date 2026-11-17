@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ninelabs",
-  "main": ".open-next/worker.js",
+  "main": "custom-worker.js",
+  "triggers": { "crons": ["*/15 * * * *"] },
   "compatibility_date": "2026-11-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {

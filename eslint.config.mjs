@@ -10,6 +10,7 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    ".open-next/**",
     // the static demo's scratch copy and its build output (scripts/build-demo.mjs)
     ".demo-build/**",
     "build/**",
