@@ -123,3 +123,10 @@ export function cleanQuizInput(site: Pick<SiteData, "quiz">, answers: QuizAnswer
   }
   return { answers: a, other: o };
 }
+
+/** Loose phone check for the WhatsApp form: optional leading +, then 7–15 digits once spaces, dashes,
+ *  dots and brackets are dropped. Returns the tidied number, or null. */
+export function cleanPhone(raw: string): string | null {
+  const s = raw.trim().replace(/[\s().-]/g, "");
+  return /^\+?\d{7,15}$/.test(s) ? s : null;
+}

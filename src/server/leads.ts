@@ -163,13 +163,13 @@ export async function findQuizResultByRef(ref: string): Promise<QuizResultRow | 
 }
 
 /** Inserts a fresh result, or does nothing if this ref was already saved (the visitor re-sent the same finish). */
-export async function insertQuizResultIfNew(input: { ref: string; top: string; matches: string; summary: string; answers: Record<string, string[]>; other?: Record<string, string>; ai: QuizResult["ai"]; source: QuizResult["source"]; action?: QuizAction; email?: string }): Promise<void> {
-  const row = { id: newId("quiz"), ref: input.ref, top: input.top, matches: input.matches, summary: input.summary, answers: input.answers, other: input.other ?? {}, ai: input.ai, source: input.source, action: input.action ?? "none", email: input.email ?? "", status: "new", notes: "" };
+export async function insertQuizResultIfNew(input: { ref: string; top: string; matches: string; summary: string; answers: Record<string, string[]>; other?: Record<string, string>; ai: QuizResult["ai"]; source: QuizResult["source"]; action?: QuizAction; email?: string; name?: string; phone?: string }): Promise<void> {
+  const row = { id: newId("quiz"), ref: input.ref, top: input.top, matches: input.matches, summary: input.summary, answers: input.answers, other: input.other ?? {}, ai: input.ai, source: input.source, action: input.action ?? "none", email: input.email ?? "", name: input.name ?? "", phone: input.phone ?? "", status: "new", notes: "" };
   const { error } = await db().from("quiz_results").upsert(row, { onConflict: "ref", ignoreDuplicates: true });
   if (error) throw error;
 }
 
-export async function updateQuizResultByRef(ref: string, patch: Partial<{ action: QuizAction; email: string }>): Promise<void> {
+export async function updateQuizResultByRef(ref: string, patch: Partial<{ action: QuizAction; email: string; name: string; phone: string }>): Promise<void> {
   const { error } = await db().from("quiz_results").update(patch).eq("ref", ref);
   if (error) throw error;
 }

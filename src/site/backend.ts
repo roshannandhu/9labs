@@ -75,8 +75,9 @@ export function submitQuizResult(ref: string, answers: QuizAnswers, other: QuizO
   );
 }
 
-export function submitQuizAction(ref: string, action: "whatsapp"): void {
-  void (quizSaved.get(ref) ?? Promise.resolve()).then(() => post("quiz-results/action", { ref, action }, { keepalive: true }).catch(() => {}));
+/** The WhatsApp form step: name + phone onto the saved lead (answers ride along in case that save never landed). */
+export function submitQuizContact(ref: string, contact: { name: string; phone: string }, answers: QuizAnswers, other: QuizOther): void {
+  void (quizSaved.get(ref) ?? Promise.resolve()).then(() => post("quiz-results/action", { ref, action: "whatsapp", ...contact, answers, other }, { keepalive: true }).catch(() => {}));
 }
 
 export function submitQuizEmail(ref: string, email: string, answers: QuizAnswers, other: QuizOther = {}): { ok: boolean } {

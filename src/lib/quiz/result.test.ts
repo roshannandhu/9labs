@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkAiReply, cleanQuizInput, extractJson } from "./result.ts";
+import { checkAiReply, cleanPhone, cleanQuizInput, extractJson } from "./result.ts";
 import { site } from "../../content/site.ts";
 
 const rules = { slugs: site.services.map((s) => s.slug), allowPrices: false, sourceTexts: ["More customers and sales", "we sell handmade candles"] };
@@ -76,4 +76,12 @@ test("cleanQuizInput: drops unknown ids, keeps one pick on single questions, Oth
   assert.equal(out.answers[multi.id].length, 2);
   assert.equal(out.other[q.id], "a very long typed an");
   assert.equal(out.other[multi.id], undefined);
+});
+
+test("cleanPhone accepts real numbers and rejects junk", () => {
+  assert.equal(cleanPhone(" +91 98765-43210 "), "+919876543210");
+  assert.equal(cleanPhone("(044) 2345.6789"), "04423456789");
+  assert.equal(cleanPhone("12345"), null);
+  assert.equal(cleanPhone("call me"), null);
+  assert.equal(cleanPhone("++919876543210"), null);
 });

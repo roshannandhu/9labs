@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { fetchQuizAi, submitQuizAction, submitQuizEmail, submitQuizResult } from "@/site/backend";
+import { fetchQuizAi, submitQuizContact, submitQuizEmail, submitQuizResult } from "@/site/backend";
 import { opaqueRef } from "@/lib/text";
 import { runBackup } from "@/lib/quiz/backup";
+import { cleanPhone } from "@/lib/quiz/result";
 import type { AiQuizResult, QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { scrollToId } from "@/lib/scroll";
@@ -191,6 +192,11 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     [result, site, lines, t.whatsappIntro, t.whatsappOutro],
   );
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
+  // the form step: save name + phone with the lead, hand back the chat link to open in the same click
+  const sendWhatsApp = (contact: { name: string; phone: string }) => {
+    submitQuizContact(ref.current, contact, latest.current, latestOther.current);
+    return wa(`Hi, I'm ${contact.name}.\n\n${whatsappText}`);
+  };
 
   return (
     <AnimatePresence>
@@ -407,9 +413,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         </li>
                       ))}
                     </ul>
-                    <a href={wa(whatsappText)} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-6 w-full" onClick={() => submitQuizAction(ref.current, "whatsapp")}>
-                      <SocialIcon name="whatsapp" size={18} /> {t.whatsappCta}
-                    </a>
+                    <WhatsAppStep cta={t.whatsappCta} onSend={sendWhatsApp} className="mt-6" />
                     <button type="button" className="btn btn-sm mt-3 text-white/60 hover:text-white" onClick={() => go(0)}>
                       {t.retake}
                     </button>
@@ -481,15 +485,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       </ol>
 
                       <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5">
-                        <a
-                          href={wa(whatsappText)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-primary w-full"
-                          onClick={() => submitQuizAction(ref.current, "whatsapp")}
-                        >
-                          <SocialIcon name="whatsapp" size={18} /> {t.whatsappCta}
-                        </a>
+                        <WhatsAppStep cta={t.whatsappCta} onSend={sendWhatsApp} />
                         {!t.emailEnabled ? null : sent ? (
                           <p className="mt-3 text-[15px] text-white" role="status">
                             ✓ {fill(t.emailSent, { email })}
@@ -548,5 +544,60 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * "Send this to us on WhatsApp", in two taps: the button opens a short name + phone form, and
+ * submitting it saves the contact with the lead and opens the chat — synchronously inside the
+ * submit, so a popup blocker lets it through.
+ */
+function WhatsAppStep({ cta, onSend, className = "" }: { cta: string; onSend: (contact: { name: string; phone: string }) => string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+  const input = "min-h-[48px] w-full rounded-full border border-white/12 bg-transparent px-5 text-[16px] text-white placeholder:text-white/35 focus:border-nl-purple/70 focus:outline-none";
+
+  if (!open)
+    return (
+      <button type="button" className={`btn btn-primary w-full ${className}`} onClick={() => setOpen(true)}>
+        <SocialIcon name="whatsapp" size={18} /> {cta}
+      </button>
+    );
+
+  return (
+    <form
+      className={`grid gap-2.5 ${className}`}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        const n = name.trim();
+        const p = cleanPhone(phone);
+        if (n.length < 2) return setError("Please add your name.");
+        if (!p) return setError("Please add a phone number we can reach you on.");
+        setError("");
+        window.open(onSend({ name: n, phone: p }), "_blank", "noopener,noreferrer");
+      }}
+    >
+      <p className="text-[14px] text-nl-ink">So we know who&apos;s writing — then WhatsApp opens with your plan.</p>
+      <label htmlFor="quiz-name" className="sr-only">
+        Your name
+      </label>
+      <input id="quiz-name" autoFocus autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={input} />
+      <label htmlFor="quiz-phone" className="sr-only">
+        Phone number
+      </label>
+      <input id="quiz-phone" type="tel" inputMode="tel" autoComplete="tel" required maxLength={32} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (with country code)" className={input} />
+      {error && (
+        <p className="text-[13.5px] text-[#ff8a8a]" role="alert">
+          {error}
+        </p>
+      )}
+      <button type="submit" className="btn btn-primary w-full">
+        <SocialIcon name="whatsapp" size={18} /> Open WhatsApp
+      </button>
+      <p className="text-[12px] text-white/45">We save your name and number with your answers so we can reply.</p>
+    </form>
   );
 }

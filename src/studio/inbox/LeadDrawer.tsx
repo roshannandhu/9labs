@@ -282,6 +282,11 @@ function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
           {[r.name, r.phone].filter(Boolean).join(" · ")}
         </Field>
       )}
+      {r.phone && (
+        <a href={`https://wa.me/${r.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="st-btn st-btn-primary w-fit">
+          Open WhatsApp chat
+        </a>
+      )}
       {r.email && (
         <a href={`mailto:${r.email}?subject=${encodeURIComponent("Your 9 Quiz plan")}`} className="st-btn st-btn-primary w-fit">
           <Icon name="mail" size={14} /> E-mail {r.email}
