@@ -63,7 +63,7 @@ export function buildPrompt(site: SiteData, answers: QuizAnswers, other: QuizOth
     `- Speak to the visitor as "you". Tone: ${TONE[ai.tone] ?? TONE.friendly}.`,
     ai.notes.trim() ? `- About ${site.name} (from the team): ${quote(ai.notes).slice(0, 1500)}` : "",
     "- Output a single JSON object and nothing else, exactly this shape:",
-    '{"wants": "2-3 sentences: what the visitor wants, in their own words", "highlights": ["3-6 short phrases copied word-for-word from their answers or typed text"], "matches": [{"slug": "<a slug from the services list>", "fit": "best"|"also"|"consider", "how": "1-2 sentences, max 280 characters: how this service helps them specifically"}], "steps": [{"title": "short", "text": "one sentence"}, {"title": "...", "text": "..."}, {"title": "...", "text": "..."}], "tags": {"goal": "2-4 words", "who": "2-4 words", "when": "2-4 words"}}',
+    '{"wants": "2-3 sentences to the visitor, starting \"You\": what they want, using their own words", "highlights": ["3-6 short phrases copied word-for-word from their answers or typed text"], "matches": [{"slug": "<a slug from the services list>", "fit": "best"|"also"|"consider", "how": "1-2 sentences, max 280 characters: how this service helps them specifically"}], "steps": [{"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}], "tags": {"goal": "2-4 words", "who": "2-4 words", "when": "2-4 words"}}',
     '- 1 to 3 matches, best first; the first has fit "best". Exactly 3 steps: the first contact, then working together, then results — no timeframes.',
   ]
     .filter(Boolean)

@@ -63,6 +63,8 @@ export async function callGroq(system: string, user: string, timeoutMs = 8000): 
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: env().GROQ_MODEL,
+          // gpt-oss models think before answering; a short think keeps us well inside the timeout
+          ...(env().GROQ_MODEL.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
           temperature: 0.3,
           max_tokens: 1200,
           response_format: { type: "json_object" },

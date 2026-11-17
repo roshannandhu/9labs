@@ -28,8 +28,8 @@ const schema = z.object({
   // AI (docs/AI_RAG_SYSTEM.md §7). Keys may be comma-separated: a 429 moves on to the next one.
   GROQ_API_KEY: z.string().optional().default(""),
   GEMINI_API_KEY: z.string().optional().default(""),
-  GROQ_MODEL: z.string().optional().default("llama-3.3-70b-versatile"),
-  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
+  GROQ_MODEL: z.string().optional().default("openai/gpt-oss-120b"),
+  GEMINI_MODEL: z.string().optional().default("gemini-3.5-flash-lite"),
   GEMINI_EMBED_MODEL: z.string().optional().default("gemini-embedding-001"),
   /** Whole-site cap on AI result calls per day (an abuse brake on top of the per-IP limit). */
   AI_DAILY_CAP: z.coerce.number().optional().default(500),
