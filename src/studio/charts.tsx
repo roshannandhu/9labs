@@ -74,11 +74,11 @@ export function StatTile({ label, value, delta, compareLabel, spark, color, href
         {delta === null ? (
           <span className="rounded-full bg-st-panel-3 px-1.5 py-0.5 font-medium text-st-dim">New</span>
         ) : (
-          <span className={`font-medium ${delta >= 0 ? "text-st-good" : "text-st-danger"}`}>
+          <span className={`shrink-0 whitespace-nowrap font-medium ${delta >= 0 ? "text-st-good" : "text-st-danger"}`}>
             {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
           </span>
         )}
-        <span className="truncate text-st-dim">{compareLabel}</span>
+        <span className="min-w-0 truncate text-st-dim">{compareLabel}</span>
       </div>
     </>
   );
@@ -323,7 +323,7 @@ export function MeterList({ items, color }: { items: MeterItem[]; color: string 
       {items.map((it) => {
         const pct = it.total > 0 ? Math.round((it.value / it.total) * 100) : 0;
         return (
-          <div key={it.key} className="grid grid-cols-[minmax(110px,40%)_1fr_auto] items-center gap-2.5">
+          <div key={it.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(40px,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(110px,40%)_1fr_auto]">
             <span className="truncate text-[12.5px] text-st-ink">{it.label}</span>
             <span className="h-[10px] overflow-hidden rounded-full" style={{ background: `color-mix(in oklab, ${color} 18%, var(--st-panel-2))` }}>
               <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />

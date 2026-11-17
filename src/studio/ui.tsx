@@ -307,7 +307,7 @@ export function Drawer({ open, onClose, title, children, wide, footer }: { open:
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className={`absolute bottom-0 right-0 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[22px] bg-st-bg shadow-2xl sm:top-0 sm:max-h-none sm:rounded-none sm:rounded-l-[22px] sm:border-l sm:border-st-border ${wide ? "sm:w-[720px]" : "sm:w-[480px]"}`}
+            className={`absolute bottom-0 right-0 flex max-h-[92dvh] w-full flex-col overflow-clip rounded-t-[22px] bg-st-bg shadow-2xl sm:top-0 sm:max-h-none sm:rounded-none sm:rounded-l-[22px] sm:border-l sm:border-st-border ${wide ? "sm:w-[720px]" : "sm:w-[480px]"}`}
             initial={desktop ? { x: "100%" } : { y: "100%" }}
             animate={desktop ? { x: 0 } : { y: 0 }}
             exit={desktop ? { x: "100%" } : { y: "100%" }}
