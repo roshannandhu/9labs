@@ -142,7 +142,7 @@ function InboxInner() {
       <p className="-mt-2 text-[12.5px] text-st-dim">{TAB_BLURB[tab]}</p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, company, e-mail, ref…" className="st-field max-w-[320px] flex-1" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, company, e-mail, ref…" className="st-field min-w-0 basis-full sm:max-w-[320px] sm:flex-1 sm:basis-auto" />
         <Segmented layoutId="inbox-period" size="sm" value={period} onChange={setPeriod} options={[{ value: "all", label: "All" }, { value: "7", label: "7D" }, { value: "30", label: "30D" }, { value: "90", label: "90D" }]} />
         {tab === "enquiries" && (
           <>

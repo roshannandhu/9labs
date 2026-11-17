@@ -34,9 +34,13 @@ export function BookCover({ book }: { book: Ebook }) {
     // An uploaded image is flat artwork: give it the same hinge groove, light and edge the designed
     // covers draw in their SVG, so it reads as a printed cover on the 3D book, not a pasted card.
     return (
-      <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]">
+      <span className="relative block h-full w-full overflow-hidden bg-[#0a0b12]" role="img" aria-label={`${book.title} — cover`}>
+        {/* the designed cover sits underneath: while the image loads, or if it can't be fetched, that shows instead of an empty box */}
+        <span className="absolute inset-0" aria-hidden="true">
+          <BookCover book={{ ...book, cover: undefined }} />
+        </span>
         {/* eslint-disable-next-line @next/next/no-img-element -- static export: plain <img> for uploaded covers */}
-        <img src={book.cover} alt={`${book.title} — cover`} className="block h-full w-full object-cover" />
+        <img src={book.cover} alt="" className="relative block h-full w-full object-cover" />
         <span className="pointer-events-none absolute inset-0" style={COVER_FINISH} aria-hidden="true" />
       </span>
     );
