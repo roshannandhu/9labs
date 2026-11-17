@@ -3,6 +3,7 @@ import type { SiteData } from "@/content/site";
 import type { QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { db } from "../db";
 import { aiConfigured } from "../env";
+import { HttpError } from "../http";
 import { newId } from "../leads";
 import { runChain, type ChainOutcome } from "./chain";
 import { retrieveKb } from "./kb";
@@ -55,6 +56,8 @@ type CallRow = { tried: string[] | null; at: string; provider: string; outcome: 
 export async function aiHealth(): Promise<AiHealth> {
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const { data, error } = await db().from("ai_calls").select("tried, at, provider, outcome, reason, detail, latency_ms, tokens_in, tokens_out, rl_remaining_requests, rl_remaining_tokens, rl_reset_at, ref").gte("at", since).order("at", { ascending: false }).limit(5000);
+  // the log table comes from migration 0004 — say so instead of a bare 500
+  if (error?.code === "PGRST205" || error?.code === "42P01") throw new HttpError(503, "AI log table missing — run supabase/migrations/0004_ai_calls.sql in Supabase.");
   if (error) throw error;
   const rows = data as CallRow[];
   const dayStart = new Date();

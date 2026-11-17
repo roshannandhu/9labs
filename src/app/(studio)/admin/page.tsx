@@ -9,6 +9,7 @@ import { useSession } from "@/studio/state";
 import { useDashboardData, type Range } from "@/studio/dashboard/data";
 import {
   AfterQuizPanel,
+  AiHealthPanel,
   BudgetsPanel,
   BusiestTimesPanel,
   EbooksPanel,
@@ -95,6 +96,9 @@ export default function DashboardPage() {
           </Fade>
           <Fade i={10} className="md:col-span-2 lg:col-span-4">
             <SystemStatusPanel data={data} />
+          </Fade>
+          <Fade i={11} className="md:col-span-2 lg:col-span-12">
+            <AiHealthPanel />
           </Fade>
         </div>
       )}

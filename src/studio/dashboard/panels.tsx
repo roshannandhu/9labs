@@ -8,6 +8,8 @@ import { KIND_LABEL } from "../leads";
 import { Badge, Panel, StatusRow, relativeTime } from "../ui";
 import { BarList, type BarItem, Heatmap, LineChart, MeterList, SegmentedBar, StatTile } from "../charts";
 import type { DashboardData, Range } from "./data";
+import { AiHealthView } from "../AiHealth";
+import { useDraft } from "../state";
 
 const compareLabel = (range: Range) => `vs previous ${range} days`;
 
@@ -210,6 +212,16 @@ export function SystemStatusPanel({ data }: { data: DashboardData }) {
           <StatusRow key={i} icon={s.icon} tone={s.tone} label={s.label} detail={s.detail} action={s.action} />
         ))}
       </div>
+    </Panel>
+  );
+}
+
+/** The quiz AI, live from the ai_calls log (refreshes every minute). */
+export function AiHealthPanel() {
+  const ai = useDraft().site.quiz.ai;
+  return (
+    <Panel label="Quiz AI" right={<Link href="/admin/quiz" className="text-[12px] text-st-purple hover:underline">Quiz → AI settings</Link>}>
+      <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
     </Panel>
   );
 }

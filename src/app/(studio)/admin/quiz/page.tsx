@@ -15,6 +15,7 @@ import { SortableList } from "@/studio/Sortable";
 import { useDraft, useField, useQuizResults } from "@/studio/state";
 import { Box, Button, PageHeader, Row, Tabs, relativeTime, useNow } from "@/studio/ui";
 import { BarList, StatTile, type BarItem } from "@/studio/charts";
+import { AiHealthView, OUTCOME_LABEL } from "@/studio/AiHealth";
 
 const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
 
@@ -176,7 +177,6 @@ type AiTestResponse = {
   backup: AiQuizResult | null;
 };
 
-const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Built-in backup", none: "Last resort" } as const;
 
 function ResultView({ result, services }: { result: AiQuizResult; services: Service[] }) {
   return (
@@ -830,38 +830,9 @@ function KnowledgeTab() {
   );
 }
 
-type AiHealth = {
-  keys: { groq: boolean; gemini: boolean };
-  today: { total: number; ok: number; failover: number; backup: number; none: number; groqCalls: number; geminiCalls: number; tokensIn: number; tokensOut: number };
-  week: { total: number; ok: number; failover: number; backup: number; none: number };
-  reasons: Record<string, number>;
-  latency: { median: number; p95: number };
-  groqRate: { remainingRequests: number | null; remainingTokens: number | null; resetAt: string | null; at: string } | null;
-  recentFailures: { at: string; provider: string; outcome: string; reason: string; detail: string; ref: string }[];
-};
-
-const REASON_LABEL: Record<string, string> = { limit: "Limit reached", slow: "Too slow", bad: "Bad answer", key: "Key invalid", down: "Service down", blocked: "Blocked content" };
-
-function KeyChip({ name, set }: { name: string; set: boolean }) {
-  return <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-medium ${set ? "bg-[var(--st-good-bg)] text-st-good" : "bg-st-danger-bg text-st-danger"}`}>{`${name} key ${set ? "set ✓" : "missing"}`}</span>;
-}
-
 function AiTab() {
   const draft = useDraft();
-  const [health, setHealth] = useState<AiHealth | null>(null);
-  const [healthErr, setHealthErr] = useState("");
-  useEffect(() => {
-    let alive = true;
-    api<AiHealth>("/api/admin/ai/health")
-      .then((h) => alive && setHealth(h))
-      .catch((err) => alive && setHealthErr(err instanceof ApiError ? err.message : "Couldn't load AI health."));
-    return () => {
-      alive = false;
-    };
-  }, []);
   const ai = draft.site.quiz.ai;
-  const w = health?.week;
-  const geminiPct = health && ai.geminiDailyLimitEstimate > 0 ? Math.round((health.today.geminiCalls / ai.geminiDailyLimitEstimate) * 100) : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
@@ -885,82 +856,11 @@ function AiTab() {
       </Box>
 
       <Box title="AI health" help="Last 7 days of quiz results. Never stores what visitors typed.">
-        {healthErr ? (
-          <p className="text-[13px] text-st-danger">{healthErr}</p>
-        ) : !health ? (
-          <p className="text-[13px] text-st-sub">Loading…</p>
-        ) : (
-          <>
-            <p className="flex flex-wrap gap-1.5">
-              <KeyChip name="Groq" set={health.keys.groq} />
-              <KeyChip name="Gemini" set={health.keys.gemini} />
-            </p>
-            {!health.keys.groq && !health.keys.gemini && <p className="text-[12.5px] text-st-warn">No AI key set — every visitor is getting the built-in backup. Add GROQ_API_KEY and/or GEMINI_API_KEY as Worker secrets.</p>}
-            {w && w.total > 0 ? (
-              <BarList
-                ranked={false}
-                color="var(--st-series-quiz)"
-                items={[
-                  { key: "ok", label: OUTCOME_LABEL.ok, value: w.ok },
-                  { key: "failover", label: OUTCOME_LABEL.failover, value: w.failover },
-                  { key: "backup", label: OUTCOME_LABEL.backup, value: w.backup },
-                  { key: "none", label: OUTCOME_LABEL.none, value: w.none },
-                ]}
-              />
-            ) : (
-              <p className="text-[12.5px] text-st-sub">No quiz results yet this week.</p>
-            )}
-            <dl className="grid grid-cols-2 gap-2 text-[12px]">
-              <div>
-                <dt className="text-st-dim">Today</dt>
-                <dd className="text-st-ink">
-                  {health.today.total} results · {health.today.tokensIn + health.today.tokensOut} tokens
-                </dd>
-              </div>
-              <div>
-                <dt className="text-st-dim">Speed (typical / slowest)</dt>
-                <dd className="text-st-ink">
-                  {(health.latency.median / 1000).toFixed(1)} s / {(health.latency.p95 / 1000).toFixed(1)} s
-                </dd>
-              </div>
-              <div>
-                <dt className="text-st-dim">Groq left (exact)</dt>
-                <dd className="text-st-ink">{health.groqRate ? `${health.groqRate.remainingRequests ?? "?"} requests · ${health.groqRate.remainingTokens ?? "?"} tokens` : "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-st-dim">Gemini used today (estimate)</dt>
-                <dd className={`${geminiPct != null && geminiPct >= 80 ? "text-st-warn" : "text-st-ink"}`}>{geminiPct == null ? "—" : `${health.today.geminiCalls} calls · ${geminiPct}%`}</dd>
-              </div>
-            </dl>
-            {Object.keys(health.reasons).filter((r) => r !== "off").length > 0 && (
-              <p className="flex flex-wrap gap-1.5">
-                {Object.entries(health.reasons)
-                  .filter(([r]) => r !== "off")
-                  .map(([r, n]) => (
-                    <span key={r} className="rounded-full border border-st-border-strong px-2 py-0.5 text-[11px] text-st-sub">
-                      {REASON_LABEL[r] ?? r} · {n}
-                    </span>
-                  ))}
-              </p>
-            )}
-            {health.recentFailures.length > 0 && (
-              <ul className="grid gap-1 text-[11.5px] text-st-dim">
-                {health.recentFailures.map((f, i) => (
-                  <li key={i}>
-                    {relativeTimeSafe(f.at)} · {f.provider} · {REASON_LABEL[f.reason] ?? f.reason}
-                    {f.detail ? ` — ${f.detail}` : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+        <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
       </Box>
     </div>
   );
 }
-
-const relativeTimeSafe = (iso: string) => new Date(iso).toLocaleString();
 
 function ResultTab() {
   const draft = useDraft();
