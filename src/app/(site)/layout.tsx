@@ -14,6 +14,7 @@ import { EnquiryProvider } from "@/components/enquiry/EnquiryProvider";
 import { Tracking } from "@/components/layout/Tracking";
 import { themeBootScript } from "@/lib/theme";
 import { getPublicContent } from "@/server/content";
+import { BootScript } from "@/components/BootScript";
 
 /**
  * Reads the published workspace on every request (no server at build time any more — see
@@ -52,7 +53,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         {/* Pre-paint: the theme, and whether the logo landing animation plays (first visit this session). */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript(site.theme.default, site.theme.toggle) + (site.theme.intro ? INTRO_BOOT_SCRIPT : "") }} />
+        <BootScript code={themeBootScript(site.theme.default, site.theme.toggle) + (site.theme.intro ? INTRO_BOOT_SCRIPT : "")} />
       </head>
       <body>
         <a href="#main" className="sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
