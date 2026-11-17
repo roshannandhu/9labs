@@ -25,6 +25,14 @@ const schema = z.object({
   MAIL_FROM: z.string().optional().default(""),
   MAIL_FROM_NAME: z.string().optional().default("Nine Labs Solutions"),
   ALLOW_SAMPLE_SEED: z.string().optional().default(""),
+  // AI (docs/AI_RAG_SYSTEM.md §7). Keys may be comma-separated: a 429 moves on to the next one.
+  GROQ_API_KEY: z.string().optional().default(""),
+  GEMINI_API_KEY: z.string().optional().default(""),
+  GROQ_MODEL: z.string().optional().default("llama-3.3-70b-versatile"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
+  GEMINI_EMBED_MODEL: z.string().optional().default("gemini-embedding-001"),
+  /** Whole-site cap on AI result calls per day (an abuse brake on top of the per-IP limit). */
+  AI_DAILY_CAP: z.coerce.number().optional().default(500),
 });
 
 type Env = z.infer<typeof schema>;
@@ -52,6 +60,12 @@ export function env(): Env {
       MAIL_FROM: process.env.MAIL_FROM,
       MAIL_FROM_NAME: process.env.MAIL_FROM_NAME,
       ALLOW_SAMPLE_SEED: process.env.ALLOW_SAMPLE_SEED,
+      GROQ_API_KEY: process.env.GROQ_API_KEY,
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+      GROQ_MODEL: process.env.GROQ_MODEL || undefined,
+      GEMINI_MODEL: process.env.GEMINI_MODEL || undefined,
+      GEMINI_EMBED_MODEL: process.env.GEMINI_EMBED_MODEL || undefined,
+      AI_DAILY_CAP: process.env.AI_DAILY_CAP || undefined,
     });
   }
   return cached;
@@ -66,3 +80,8 @@ export const adminEmails = (): string[] =>
 export const r2Configured = (): boolean => Boolean(env().R2_ACCOUNT_ID && env().R2_ACCESS_KEY_ID && env().R2_SECRET_ACCESS_KEY && env().R2_BUCKET);
 export const smtpConfigured = (): boolean => Boolean(env().SMTP_HOST);
 export const sampleSeedAllowed = (): boolean => env().ALLOW_SAMPLE_SEED === "1";
+
+const keyList = (v: string): string[] => v.split(",").map((s) => s.trim()).filter(Boolean);
+export const groqKeys = (): string[] => keyList(env().GROQ_API_KEY);
+export const geminiKeys = (): string[] => keyList(env().GEMINI_API_KEY);
+export const aiConfigured = () => ({ groq: groqKeys().length > 0, gemini: geminiKeys().length > 0 });

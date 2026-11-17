@@ -261,49 +261,77 @@ function BookBody({ id, onClose }: { id: string; onClose: () => void }) {
 
 function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
   const quizResults = useQuizResults();
+  const draft = useDraft();
   const toast = useToast();
   const r = quizResults.find((x) => x.id === id);
   if (!r) return null;
-  const matches = r.matches.split("·").map((m) => m.trim()).filter(Boolean);
+  const site = draft.site;
+  const SOURCE = { groq: "AI · Groq", gemini: "AI · Gemini", backup: "Backup", none: "Last resort" } as const;
+  const FIT = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
   const actionLabel = r.action === "whatsapp" ? "Opened WhatsApp" : r.action === "email" ? `Asked for the plan by e-mail (${r.email})` : "Only looked at the result";
+  const answered = site.quiz.questions
+    .map((q) => ({ q, picked: q.options.filter((o) => r.answers[q.id]?.includes(o.id)).map((o) => o.label), typed: r.other?.[q.id]?.trim() ?? "" }))
+    .filter((x) => x.picked.length || x.typed);
 
   return (
     <div className="grid gap-5">
-      <Header title={r.top || "Quiz result"} badge={<Badge tone="quiz">Quiz result</Badge>} time={exactTime(r.createdAt)} ref={r.ref || undefined} />
+      <Header title={r.top || "Quiz result"} badge={<Badge tone="quiz">{SOURCE[r.source] ?? "Quiz result"}</Badge>} time={exactTime(r.createdAt)} ref={r.ref || undefined} />
 
+      {(r.name || r.phone) && (
+        <Field label="Contact">
+          {[r.name, r.phone].filter(Boolean).join(" · ")}
+        </Field>
+      )}
       {r.email && (
         <a href={`mailto:${r.email}?subject=${encodeURIComponent("Your 9 Quiz plan")}`} className="st-btn st-btn-primary w-fit">
           <Icon name="mail" size={14} /> E-mail {r.email}
         </a>
       )}
 
+      {r.ai?.wants && <Field label="What they want">{r.ai.wants}</Field>}
+
       <div>
-        <p className="st-micro mb-2">Matches</p>
-        <div className="grid gap-2">
-          {matches.map((m, i) => {
-            const [label, pctStr] = m.split(/\s+(?=\d+%$)/);
-            const pct = parseInt(pctStr ?? "0", 10) || 0;
-            return (
-              <div key={i}>
-                <div className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-st-ink">{label}</span>
-                  <span className="st-num text-st-dim">{pct}%</span>
-                </div>
-                <span className="mt-1 block h-[6px] overflow-hidden rounded-full bg-st-panel-2">
-                  <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "var(--st-series-quiz)" }} />
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <p className="st-micro mb-1.5">Their answers</p>
+        {answered.length ? (
+          <ul className="grid gap-2 rounded-xl bg-st-panel-2 p-3.5 text-[13px] leading-relaxed text-st-ink">
+            {answered.map(({ q, picked, typed }) => (
+              <li key={q.id}>
+                <span className="text-st-dim">{q.label || q.q}: </span>
+                {picked.join(", ")}
+                {typed && (
+                  <span className="mt-1 block rounded-lg border border-st-purple/30 bg-st-purple/10 px-2 py-1">
+                    <span className="st-micro mr-1.5 text-st-purple">typed by client</span>
+                    {typed}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <pre className="whitespace-pre-wrap rounded-xl bg-st-panel-2 p-3.5 font-sans text-[13px] leading-relaxed text-st-ink">{r.summary}</pre>
+        )}
       </div>
+
+      {r.ai?.matches?.length ? (
+        <div>
+          <p className="st-micro mb-1.5">Recommended</p>
+          <ol className="grid gap-2">
+            {r.ai.matches.map((m) => (
+              <li key={m.slug} className="rounded-xl bg-st-panel-2 p-3 text-[12.5px]">
+                <strong className="text-st-ink">
+                  {site.services.find((s) => s.slug === m.slug)?.title ?? m.slug}
+                </strong>{" "}
+                <span className="text-st-purple">· {FIT[m.fit]}</span>
+                <p className="mt-0.5 text-st-sub">{m.how}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        r.matches && <Field label="Recommended">{r.matches}</Field>
+      )}
 
       <Field label="What they did next">{actionLabel}</Field>
-
-      <div>
-        <p className="st-micro mb-1.5">Answers</p>
-        <pre className="whitespace-pre-wrap rounded-xl bg-st-panel-2 p-3.5 font-sans text-[13px] leading-relaxed text-st-ink">{r.summary}</pre>
-      </div>
 
       <DeleteFooter
         onDelete={async () => {

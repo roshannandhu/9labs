@@ -62,12 +62,10 @@ export function getServerSnapshot(): StoreState {
 
 async function handleSession(session: SupabaseSession | null): Promise<void> {
   if (!session) {
-    if (
-      typeof window !== "undefined" &&
-      (process.env.NODE_ENV === "development" ||
-        window.localStorage.getItem("nl-dev-admin") === "1" ||
-        window.location.search.includes("dev=1"))
-    ) {
+    // UI preview without signing in: `next dev` only, and only when asked for with ?dev=1.
+    // NODE_ENV is inlined at build time, so a production bundle drops this branch entirely —
+    // and the server still rejects every call this fake session would make.
+    if (process.env.NODE_ENV === "development" && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("dev")) {
       const ws = defaultWorkspace();
       setState({
         access: "ok",

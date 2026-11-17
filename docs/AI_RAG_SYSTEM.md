@@ -273,3 +273,18 @@ KEEP untouched: modal shell/animations, admin question editor basics, Insights c
 - Gemini quota is not queryable → dashboard shows an estimate for it (labelled).
 - Backup result is simpler by design; it's a safety net, not the showpiece.
 - Merge conflict risk in phase 1 around uploaded-cover handling.
+
+---
+
+## 15. Status & go-live (2026-11-17)
+
+**Built:** retrieval (`src/server/ai/kb.ts`: Gemini embeddings → `match_kb`, falls back to every enabled entry), generation (`providers.ts`: Groq → Gemini, comma-separated keys rotate on 429/invalid key), validation (`src/lib/quiz/result.ts`: schema, known slugs only, no prices/dates/guarantees unless allowed, highlights must be the client's own words), the chain (`chain.ts`, unit-tested with fakes), telemetry (`ai_calls`), `POST /api/public/quiz-ai` (per-IP 10/h, site-wide `AI_DAILY_CAP`/day, honeypot timing, saves the lead), admin Knowledge / Test (real AI vs backup) / AI (settings + health) tabs, Inbox drawer, overlay "Other" + thinking + fallback.
+
+**Not built (deliberate):** the name/phone form step before WhatsApp (§8 form step), Dashboard limit rings + alerts banner (the AI tab's health panel covers the numbers), the "Suggest pointsTo" button, `quiz_partials`.
+
+**To switch it on:**
+1. Supabase SQL editor: run `0002_quiz_ai_result.sql`, `0003_ai_kb.sql`, `0004_ai_calls.sql` (in order).
+2. `npx wrangler secret put GROQ_API_KEY` and `npx wrangler secret put GEMINI_API_KEY` (also into `.env.local` for local runs). Gemini is needed for embeddings; Groq alone still works (retrieval then sends every entry).
+3. Admin → Quiz → Knowledge: opening it seeds one entry per service; edit/add entries, then **Reindex all**.
+4. Admin → Quiz → Test: run a few answer sets (including hostile "Other" text) and compare AI vs backup.
+5. Admin → Quiz → AI: tick **Use AI for quiz results**, then Publish.

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { submitQuizAction, submitQuizEmail, submitQuizResult } from "@/site/backend";
+import { fetchQuizAi, submitQuizAction, submitQuizEmail, submitQuizResult } from "@/site/backend";
 import { opaqueRef } from "@/lib/text";
 import { runBackup } from "@/lib/quiz/backup";
-import type { QuizAnswers } from "@/lib/quiz/types";
+import type { AiQuizResult, QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { scrollToId } from "@/lib/scroll";
 import { useModalLock } from "@/lib/useModalLock";
@@ -18,12 +18,16 @@ import { SocialIcon } from "@/components/icons/SocialIcon";
 const ease = [0.16, 1, 0.3, 1] as const;
 const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
 
+const THINKING = ["Reading what you told us…", "Matching it to what we do…", "Writing your plan…"];
+
 /**
  * The 9 Quiz: the admin's questions, one per screen, answered with big tap cards (keys 1–5 work too).
- * Single-answer questions move on by themselves; "pick all that apply" ones get a Next button.
- * The result is worked out in the browser (src/lib/quiz/backup.ts): the top three activities with
- * a match score and why, a three-step plan, and one tap to send it all to Nine Labs on WhatsApp.
- * Each finished quiz is also saved for the admin (Quiz → Quiz results), in the background.
+ * Single-answer questions move on by themselves; "pick all that apply" ones get a Next button; a
+ * question with "Allow Other" also takes the visitor's own words.
+ * After the last answer a short "thinking" screen covers the AI call (POST /api/public/quiz-ai —
+ * retrieval + Groq/Gemini, docs/AI_RAG_SYSTEM.md); if it fails or takes too long the built-in
+ * backup (src/lib/quiz/backup.ts) answers instead, and if even that has nothing to go on, the
+ * visitor still sees their answers and can send them on WhatsApp. The lead is saved either way.
  */
 export default function QuizOverlay({ open, first, onClose }: { open: boolean; first: string; onClose: () => void }) {
   const { reduced } = useDemo();
@@ -46,6 +50,18 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     latest.current = next;
     setAnswers(next);
   }, []);
+  // typed "Other" answers, kept the same way as `answers` (state for render, ref for the latest)
+  const [other, setOther] = useState<QuizOther>({});
+  const latestOther = useRef<QuizOther>({});
+  const [otherOn, setOtherOn] = useState<Record<string, boolean>>({});
+  const writeOther = useCallback((qid: string, text: string) => {
+    latestOther.current = { ...latestOther.current, [qid]: text };
+    setOther(latestOther.current);
+  }, []);
+  // undefined = still thinking · null = last resort (nothing to recommend) · otherwise the result
+  const [result, setResult] = useState<AiQuizResult | null | undefined>(undefined);
+  const [thinkingLine, setThinkingLine] = useState(0);
+  const openedAt = useRef(0);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -63,6 +79,11 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     setDir(1);
     setSent(false);
     setEmail("");
+    latestOther.current = {};
+    setOther({});
+    setOtherOn({});
+    setResult(undefined);
+    openedAt.current = Date.now();
     /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh start only when it opens, not when content refreshes
   }, [open, first]);
@@ -75,6 +96,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
       window.clearTimeout(advance.current);
       setDir(to >= idx ? 1 : -1);
       live.current = Math.max(0, Math.min(COUNT, to));
+      if (live.current < COUNT) setResult(undefined); // leaving the result: the next finish thinks afresh
       setIdx(live.current);
     },
     [idx, COUNT],
@@ -96,25 +118,38 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
         return;
       }
       commit({ ...a, [q.id]: [optId] });
+      // a real pick replaces typed text on a single-answer question
+      if (latestOther.current[q.id]) writeOther(q.id, "");
+      setOtherOn((m) => ({ ...m, [q.id]: false }));
       window.clearTimeout(advance.current);
       advance.current = window.setTimeout(() => go(idx + 1), reduced ? 120 : 260);
     },
-    [q, idx, go, reduced, commit],
+    [q, idx, go, reduced, commit, writeOther],
   );
+  const hasAnswer = (qid: string) => Boolean(latest.current[qid]?.length || latestOther.current[qid]?.trim());
   const next = useCallback(() => {
-    if (q && idx === live.current && latest.current[q.id]?.length) go(idx + 1);
+    if (q && idx === live.current && hasAnswer(q.id)) go(idx + 1);
   }, [q, idx, go]);
+  /** "Other": on a single-answer question it IS the answer (the picks clear); on a multi one it adds to them. */
+  const toggleOther = useCallback(() => {
+    if (!q || idx !== live.current) return;
+    window.clearTimeout(advance.current);
+    const on = !otherOn[q.id];
+    setOtherOn((m) => ({ ...m, [q.id]: on }));
+    if (on && !q.multi) commit({ ...latest.current, [q.id]: [] });
+    if (!on) writeOther(q.id, "");
+  }, [q, idx, otherOn, commit, writeOther]);
 
   // keys: 1–5 pick an answer, Enter = next, ← = back
   useEffect(() => {
     if (!open || !q) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const n = Number(e.key);
       if (n >= 1 && n <= q.options.length) {
         e.preventDefault();
         choose(q.options[n - 1].id);
-      } else if (e.key === "Enter" && q.multi) {
+      } else if (e.key === "Enter" && (q.multi || otherOn[q.id])) {
         e.preventDefault();
         next();
       } else if (e.key === "ArrowLeft" && idx > 0) {
@@ -123,19 +158,38 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, q, idx, choose, go, next]);
+  }, [open, q, idx, choose, go, next, otherOn]);
 
-  const result = useMemo(() => (idx >= COUNT ? runBackup(site, answers, {}) : null), [idx, answers, site, COUNT]);
-  const whatsappText = useMemo(() => (result ? buildQuizWhatsappText(site, buildQuizLines(questions, answers, {}), result) : ""), [result, site, questions, answers]);
-
-  // a finished quiz is saved once for the admin; the result never waits for it
-  const done = Boolean(result);
+  // finished: ask the AI (which saves the lead), show "thinking" for at least ~1.8 s so it never
+  // flashes, and fall back to the built-in backup — saving via the fallback route — if it fails
+  const finished = open && idx >= COUNT;
   useEffect(() => {
-    if (!done || !open) return;
+    if (!finished) return;
     ref.current = opaqueRef();
-    submitQuizResult(ref.current, answers);
+    const a = latest.current;
+    const o = Object.fromEntries(Object.entries(latestOther.current).filter(([, v]) => v.trim()));
+    let alive = true;
+    const minWait = new Promise((r) => window.setTimeout(r, reduced ? 0 : 1800));
+    void Promise.all([fetchQuizAi(ref.current, a, o, Date.now() - openedAt.current), minWait]).then(([ai]) => {
+      if (!ai) submitQuizResult(ref.current, a, o);
+      if (alive) setResult(ai ?? runBackup(site, a, o));
+    });
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished quiz
-  }, [done, open]);
+  }, [finished]);
+  useEffect(() => {
+    if (!finished || result !== undefined || reduced) return;
+    const t = window.setInterval(() => setThinkingLine((n) => (n + 1) % THINKING.length), 1400);
+    return () => window.clearInterval(t);
+  }, [finished, result, reduced]);
+
+  const lines = useMemo(() => (idx >= COUNT ? buildQuizLines(questions, answers, other) : []), [idx, COUNT, questions, answers, other]);
+  const whatsappText = useMemo(
+    () => (result ? buildQuizWhatsappText(site, lines, result) : [t.whatsappIntro, "", ...lines.map((l) => `• ${l}`), "", t.whatsappOutro].join("\n").trim()),
+    [result, site, lines, t.whatsappIntro, t.whatsappOutro],
+  );
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
 
   return (
@@ -248,7 +302,52 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                           </button>
                         );
                       })}
+                      {q.allowOther && (
+                        <button
+                          type="button"
+                          role={q.multi ? "checkbox" : "radio"}
+                          aria-checked={Boolean(otherOn[q.id])}
+                          aria-expanded={Boolean(otherOn[q.id])}
+                          aria-controls={`quiz-other-${q.id}`}
+                          onClick={toggleOther}
+                          className={`quiz-option relative flex min-h-[58px] items-center gap-3 rounded-2xl border px-4 py-3 text-left text-[15.5px] font-medium transition-all duration-200 sm:col-span-2 sm:min-h-[64px] sm:text-base ${
+                            otherOn[q.id] ? "border-transparent text-white" : "border-dashed border-white/20 bg-[var(--chip-bg)] text-white/85 hover:-translate-y-0.5 hover:border-[color:var(--brand-a)]/60"
+                          }`}
+                          data-on={Boolean(otherOn[q.id])}
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/15 text-[13px] text-white/60" aria-hidden="true">
+                            ✎
+                          </span>
+                          <span className="relative">Other — in your own words</span>
+                        </button>
+                      )}
                     </div>
+                    {q.allowOther && otherOn[q.id] && (
+                      <div className="mt-3">
+                        <label htmlFor={`quiz-other-${q.id}`} className="sr-only">
+                          Your own answer
+                        </label>
+                        <textarea
+                          id={`quiz-other-${q.id}`}
+                          autoFocus
+                          rows={3}
+                          maxLength={site.quiz.ai.maxOtherChars || 300}
+                          value={other[q.id] ?? ""}
+                          onChange={(e) => writeOther(q.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              next();
+                            }
+                          }}
+                          placeholder={q.otherPlaceholder || "Tell us in a sentence or two…"}
+                          className="w-full resize-none rounded-2xl border border-white/12 bg-transparent px-4 py-3 text-[16px] text-white placeholder:text-white/35 focus:border-nl-purple/70 focus:outline-none"
+                        />
+                        <p className="mt-1 text-right font-digits text-[11px] text-white/45" aria-live="polite">
+                          {(other[q.id] ?? "").length} / {site.quiz.ai.maxOtherChars || 300}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="mt-6 flex items-center justify-between">
                       <button
@@ -259,12 +358,61 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                       >
                         ← Back
                       </button>
-                      {q.multi && (
-                        <button type="button" onClick={next} disabled={!picked.length} className="btn btn-primary btn-sm disabled:opacity-40">
+                      {(q.multi || otherOn[q.id]) && (
+                        <button type="button" onClick={next} disabled={!picked.length && !other[q.id]?.trim()} className="btn btn-primary btn-sm disabled:opacity-40">
                           Next →
                         </button>
                       )}
                     </div>
+                  </motion.div>
+                ) : result === undefined ? (
+                  <motion.div key="thinking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="flex flex-col items-center text-center" role="status" aria-live="polite">
+                    <div className="relative grid h-40 w-40 place-items-center">
+                      <motion.span
+                        className="absolute inset-6 rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] blur-xl"
+                        animate={reduced ? undefined : { scale: [0.85, 1.1, 0.85], opacity: [0.55, 0.9, 0.55] }}
+                        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                        aria-hidden="true"
+                      />
+                      <span className="relative h-14 w-14 rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] shadow-[0_0_60px_var(--brand-a)]" aria-hidden="true" />
+                    </div>
+                    <p className="mt-4 text-[18px] font-semibold text-white">{THINKING[thinkingLine]}</p>
+                    <ul className="mt-5 flex max-w-lg flex-wrap justify-center gap-1.5" aria-hidden="true">
+                      {lines
+                        .flatMap((l) => l.slice(l.indexOf(":") + 1).split(", "))
+                        .map((c) => c.trim())
+                        .filter(Boolean)
+                        .slice(0, 10)
+                        .map((chip, i) => (
+                          <motion.li
+                            key={`${chip}-${i}`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={reduced ? { opacity: 1, y: 0 } : { opacity: [0, 1, 1, 0.35], y: [10, 0, 0, -6] }}
+                            transition={{ delay: i * 0.12, duration: 2.2, repeat: reduced ? 0 : Infinity, repeatDelay: 0.6 }}
+                            className="rounded-full border border-white/12 bg-[var(--chip-bg)] px-2.5 py-1 text-[12px] text-white/80"
+                          >
+                            {chip}
+                          </motion.li>
+                        ))}
+                    </ul>
+                  </motion.div>
+                ) : result === null ? (
+                  <motion.div key="told" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
+                    <p className="label-mono !text-[color:var(--brand-a)]">{t.label}</p>
+                    <h2 className="mt-2 text-[clamp(1.8rem,5vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white">Thanks — here&apos;s what you told us</h2>
+                    <ul className="mt-4 grid gap-2">
+                      {lines.map((l) => (
+                        <li key={l} className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] px-4 py-3 text-[14.5px] text-nl-ink">
+                          {l}
+                        </li>
+                      ))}
+                    </ul>
+                    <a href={wa(whatsappText)} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-6 w-full" onClick={() => submitQuizAction(ref.current, "whatsapp")}>
+                      <SocialIcon name="whatsapp" size={18} /> {t.whatsappCta}
+                    </a>
+                    <button type="button" className="btn btn-sm mt-3 text-white/60 hover:text-white" onClick={() => go(0)}>
+                      {t.retake}
+                    </button>
                   </motion.div>
                 ) : (
                   result && (
@@ -353,7 +501,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                               e.preventDefault();
                               if (!/^\S+@\S+\.\S+$/.test(email) || sending) return;
                               setSending(true);
-                              const res = submitQuizEmail(ref.current, email, answers);
+                              const res = submitQuizEmail(ref.current, email, answers, other);
                               setSending(false);
                               if (res.ok) setSent(true);
                             }}

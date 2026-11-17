@@ -1,16 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { QuizOption, QuizQuestion, Service } from "@/content/site";
 import { randomAnswers } from "@/lib/quiz/analyze";
 import { runBackup } from "@/lib/quiz/backup";
-import type { QuizAnswers } from "@/lib/quiz/types";
+import type { AiQuizResult, QuizAnswers, QuizOther } from "@/lib/quiz/types";
+import { ApiError, api } from "@/studio/api";
 import type { KbEntry, KbKind } from "@/server/ai/types";
-import { Icon } from "@/studio/Icon";
 import { checkpoint, setDraft } from "@/studio/store";
 import type { Path } from "@/lib/path";
-import { AreaField, CheckField, NumField, TextField } from "@/studio/Field";
+import { AreaField, CheckField, NumField, SelectField, TextField } from "@/studio/Field";
 import { SortableList } from "@/studio/Sortable";
 import { useDraft, useField, useQuizResults } from "@/studio/state";
 import { Box, Button, PageHeader, Row, Tabs, relativeTime, useNow } from "@/studio/ui";
@@ -164,11 +164,69 @@ function BuildTab() {
   );
 }
 
+type AiTestResponse = {
+  ai: {
+    result: AiQuizResult | null;
+    source: string;
+    outcome: "ok" | "failover" | "backup" | "none";
+    attempts: { provider: string; ok: boolean; reason?: string; detail?: string; latencyMs: number; tokensIn: number; tokensOut: number }[];
+    retrieved: { titles: string[]; mode: string };
+    latencyMs: number;
+  };
+  backup: AiQuizResult | null;
+};
+
+const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Built-in backup", none: "Last resort" } as const;
+
+function ResultView({ result, services }: { result: AiQuizResult; services: Service[] }) {
+  return (
+    <>
+      <p className="text-[13.5px] text-st-ink">{result.wants}</p>
+      {result.highlights.length > 0 && (
+        <p className="flex flex-wrap gap-1">
+          {result.highlights.map((h) => (
+            <span key={h} className="rounded-full border border-st-purple/30 bg-st-purple/10 px-2 py-0.5 text-[11px] font-medium text-st-ink">
+              {h}
+            </span>
+          ))}
+        </p>
+      )}
+      <ol className="grid gap-2">
+        {result.matches.map((m) => {
+          const s = services.find((sv) => sv.slug === m.slug);
+          return (
+            <li key={m.slug} className="rounded-lg bg-st-panel-2 p-2.5 text-[12.5px]">
+              <strong className="text-st-ink">
+                {s?.title ?? m.slug} — {FIT_LABEL[m.fit]}
+              </strong>
+              <p className="mt-0.5 text-st-sub">{m.how}</p>
+            </li>
+          );
+        })}
+      </ol>
+      <ol className="grid gap-1 text-[12px] text-st-sub">
+        {result.steps.map((st, i) => (
+          <li key={i}>
+            <strong className="text-st-ink">
+              0{i + 1} {st.title}
+            </strong>{" "}
+            — {st.text}
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
 function TestTab() {
   const draft = useDraft();
   const [answers, setAnswers] = useState<QuizAnswers>({});
-  const result = useMemo(() => runBackup(draft.site, answers, {}), [draft.site, answers]);
-  const answered = Object.values(answers).some((a) => a.length);
+  const [other, setOther] = useState<QuizOther>({});
+  const [run, setRun] = useState<AiTestResponse | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const backup = useMemo(() => runBackup(draft.site, answers, other), [draft.site, answers, other]);
+  const answered = Object.values(answers).some((a) => a.length) || Object.values(other).some((o) => o.trim());
 
   const pick = (q: QuizQuestion, id: string) =>
     setAnswers((a) => {
@@ -179,9 +237,32 @@ function TestTab() {
       return { ...a, [q.id]: only.has(id) ? [id] : [...cur.filter((x) => !only.has(x)), id] };
     });
 
+  const runAi = async () => {
+    setRunning(true);
+    setError("");
+    try {
+      setRun(await api<AiTestResponse>("/api/admin/ai/test", { json: { answers, other } }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't reach the server.");
+    }
+    setRunning(false);
+  };
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-      <Box title="Answer as a visitor would" right={<Button onClick={() => setAnswers(randomAnswers(draft.site))}>Random visitor</Button>}>
+    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <Box
+        title="Answer as a visitor would"
+        right={
+          <Button
+            onClick={() => {
+              setAnswers(randomAnswers(draft.site));
+              setRun(null);
+            }}
+          >
+            Random visitor
+          </Button>
+        }
+      >
         {draft.site.quiz.questions.map((q, i) => (
           <fieldset key={q.id} className="grid gap-1.5">
             <legend className="text-[13px] font-medium text-st-ink">
@@ -197,54 +278,71 @@ function TestTab() {
                 );
               })}
             </div>
+            {q.allowOther && (
+              <input
+                type="text"
+                value={other[q.id] ?? ""}
+                onChange={(e) => setOther((m) => ({ ...m, [q.id]: e.target.value }))}
+                placeholder="Other — typed by the visitor (try something tricky)"
+                maxLength={draft.site.quiz.ai.maxOtherChars || 300}
+                className="st-field text-[12.5px]"
+              />
+            )}
           </fieldset>
         ))}
-        {answered && (
-          <Button onClick={() => setAnswers({})} className="w-fit">
-            Clear
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" onClick={runAi} disabled={!answered || running}>
+            {running ? "Asking the AI…" : "Run the real AI"}
           </Button>
-        )}
+          {answered && (
+            <Button
+              onClick={() => {
+                setAnswers({});
+                setOther({});
+                setRun(null);
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+        <p className="text-[11.5px] text-st-dim">Uses your current draft and the live knowledge base. Nothing is saved as a lead. Each run counts toward the providers&apos; limits.</p>
       </Box>
-      <Box title="What the visitor would see" help="This is the no-AI backup result — the AI tab will show the real AI result side by side with this, once it's connected.">
-        {!answered || !result ? (
-          <p className="text-[13px] text-st-sub">{!result ? "No answer points anywhere yet — add a \"Points to\" on the Build tab first." : "Pick some answers to see the recommendation."}</p>
-        ) : (
-          <>
-            <p className="text-[13.5px] text-st-ink">{result.wants}</p>
-            {result.highlights.length > 0 && (
-              <p className="flex flex-wrap gap-1">
-                {result.highlights.map((h) => (
-                  <span key={h} className="rounded-full border border-st-purple/30 bg-st-purple/10 px-2 py-0.5 text-[11px] font-medium text-st-ink">
-                    {h}
-                  </span>
-                ))}
+
+      <div className="grid content-start gap-4">
+        <Box title="AI result" help="What the visitor would see, with which layer answered and what the retriever pulled from the knowledge base.">
+          {error ? (
+            <p className="text-[13px] text-st-danger">{error}</p>
+          ) : !run ? (
+            <p className="text-[13px] text-st-sub">Pick some answers, then press “Run the real AI”.</p>
+          ) : (
+            <>
+              <p className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                <span className="rounded-full bg-st-purple/15 px-2 py-0.5 font-medium text-st-purple">{OUTCOME_LABEL[run.ai.outcome]}</span>
+                <span className="text-st-dim">
+                  {run.ai.source} · {run.ai.latencyMs} ms · retrieval: {run.ai.retrieved.mode}
+                </span>
               </p>
-            )}
-            <ol className="grid gap-2">
-              {result.matches.map((m) => {
-                const s = draft.site.services.find((sv) => sv.slug === m.slug);
-                return (
-                  <li key={m.slug} className="rounded-lg bg-st-panel-2 p-2.5 text-[12.5px]">
-                    <strong className="text-st-ink">
-                      {s?.title ?? m.slug} — {FIT_LABEL[m.fit]}
-                    </strong>
-                    <p className="mt-0.5 text-st-sub">{m.how}</p>
-                    {!!s?.tags.length && (
-                      <p className="mt-1.5 flex flex-wrap gap-1">
-                        {s.tags.map((tag) => (
-                          <span key={tag} className="rounded-full border border-st-border-strong px-2 py-0.5 text-[10.5px] text-st-dim">
-                            {tag}
-                          </span>
-                        ))}
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </>
-        )}
-      </Box>
+              {run.ai.attempts.map((a, i) => (
+                <p key={i} className="text-[11.5px] text-st-dim">
+                  {a.provider}: {a.ok ? `ok (${a.tokensIn}→${a.tokensOut} tokens, ${a.latencyMs} ms)` : `failed — ${a.reason}${a.detail ? `: ${a.detail}` : ""}`}
+                </p>
+              ))}
+              {run.ai.retrieved.titles.length > 0 && <p className="text-[11.5px] text-st-dim">Context used: {run.ai.retrieved.titles.join(" · ")}</p>}
+              {run.ai.result ? <ResultView result={run.ai.result} services={draft.site.services} /> : <p className="text-[13px] text-st-sub">Last resort — the visitor sees their own answers and the WhatsApp button.</p>}
+            </>
+          )}
+        </Box>
+        <Box title="Built-in backup" help="What visitors get when the AI is off, out of quota or fails — worked out from each answer's “Points to”.">
+          {!answered ? (
+            <p className="text-[13px] text-st-sub">Pick some answers to see the backup.</p>
+          ) : !backup ? (
+            <p className="text-[13px] text-st-sub">No answer points anywhere yet — add a “Points to” on the Build tab.</p>
+          ) : (
+            <ResultView result={backup} services={draft.site.services} />
+          )}
+        </Box>
+      </div>
     </div>
   );
 }
@@ -259,51 +357,11 @@ const KIND_COLORS: Record<KbKind, { bg: string; text: string; border: string }> 
   process: { bg: "bg-slate-500/10", text: "text-slate-300", border: "border-slate-500/30" },
 };
 
-function makeDefaultEntries(services: Service[]): KbEntry[] {
-  const now = new Date().toISOString();
-  const serviceEntries: KbEntry[] = services.map((s) => ({
-    id: `kb-service-${s.slug}`,
-    kind: "service",
-    title: s.title,
-    body: `${s.title}: ${s.short}.\n${s.description}\nKey needs addressed: ${s.needs.join(", ")}.`,
-    tags: [...s.tags],
-    serviceSlug: s.slug,
-    allowPrices: false,
-    enabled: true,
-    updatedAt: now,
-    updatedBy: "System Seed",
-    hasEmbedding: true,
-  }));
-
-  const aboutEntry: KbEntry = {
-    id: "kb-note-about",
-    kind: "note",
-    title: "About Nine Labs Solutions",
-    body: "Nine Labs Solutions is a premier marketing, technology, and live-experience agency based in Dubai South, UAE. We specialize in cross-disciplinary growth: AI consultancy, custom software & web development, social & performance marketing, video production, and high-impact corporate trade shows and events.",
-    tags: ["about", "overview", "dubai", "services", "capabilities"],
-    serviceSlug: null,
-    allowPrices: false,
-    enabled: true,
-    updatedAt: now,
-    updatedBy: "System Seed",
-    hasEmbedding: true,
-  };
-
-  return [aboutEntry, ...serviceEntries];
-}
-
 function KnowledgeTab() {
   const draft = useDraft();
   const services = draft.site.services;
-  const [entries, setEntries] = useState<KbEntry[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("nl-admin-kb-cache");
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return makeDefaultEntries(services);
-  });
+  const [entries, setEntries] = useState<KbEntry[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ok" | string>("loading");
   const [filterKind, setFilterKind] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
   const [editingEntry, setEditingEntry] = useState<KbEntry | null>(null);
@@ -311,101 +369,74 @@ function KnowledgeTab() {
   const [reindexing, setReindexing] = useState<boolean>(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const saveToStorage = useCallback((items: KbEntry[]) => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("nl-admin-kb-cache", JSON.stringify(items));
-      } catch {}
-    }
-  }, []);
-
-  const loadFromApi = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/kb/");
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.entries) && data.entries.length > 0) {
-          setEntries(data.entries);
-          saveToStorage(data.entries);
-        }
-      }
-    } catch {}
-  }, [saveToStorage]);
-
-  useEffect(() => {
-    void loadFromApi();
-  }, [loadFromApi]);
-
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
+  const failed = (err: unknown) => showToast(err instanceof ApiError ? err.message : "Couldn't reach the server — nothing was changed.");
+  const toInput = (e: KbEntry) => ({ id: e.id, kind: e.kind, title: e.title, body: e.body, tags: e.tags, serviceSlug: e.serviceSlug ?? null, allowPrices: e.allowPrices, enabled: e.enabled });
+
+  useEffect(() => {
+    let alive = true;
+    api<{ entries: KbEntry[] }>("/api/admin/kb")
+      .then((d) => {
+        if (!alive) return;
+        setEntries(d.entries);
+        setLoadState("ok");
+      })
+      .catch((err) => alive && setLoadState(err instanceof ApiError ? err.message : "Couldn't load the knowledge base."));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const replaceEntry = (entry: KbEntry) => setEntries((list) => (list.some((e) => e.id === entry.id) ? list.map((e) => (e.id === entry.id ? entry : e)) : [entry, ...list]));
 
   const handleToggleEnabled = async (id: string) => {
-    const next = entries.map((e) => (e.id === id ? { ...e, enabled: !e.enabled, updatedAt: new Date().toISOString() } : e));
-    setEntries(next);
-    saveToStorage(next);
-    const updated = next.find((e) => e.id === id);
-    if (updated) {
-      await fetch(`/api/admin/kb/${id}/`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      }).catch(() => {});
+    const cur = entries.find((e) => e.id === id);
+    if (!cur) return;
+    try {
+      const { entry } = await api<{ entry: KbEntry }>(`/api/admin/kb/${id}`, { method: "PUT", json: toInput({ ...cur, enabled: !cur.enabled }) });
+      replaceEntry(entry);
+      showToast(entry.enabled ? "Entry enabled" : "Entry paused — the AI won't see it");
+    } catch (err) {
+      failed(err);
     }
-    showToast(updated?.enabled ? "Entry enabled" : "Entry paused");
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this knowledge entry?")) return;
-    const next = entries.filter((e) => e.id !== id);
-    setEntries(next);
-    saveToStorage(next);
-    await fetch(`/api/admin/kb/${id}/`, { method: "DELETE" }).catch(() => {});
-    showToast("Entry deleted");
+    if (!confirm("Delete this knowledge entry? This can't be undone.")) return;
+    try {
+      await api(`/api/admin/kb/${id}`, { method: "DELETE" });
+      setEntries((list) => list.filter((e) => e.id !== id));
+      showToast("Entry deleted");
+    } catch (err) {
+      failed(err);
+    }
   };
 
-  const handleSaveModal = async (entry: KbEntry) => {
-    const now = new Date().toISOString();
-    const finalized = { ...entry, updatedAt: now, updatedBy: entry.updatedBy || "Admin" };
-    let next: KbEntry[];
-    if (isNew) {
-      next = [finalized, ...entries];
-      await fetch("/api/admin/kb/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(finalized),
-      }).catch(() => {});
-      showToast("Knowledge entry created");
-    } else {
-      next = entries.map((e) => (e.id === finalized.id ? finalized : e));
-      await fetch(`/api/admin/kb/${finalized.id}/`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(finalized),
-      }).catch(() => {});
-      showToast("Knowledge entry updated");
+  const handleSaveModal = async (draftEntry: KbEntry) => {
+    try {
+      const { entry } = isNew ? await api<{ entry: KbEntry }>("/api/admin/kb", { json: toInput(draftEntry) }) : await api<{ entry: KbEntry }>(`/api/admin/kb/${draftEntry.id}`, { method: "PUT", json: toInput(draftEntry) });
+      replaceEntry(entry);
+      setEditingEntry(null);
+      showToast(entry.hasEmbedding ? "Saved and indexed" : "Saved — not indexed yet (needs the Gemini key); the AI still sees it via the full-list fallback");
+    } catch (err) {
+      failed(err);
     }
-    setEntries(next);
-    saveToStorage(next);
-    setEditingEntry(null);
   };
 
   const handleReindex = async () => {
     setReindexing(true);
     try {
-      await fetch("/api/admin/kb/reindex/", { method: "POST" });
-    } catch {}
+      const r = await api<{ total: number; indexed: number }>("/api/admin/kb/reindex", { method: "POST" });
+      const fresh = await api<{ entries: KbEntry[] }>("/api/admin/kb");
+      setEntries(fresh.entries);
+      showToast(`Indexed ${r.indexed} of ${r.total} entries`);
+    } catch (err) {
+      failed(err);
+    }
     setReindexing(false);
-    showToast(`Reindexed ${entries.length} knowledge base entries`);
-  };
-
-  const handleResetDefaults = () => {
-    if (!confirm("Reset knowledge base to all 9 default service entries + about note?")) return;
-    const seeded = makeDefaultEntries(services);
-    setEntries(seeded);
-    saveToStorage(seeded);
-    showToast("Reset to default knowledge entries");
   };
 
   const countsByKind = useMemo(() => {
@@ -460,13 +491,6 @@ function KnowledgeTab() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="default"
-            onClick={handleResetDefaults}
-            className="text-[12.5px]"
-          >
-            Reset Seed
-          </Button>
-          <Button
-            variant="default"
             onClick={handleReindex}
             disabled={reindexing}
             className="text-[12.5px]"
@@ -496,6 +520,12 @@ function KnowledgeTab() {
           </Button>
         </div>
       </div>
+
+      {loadState !== "ok" && (
+        <p className="rounded-xl border border-st-border bg-st-panel p-4 text-[13px] text-st-sub" role="status">
+          {loadState === "loading" ? "Loading the knowledge base…" : loadState}
+        </p>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 rounded-xl border border-st-border bg-st-panel p-4 md:flex-row md:items-center md:justify-between">
@@ -800,13 +830,137 @@ function KnowledgeTab() {
   );
 }
 
+type AiHealth = {
+  keys: { groq: boolean; gemini: boolean };
+  today: { total: number; ok: number; failover: number; backup: number; none: number; groqCalls: number; geminiCalls: number; tokensIn: number; tokensOut: number };
+  week: { total: number; ok: number; failover: number; backup: number; none: number };
+  reasons: Record<string, number>;
+  latency: { median: number; p95: number };
+  groqRate: { remainingRequests: number | null; remainingTokens: number | null; resetAt: string | null; at: string } | null;
+  recentFailures: { at: string; provider: string; outcome: string; reason: string; detail: string; ref: string }[];
+};
+
+const REASON_LABEL: Record<string, string> = { limit: "Limit reached", slow: "Too slow", bad: "Bad answer", key: "Key invalid", down: "Service down", blocked: "Blocked content" };
+
+function KeyChip({ name, set }: { name: string; set: boolean }) {
+  return <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-medium ${set ? "bg-[var(--st-good-bg)] text-st-good" : "bg-st-danger-bg text-st-danger"}`}>{`${name} key ${set ? "set ✓" : "missing"}`}</span>;
+}
+
 function AiTab() {
+  const draft = useDraft();
+  const [health, setHealth] = useState<AiHealth | null>(null);
+  const [healthErr, setHealthErr] = useState("");
+  useEffect(() => {
+    let alive = true;
+    api<AiHealth>("/api/admin/ai/health")
+      .then((h) => alive && setHealth(h))
+      .catch((err) => alive && setHealthErr(err instanceof ApiError ? err.message : "Couldn't load AI health."));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const ai = draft.site.quiz.ai;
+  const w = health?.week;
+  const geminiPct = health && ai.geminiDailyLimitEstimate > 0 ? Math.round((health.today.geminiCalls / ai.geminiDailyLimitEstimate) * 100) : null;
+
   return (
-    <Box title="AI providers &amp; keys" help="Groq (primary) and Gemini (fallback), with as many keys per provider as you like — the server rotates between them.">
-      <p className="text-[13px] text-st-sub">Needs the real backend (Supabase) merged in first — coming in the next phase of this build.</p>
-    </Box>
+    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <Box title="How the AI answers" help="Behaviour only — the API keys are Worker secrets (GROQ_API_KEY, GEMINI_API_KEY), never stored here. Publish to apply.">
+        <CheckField path={["site", "quiz", "ai", "enabled"]} label="Use AI for quiz results" help="Off: every visitor gets the built-in backup result." />
+        <SelectField
+          path={["site", "quiz", "ai", "tone"]}
+          label="Tone"
+          options={[
+            { value: "friendly", label: "Friendly" },
+            { value: "professional", label: "Professional" },
+            { value: "short", label: "Short and direct" },
+          ]}
+        />
+        <AreaField path={["site", "quiz", "ai", "notes"]} label="About Nine Labs (for the AI)" help="A few facts the AI should always know — who you are, what you're best at. Don't put prices here." rows={4} />
+        <Row>
+          <NumField path={["site", "quiz", "ai", "maxOtherChars"]} label="Max “Other” characters" min={50} max={1000} step={10} />
+          <NumField path={["site", "quiz", "ai", "geminiDailyLimitEstimate"]} label="Gemini daily limit (your estimate)" help="Gemini doesn't report its quota; this sets the % below." min={0} step={50} />
+        </Row>
+        <CheckField path={["site", "quiz", "ai", "allowPrices"]} label="Allow prices" help="Even when on, the AI only quotes prices from knowledge entries marked “allow prices”." />
+      </Box>
+
+      <Box title="AI health" help="Last 7 days of quiz results. Never stores what visitors typed.">
+        {healthErr ? (
+          <p className="text-[13px] text-st-danger">{healthErr}</p>
+        ) : !health ? (
+          <p className="text-[13px] text-st-sub">Loading…</p>
+        ) : (
+          <>
+            <p className="flex flex-wrap gap-1.5">
+              <KeyChip name="Groq" set={health.keys.groq} />
+              <KeyChip name="Gemini" set={health.keys.gemini} />
+            </p>
+            {!health.keys.groq && !health.keys.gemini && <p className="text-[12.5px] text-st-warn">No AI key set — every visitor is getting the built-in backup. Add GROQ_API_KEY and/or GEMINI_API_KEY as Worker secrets.</p>}
+            {w && w.total > 0 ? (
+              <BarList
+                ranked={false}
+                color="var(--st-series-quiz)"
+                items={[
+                  { key: "ok", label: OUTCOME_LABEL.ok, value: w.ok },
+                  { key: "failover", label: OUTCOME_LABEL.failover, value: w.failover },
+                  { key: "backup", label: OUTCOME_LABEL.backup, value: w.backup },
+                  { key: "none", label: OUTCOME_LABEL.none, value: w.none },
+                ]}
+              />
+            ) : (
+              <p className="text-[12.5px] text-st-sub">No quiz results yet this week.</p>
+            )}
+            <dl className="grid grid-cols-2 gap-2 text-[12px]">
+              <div>
+                <dt className="text-st-dim">Today</dt>
+                <dd className="text-st-ink">
+                  {health.today.total} results · {health.today.tokensIn + health.today.tokensOut} tokens
+                </dd>
+              </div>
+              <div>
+                <dt className="text-st-dim">Speed (typical / slowest)</dt>
+                <dd className="text-st-ink">
+                  {(health.latency.median / 1000).toFixed(1)} s / {(health.latency.p95 / 1000).toFixed(1)} s
+                </dd>
+              </div>
+              <div>
+                <dt className="text-st-dim">Groq left (exact)</dt>
+                <dd className="text-st-ink">{health.groqRate ? `${health.groqRate.remainingRequests ?? "?"} requests · ${health.groqRate.remainingTokens ?? "?"} tokens` : "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-st-dim">Gemini used today (estimate)</dt>
+                <dd className={`${geminiPct != null && geminiPct >= 80 ? "text-st-warn" : "text-st-ink"}`}>{geminiPct == null ? "—" : `${health.today.geminiCalls} calls · ${geminiPct}%`}</dd>
+              </div>
+            </dl>
+            {Object.keys(health.reasons).filter((r) => r !== "off").length > 0 && (
+              <p className="flex flex-wrap gap-1.5">
+                {Object.entries(health.reasons)
+                  .filter(([r]) => r !== "off")
+                  .map(([r, n]) => (
+                    <span key={r} className="rounded-full border border-st-border-strong px-2 py-0.5 text-[11px] text-st-sub">
+                      {REASON_LABEL[r] ?? r} · {n}
+                    </span>
+                  ))}
+              </p>
+            )}
+            {health.recentFailures.length > 0 && (
+              <ul className="grid gap-1 text-[11.5px] text-st-dim">
+                {health.recentFailures.map((f, i) => (
+                  <li key={i}>
+                    {relativeTimeSafe(f.at)} · {f.provider} · {REASON_LABEL[f.reason] ?? f.reason}
+                    {f.detail ? ` — ${f.detail}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </Box>
+    </div>
   );
 }
+
+const relativeTimeSafe = (iso: string) => new Date(iso).toLocaleString();
 
 function ResultTab() {
   const draft = useDraft();

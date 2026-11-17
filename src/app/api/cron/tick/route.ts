@@ -12,6 +12,7 @@ export const POST = route(async (req: Request) => {
   after(async () => {
     await retryPendingDeliveries(8);
     await db().from("rate_hits").delete().lt("window_start", new Date(Date.now() - 2 * 86_400_000).toISOString());
+    await db().from("ai_calls").delete().lt("at", new Date(Date.now() - 30 * 86_400_000).toISOString());
   });
 
   return json({ started: true });

@@ -19,10 +19,10 @@ create table if not exists public.kb_entries (
 -- Enable RLS (server-only via service_role key)
 alter table public.kb_entries enable row level security;
 
--- Cosine similarity index for vector search
+-- Cosine similarity index. HNSW, not ivfflat: ivfflat builds its lists from the rows present at
+-- index time, and this table starts empty, so it would never find anything until rebuilt.
 create index if not exists kb_entries_embedding_idx on public.kb_entries
-  using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
+  using hnsw (embedding vector_cosine_ops);
 
 -- RPC for vector retrieval: matches top-k enabled entries ordered by cosine distance
 create or replace function public.match_kb(

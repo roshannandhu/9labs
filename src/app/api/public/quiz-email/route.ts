@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { buildQuizPlanMail, quizLeadFields } from "@/lib/quiz/mail";
+import { cleanQuizInput } from "@/lib/quiz/result";
 import { getPublished } from "@/server/content";
 import { clientIp, overLimit, readForm } from "@/server/guard";
 import { HttpError, json, route } from "@/server/http";
@@ -18,6 +19,10 @@ const schema = z.object({
   answers: z
     .record(z.string(), z.array(z.string().max(80)).max(12))
     .refine((a) => Object.keys(a).length <= 30, "Too many answers."),
+  other: z
+    .record(z.string().max(80), z.string().max(2000))
+    .refine((o) => Object.keys(o).length <= 30, "Too many answers.")
+    .default({}),
 });
 
 export const POST = route(async (req: Request) => {
@@ -30,15 +35,17 @@ export const POST = route(async (req: Request) => {
   const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
   if ((await recentQuizEmailCount(body.email, dayAgo)) >= 2) return json({ ok: true });
 
-  const lead = quizLeadFields(published.site, body.answers);
+  // the plan they saw: the stored (AI) result for this ref when there is one, else the backup
+  const existing = await findQuizResultByRef(body.ref);
+  const input = existing ? { answers: existing.answers, other: existing.other ?? {} } : cleanQuizInput(published.site, body.answers, body.other);
+  const lead = quizLeadFields(published.site, input.answers, input.other, existing?.ai ? { ai: existing.ai, source: existing.source } : undefined);
   if (lead.ai) {
     const mail = buildQuizPlanMail(published.site, lead.ai, lead.lines);
     await sendMail({ kind: "quiz-plan", to: body.email, subject: mail.subject, html: mail.html, text: mail.text });
   }
 
-  const existing = await findQuizResultByRef(body.ref);
   if (existing) await updateQuizResultByRef(body.ref, { email: body.email, action: "email" });
-  else await insertQuizResultIfNew({ ref: body.ref, top: lead.top, matches: lead.matches, summary: lead.summary, answers: body.answers, ai: lead.ai, source: lead.source, action: "email", email: body.email });
+  else await insertQuizResultIfNew({ ref: body.ref, top: lead.top, matches: lead.matches, summary: lead.summary, answers: input.answers, other: input.other, ai: lead.ai, source: lead.source, action: "email", email: body.email });
 
   return json({ ok: true });
 });
