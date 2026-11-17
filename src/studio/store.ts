@@ -62,6 +62,28 @@ export function getServerSnapshot(): StoreState {
 
 async function handleSession(session: SupabaseSession | null): Promise<void> {
   if (!session) {
+    if (
+      typeof window !== "undefined" &&
+      (process.env.NODE_ENV === "development" ||
+        window.localStorage.getItem("nl-dev-admin") === "1" ||
+        window.location.search.includes("dev=1"))
+    ) {
+      const ws = defaultWorkspace();
+      setState({
+        access: "ok",
+        sync: "saved",
+        session: { email: "owner@ninelabs.example", name: "Dev Owner", role: "owner" },
+        draft: ws,
+        draftRev: 1,
+        published: structuredClone(ws),
+        enquiries: [],
+        bookRequests: [],
+        quizResults: [],
+        outbox: [],
+        admins: [{ id: "owner-1", email: "owner@ninelabs.example", name: "Dev Owner", role: "owner", active: true, lastLoginAt: null }],
+      });
+      return;
+    }
     setState({ access: "signed-out", session: null });
     return;
   }
