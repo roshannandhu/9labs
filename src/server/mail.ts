@@ -21,7 +21,7 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
     return { ok: true };
   }
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_FROM_NAME } = env();
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_FROM_NAME, MAIL_REPLY_TO } = env();
   try {
     const { WorkerMailer } = await import("worker-mailer");
     await WorkerMailer.send(
@@ -38,7 +38,7 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
         subject: input.subject,
         html: input.html,
         text: input.text,
-        reply: input.replyTo,
+        reply: input.replyTo || MAIL_REPLY_TO || undefined,
         attachments: input.attachments,
       },
     );

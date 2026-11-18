@@ -6,3 +6,15 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 /** "/about" → "/9labs/about" on the demo, unchanged elsewhere. Anything else is returned as it is. */
 export const siteHref = (href: string) => (href.startsWith("/") && !href.startsWith("//") ? `${BASE_PATH}${href}` : href);
+
+/** Homepage sections that also have a full page of their own: off the homepage, the menu opens that page. */
+const fullPage: Record<string, string> = { "#about": "/about" };
+
+/**
+ * A menu link: on the homepage About scrolls to its section; on inner pages it opens /about, and other "#x" go back to "/#x".
+ * Saved content may hold either "#about" or "/about" (older defaults), so both are treated the same.
+ */
+export const navHref = (href: string, home: boolean) => {
+  const section = Object.keys(fullPage).find((k) => fullPage[k] === href) ?? href;
+  return siteHref(home ? section : (fullPage[section] ?? (section.startsWith("#") ? `/${section}` : section)));
+};

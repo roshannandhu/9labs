@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSite } from "@/components/providers/SiteProvider";
-import { siteHref } from "@/lib/site-href";
+import { navHref, siteHref } from "@/lib/site-href";
 import { CtaButton } from "./CtaButton";
 import Magnet from "@/components/reactbits/Magnet";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
 import { ThemeToggle } from "./ThemeToggle";
-
-/** On inner pages (/about, /faq…) a section link points back to the homepage: "#services" → "/#services". */
-export const navHref = (href: string, home: boolean) => siteHref(href.startsWith("#") && !home ? `/${href}` : href);
 
 export function Nav() {
   const site = useSite();

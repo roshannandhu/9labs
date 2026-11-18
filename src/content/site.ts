@@ -128,7 +128,7 @@ export const site: SiteData = {
   nav: [
     { label: "Home", href: "#home", id: "home" },
     { label: "Services", href: "#services", id: "services" },
-    { label: "About", href: "/about", id: "about" },
+    { label: "About", href: "#about", id: "about" },
     { label: "Free E-books", href: "#ebooks", id: "ebooks" },
     { label: "The 9 Quiz", href: "#quiz", id: "quiz" },
     { label: "Contact", href: "#contact", id: "contact" },

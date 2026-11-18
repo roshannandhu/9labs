@@ -24,6 +24,8 @@ const schema = z.object({
   SMTP_PASS: z.string().optional().default(""),
   MAIL_FROM: z.string().optional().default(""),
   MAIL_FROM_NAME: z.string().optional().default("Nine Labs Solutions"),
+  /** Default Reply-To for every mail, so replies to no-reply@ land in the real mailbox. */
+  MAIL_REPLY_TO: z.string().optional().default(""),
   ALLOW_SAMPLE_SEED: z.string().optional().default(""),
   // AI (docs/AI_RAG_SYSTEM.md §7). Keys may be comma-separated: a 429 moves on to the next one.
   GROQ_API_KEY: z.string().optional().default(""),
@@ -59,6 +61,7 @@ export function env(): Env {
       SMTP_PASS: process.env.SMTP_PASS,
       MAIL_FROM: process.env.MAIL_FROM,
       MAIL_FROM_NAME: process.env.MAIL_FROM_NAME,
+      MAIL_REPLY_TO: process.env.MAIL_REPLY_TO,
       ALLOW_SAMPLE_SEED: process.env.ALLOW_SAMPLE_SEED,
       GROQ_API_KEY: process.env.GROQ_API_KEY,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,

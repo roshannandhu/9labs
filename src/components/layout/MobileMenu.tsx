@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
-import { siteHref } from "@/lib/site-href";
+import { navHref } from "@/lib/site-href";
 import { CtaButton } from "./CtaButton";
 import { getLenis, scrollToId } from "@/lib/scroll";
 import { SocialIcon } from "@/components/icons/SocialIcon";
@@ -67,12 +67,12 @@ export function MobileMenu({ open, onClose, activeId, home }: { open: boolean; o
                   className="border-b border-white/[0.07]"
                 >
                   <a
-                    href={siteHref(item.href.startsWith("#") && !home ? `/${item.href}` : item.href)}
+                    href={navHref(item.href, home)}
                     onClick={(e) => {
                       e.stopPropagation();
                       onClose();
                       // a section of the page we are on: smooth-scroll to it; anything else is a normal link
-                      if (!home || !item.href.startsWith("#")) return;
+                      if (!home || !navHref(item.href, home).startsWith("#")) return;
                       e.preventDefault();
                       window.setTimeout(() => scrollToId(item.id), 80);
                     }}
