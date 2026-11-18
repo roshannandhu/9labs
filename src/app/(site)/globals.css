@@ -1781,3 +1781,14 @@ html[data-theme="dark"] .quiz-accent {
   border-top: 1px solid rgb(var(--fg-rgb) / 0.12);
   margin: 2em 0;
 }
+
+/* Page blocks out of view (SmoothScroll sets this): their looping CSS animations wait, since
+   off-screen SVG loops still cost a style + layout pass every frame. In view, the normal rules apply. */
+[data-offscreen],
+[data-offscreen]::before,
+[data-offscreen]::after,
+[data-offscreen] *,
+[data-offscreen] *::before,
+[data-offscreen] *::after {
+  animation-play-state: paused !important;
+}

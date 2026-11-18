@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { scrollToId, setLenis } from "@/lib/scroll";
@@ -35,6 +36,24 @@ export function SmoothScroll() {
       setLenis(null);
     };
   }, [reduced]);
+
+  // Blocks of the page that are out of view get `data-offscreen`, which pauses their looping CSS
+  // animations (globals.css). Off-screen SVG loops still cost a style + layout pass every frame —
+  // most of the idle CPU on phones — and nobody can see them. Back in view, the original rules apply.
+  const pathname = usePathname();
+  useEffect(() => {
+    // finer pieces too (sections, activity icons, the bridge): tall blocks are partly in view for long stretches.
+    // The bridge root, not its SVGs: phones swap those for the phone drawing right after hydration.
+    const blocks = document.querySelectorAll("#main > *, #main section, #main .ai-icon, #main .bridge-story, footer");
+    if (!blocks.length || !("IntersectionObserver" in window)) return;
+    // a paused loop is still a frame of itself, so it can resume exactly as it scrolls in
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.toggleAttribute("data-offscreen", !e.isIntersecting)));
+    blocks.forEach((b) => io.observe(b));
+    return () => {
+      io.disconnect();
+      blocks.forEach((b) => b.removeAttribute("data-offscreen"));
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

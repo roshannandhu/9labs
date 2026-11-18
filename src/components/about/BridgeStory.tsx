@@ -502,6 +502,9 @@ export function BridgeStory() {
     () => {
       const el = root.current;
       if (!el || reduced) return;
+      // Hydration renders the server's guess (wide) first; on phones a re-render with the real value
+      // follows at once. Building the measured SVG tweens for that throwaway layout costs ~1s on low-end phones.
+      if (wide !== window.matchMedia("(min-width: 768px)").matches) return;
       const q = gsap.utils.selector(el);
       const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
       // step boundaries and the "traffic runs" point, in timeline time
