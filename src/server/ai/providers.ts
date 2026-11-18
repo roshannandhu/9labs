@@ -66,7 +66,7 @@ export async function callGroq(system: string, user: string, timeoutMs = 8000): 
           // gpt-oss models think before answering; a short think keeps us well inside the timeout
           ...(env().GROQ_MODEL.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
           temperature: 0.3,
-          max_tokens: 1200,
+          max_tokens: 2000,
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: system },
@@ -101,7 +101,7 @@ export async function callGemini(system: string, user: string, timeoutMs = 10000
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1500, responseMimeType: "application/json" },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2200, responseMimeType: "application/json" },
         }),
       },
       timeoutMs,

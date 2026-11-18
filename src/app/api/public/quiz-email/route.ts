@@ -13,7 +13,7 @@ const schema = z.object({
   ref: z
     .string()
     .min(1)
-    .max(24)
+    .max(64)
     .regex(/^[A-Za-z0-9-]+$/),
   email: z.string().email().max(254),
   answers: z

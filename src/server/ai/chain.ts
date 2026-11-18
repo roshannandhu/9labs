@@ -1,5 +1,5 @@
 import type { SiteData } from "@/content/site";
-import { runBackup } from "@/lib/quiz/backup";
+import { answerRows, runBackup } from "@/lib/quiz/backup";
 import { checkAiReply } from "@/lib/quiz/result";
 import type { AiQuizResult, QuizAnswers, QuizOther, QuizSource } from "@/lib/quiz/types";
 import { buildQuizLines } from "@/lib/quiz/whatsapp";
@@ -49,11 +49,12 @@ export function buildPrompt(site: SiteData, answers: QuizAnswers, other: QuizOth
       const picked = q.options.filter((o) => answers[q.id]?.includes(o.id)).map((o) => o.label);
       const typed = other[q.id]?.trim();
       if (!picked.length && !typed) return null;
-      return `Q: ${q.q}\nA: ${picked.join("; ") || "(none picked)"}${typed ? `\nTyped by the client: <client_text>${quote(typed)}</client_text>` : ""}`;
+      return `Q [id "${q.id}"]: ${q.q}\nA: ${picked.join("; ") || "(none picked)"}${typed ? `\nTyped by the client: <client_text>${quote(typed)}</client_text>` : ""}`;
     })
     .filter(Boolean)
     .join("\n\n");
 
+  const max = Math.max(1, Math.min(5, site.quiz.result.matches || 3));
   const system = [
     `You are the assistant for ${site.name}. A visitor just answered a short quiz; recommend which of ${site.name}'s services fit them and how ${site.name} would help.`,
     "Rules:",
@@ -63,8 +64,9 @@ export function buildPrompt(site: SiteData, answers: QuizAnswers, other: QuizOth
     `- Speak to the visitor as "you". Tone: ${TONE[ai.tone] ?? TONE.friendly}.`,
     ai.notes.trim() ? `- About ${site.name} (from the team): ${quote(ai.notes).slice(0, 1500)}` : "",
     "- Output a single JSON object and nothing else, exactly this shape:",
-    '{"wants": "2-3 sentences to the visitor, starting \"You\": what they want, using their own words", "highlights": ["3-6 short phrases copied word-for-word from their answers or typed text"], "matches": [{"slug": "<a slug from the services list>", "fit": "best"|"also"|"consider", "how": "1-2 sentences, max 280 characters: how this service helps them specifically"}], "steps": [{"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}], "tags": {"goal": "2-4 words", "who": "2-4 words", "when": "2-4 words"}}',
-    '- 1 to 3 matches, best first; the first has fit "best". Exactly 3 steps: the first contact, then working together, then results — no timeframes.',
+    '{"wants": "2-3 sentences to the visitor, starting \"You\": what they want, using their own words", "highlights": ["3-6 short phrases copied word-for-word from their answers or typed text"], "answers": [{"q": "<question id>", "slug": "<the slug that solves it, or null>", "how": "one sentence starting \"We\", max 200 characters: what we will DO about this answer, using the CONTEXT"}], "matches": [{"slug": "<a slug from the services list>", "fit": "best"|"also"|"consider", "how": "1-2 sentences, max 280 characters: how this service helps them specifically"}], "steps": [{"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}, {"title": "2-4 words", "text": "one sentence"}], "tags": {"goal": "2-4 words", "who": "2-4 words", "when": "2-4 words"}}',
+    `- "answers": one entry for EVERY question in THE VISITOR'S ANSWERS, in the same order, using its id. Each \"how\" is our action or solution, never a restatement of what they said. When they typed their own words, solve those words directly.`,
+    `- 1 to ${max} matches, best first; the first has fit "best". Exactly 3 steps: the first contact, then working together, then results — no timeframes.`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -93,7 +95,7 @@ export async function runChain(site: SiteData, answers: QuizAnswers, other: Quiz
     // without permission, price-bearing entries never even reach the model
     const { system, user } = buildPrompt(site, answers, other, allowPrices ? hits : hits.filter((h) => h.kind !== "pricing" && !h.allowPrices), allowPrices);
     const sourceTexts = [...site.quiz.questions.flatMap((q) => q.options.filter((o) => answers[q.id]?.includes(o.id)).map((o) => o.label)), ...Object.values(other)];
-    const rules = { slugs: site.services.map((s) => s.slug), allowPrices, sourceTexts };
+    const rules = { slugs: site.services.map((s) => s.slug), allowPrices, sourceTexts, rows: answerRows(site, answers, other), maxMatches: site.quiz.result.matches };
 
     for (const provider of providers) {
       const t0 = Date.now();

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { checkAiReply, cleanPhone, cleanQuizInput, extractJson } from "./result.ts";
 import { site } from "../../content/site.ts";
 
-const rules = { slugs: site.services.map((s) => s.slug), allowPrices: false, sourceTexts: ["More customers and sales", "we sell handmade candles"] };
+const rules = { slugs: site.services.map((s) => s.slug), allowPrices: false, sourceTexts: ["More customers and sales", "we sell handmade candles"], rows: [], maxMatches: 3 };
 const good = {
   wants: "You want more customers for your handmade candles.",
   highlights: ["handmade candles", "invented phrase"],
@@ -65,7 +65,7 @@ test("extractJson: tolerates prose around the object", () => {
 test("cleanQuizInput: drops unknown ids, keeps one pick on single questions, Other only where allowed", () => {
   const q = site.quiz.questions.find((x) => !x.multi)!;
   // the defaults are all single-answer now; make the last question a "pick all" one for this test
-  const multi = { ...site.quiz.questions.at(-1)!, multi: true };
+  const multi = { ...site.quiz.questions.at(-1)!, multi: true, allowOther: false };
   const s = { quiz: { ...site.quiz, ai: { ...site.quiz.ai, maxOtherChars: 20 }, questions: site.quiz.questions.map((x) => (x.id === q.id ? { ...x, allowOther: true } : x.id === multi.id ? multi : x)) } };
   const out = cleanQuizInput(
     s,
@@ -85,4 +85,31 @@ test("cleanPhone accepts real numbers and rejects junk", () => {
   assert.equal(cleanPhone("12345"), null);
   assert.equal(cleanPhone("call me"), null);
   assert.equal(cleanPhone("++919876543210"), null);
+});
+
+test("checkAiReply: per-answer rows — AI rewrites `how`, keeps the client's `said`, skipped or rule-breaking rows keep scoring text", () => {
+  const rows = [
+    { q: "goal", said: "More customers and sales", how: "scoring goal", slug: "advertising" },
+    { q: "budget", said: "AED 5,000 – 20,000", how: "scoring budget", slug: "digital-social-media-marketing" },
+    { q: "when", said: "Within a month", how: "scoring when", slug: null },
+  ];
+  const reply = { ...good, answers: [
+    { q: "goal", slug: "advertising", how: "Ads that find buyers for your candles." },
+    { q: "budget", slug: null, how: "That is about AED 9,000 a month." },
+    { q: "bogus", slug: "advertising", how: "Not a real question." },
+  ] };
+  const r = checkAiReply(JSON.stringify(reply), { ...rules, rows }, "groq");
+  assert.ok(r.ok);
+  assert.equal(r.result.answers.length, 3, "every answered question keeps a row");
+  assert.equal(r.result.answers[0].how, "Ads that find buyers for your candles.");
+  assert.equal(r.result.answers[0].said, "More customers and sales");
+  assert.equal(r.result.answers[1].how, "scoring budget", "a price in a row falls back to the scoring line");
+  assert.equal(r.result.answers[2].how, "scoring when", "a skipped question keeps its scoring line");
+});
+
+test("checkAiReply: matches follow the admin's count, up to 5", () => {
+  const five = { ...good, matches: site.services.slice(0, 6).map((s) => ({ slug: s.slug, fit: "also", how: "Helps." })) };
+  const r = checkAiReply(JSON.stringify(five), { ...rules, maxMatches: 5 }, "groq");
+  assert.ok(r.ok);
+  assert.equal(r.result.matches.length, 5);
 });

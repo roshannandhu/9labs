@@ -13,15 +13,29 @@ export type QuizResultMatch = { slug: string; fit: QuizFit; how: string };
 export type QuizResultStep = { title: string; text: string };
 export type QuizResultTags = { goal?: string; who?: string; when?: string };
 export type QuizSource = "groq" | "gemini" | "backup";
+/** One answered question on the result: what they said, and how Nine Labs solves that exact point. */
+export type QuizAnswerRow = {
+  /** Question id. */
+  q: string;
+  /** Their pick(s), and/or their own words. */
+  said: string;
+  /** True when `said` includes words they typed themselves. */
+  own?: boolean;
+  how: string;
+  /** The service that solves it; null for answers like "when" that point nowhere. */
+  slug: string | null;
+};
 
 export type AiQuizResult = {
   /** 2–3 sentences, "what you want," in the client's own words. */
   wants: string;
   /** 3–6 short phrases quoted from their answers/Other, for the result's glow effect. */
   highlights: string[];
-  /** 1–3 matches, best first. */
+  /** One row per answered question, in quiz order. */
+  answers: QuizAnswerRow[];
+  /** 1–5 matches (admin: result.matches), best first. */
   matches: QuizResultMatch[];
-  /** Always 3. */
+  /** Usually 3. */
   steps: QuizResultStep[];
   tags: QuizResultTags;
   source: QuizSource;

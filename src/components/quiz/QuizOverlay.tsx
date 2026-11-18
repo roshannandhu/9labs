@@ -6,9 +6,10 @@ import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
 import { fetchQuizAi, submitQuizContact, submitQuizEmail, submitQuizResult } from "@/site/backend";
 import { opaqueRef } from "@/lib/text";
-import { runBackup } from "@/lib/quiz/backup";
+import { answerRows, runBackup } from "@/lib/quiz/backup";
 import { cleanPhone } from "@/lib/quiz/result";
-import type { AiQuizResult, QuizAnswers, QuizOther } from "@/lib/quiz/types";
+import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther } from "@/lib/quiz/types";
+import type { QuizQuestion, Service } from "@/content/site";
 import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { scrollToId } from "@/lib/scroll";
 import { useModalLock } from "@/lib/useModalLock";
@@ -192,8 +193,10 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
     [result, site, lines, t.whatsappIntro, t.whatsappOutro],
   );
   const slide = reduced ? { x: 0 } : { x: dir * 40 };
-  /** The visitor's own picks that point at an activity — the "you said → we do" link on each match. */
-  const saidFor = (icon: string) => questions.flatMap((qq) => qq.options.filter((o) => o.pointsTo === icon && answers[qq.id]?.includes(o.id)).map((o) => o.label)).slice(0, 3);
+  /** One row per answered question; results saved before rows existed get the scoring rows. */
+  const rows = useMemo(() => (result ? (result.answers?.length ? result.answers : answerRows(site, answers, other)) : []), [result, site, answers, other]);
+  /** Everything they said (picks and own words) that this service answers — the "you said" chips. */
+  const saidFor = (slug: string) => rows.filter((r) => r.slug === slug).map((r) => r.said);
   // the form step: save name + phone with the lead, hand back the chat link to open in the same click
   const sendWhatsApp = (contact: { name: string; phone: string }) => {
     submitQuizContact(ref.current, contact, latest.current, latestOther.current);
@@ -432,14 +435,10 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         {result.source === "backup" ? "Matched from your answers" : "Written for you by our AI"}
                       </p>
                       <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
-                      <Bridge
-                        said={result.highlights.length ? result.highlights : lines.map((l) => l.slice(l.indexOf(":") + 1).trim()).filter(Boolean).slice(0, 6)}
-                        solves={result.matches.flatMap((m) => site.services.filter((sv) => sv.slug === m.slug))}
-                        brand={site.shortName}
-                        reduced={reduced}
-                      />
+                      <SolutionMap rows={rows} questions={questions} services={site.services} brand={site.shortName} reduced={reduced} />
 
-                      <ul className="mt-6 grid gap-3">
+                      <p className="label-mono mt-8 !text-white/55">Where we&apos;d start</p>
+                      <ul className="mt-3 grid gap-3">
                         {result.matches.map((m, i) => {
                           const s = site.services.find((sv) => sv.slug === m.slug);
                           if (!s) return null;
@@ -461,11 +460,11 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                                   </span>
                                   <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
                                 </span>
-                                {saidFor(s.icon).length > 0 && (
+                                {saidFor(s.slug).length > 0 && (
                                   <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-white/55">
                                     You said
-                                    {saidFor(s.icon).map((said) => (
-                                      <span key={said} className="rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-white/85">
+                                    {saidFor(s.slug).map((said) => (
+                                      <span key={said} className="max-w-full break-words rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-white/85">
                                         {said}
                                       </span>
                                     ))}
@@ -487,15 +486,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         })}
                       </ul>
 
-                      <ol className="mt-6 grid gap-3 sm:grid-cols-3">
-                        {result.steps.map((s, i) => (
-                          <li key={s.title} className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4">
-                            <span className="font-digits text-xs font-black text-[color:var(--brand-a)]">0{i + 1}</span>
-                            <p className="mt-1 font-display font-semibold text-white">{s.title}</p>
-                            <p className="mt-1 text-[13.5px] leading-relaxed text-nl-ink">{s.text}</p>
-                          </li>
-                        ))}
-                      </ol>
+                      <PlanLine steps={result.steps} reduced={reduced} />
 
                       <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5">
                         <WhatsAppStep cta={t.whatsappCta} onSend={sendWhatsApp} />
@@ -616,60 +607,124 @@ function WhatsAppStep({ cta, onSend, className = "" }: { cta: string; onSend: (c
 }
 
 /**
- * The result at a glance: what the visitor told us on the left, how Nine Labs answers it on the
- * right, a light running across the bridge between them.
+ * The result as a picture: every answer on the left, a line across, and how Nine Labs solves that
+ * exact point on the right (stacked, joined by a short line, on phones). Below it, "your mix": one
+ * bar per service, sized by how many answers lead there. The same drawing for AI and scoring.
  */
-function Bridge({ said, solves, brand, reduced }: { said: string[]; brand: string; solves: { slug: string; icon: Parameters<typeof ActivityIcon>[0]["icon"]; short: string }[]; reduced: boolean }) {
-  if (!said.length || !solves.length) return null;
+function SolutionMap({ rows, questions, services, brand, reduced }: { rows: QuizAnswerRow[]; questions: QuizQuestion[]; services: Service[]; brand: string; reduced: boolean }) {
+  if (!rows.length) return null;
+  const mix = services
+    .map((s) => ({ s, n: rows.filter((r) => r.slug === s.slug).length }))
+    .filter((x) => x.n)
+    .sort((a, b) => b.n - a.n || a.s.n - b.s.n);
   return (
-    <div className="mt-5 grid items-stretch gap-2 sm:grid-cols-[1fr_56px_1fr] sm:gap-0">
-      <div className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4">
-        <p className="label-mono !text-[10px] !text-white/55">What you told us</p>
-        <ul className="mt-2.5 flex flex-wrap gap-1.5">
-          {said.map((h, i) => (
+    <section className="mt-6" aria-label={`How ${brand} solves each answer`}>
+      <p className="label-mono !text-white/55">
+        Your {rows.length} answers <span aria-hidden="true">→</span> how {brand} solves each
+      </p>
+      <ol className="mt-3 grid gap-2.5">
+        {rows.map((r, i) => {
+          const s = services.find((x) => x.slug === r.slug);
+          return (
             <motion.li
-              key={h}
-              initial={{ opacity: 0, y: 6 }}
+              key={r.q}
+              initial={{ opacity: 0, y: reduced ? 0 : 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.06, duration: 0.4, ease }}
-              className="rounded-full border border-[color:var(--brand-a)]/30 bg-gradient-to-r from-[color:var(--brand-a)]/15 to-[color:var(--brand-b)]/15 px-2.5 py-1 text-[12px] font-medium text-white"
+              transition={{ delay: reduced ? 0 : 0.08 + i * 0.07, duration: 0.4, ease }}
+              className="grid items-stretch sm:grid-cols-[minmax(0,1fr)_40px_minmax(0,1.35fr)]"
             >
-              {h}
+              <div className="rounded-2xl border border-white/10 bg-[var(--chip-bg)] px-3.5 py-3">
+                <p className="font-digits text-[10px] font-black uppercase tracking-wide text-white/50">
+                  {String(i + 1).padStart(2, "0")} · {questions.find((q) => q.id === r.q)?.label ?? r.q}
+                </p>
+                <p className="mt-1 break-words text-[14px] font-medium leading-snug text-white">
+                  {r.own && (
+                    <span className="text-[color:var(--brand-a)]" title="In your own words">
+                      ✎{" "}
+                    </span>
+                  )}
+                  {r.said}
+                </p>
+              </div>
+              <div className="relative flex h-5 items-center justify-center sm:h-auto" aria-hidden="true">
+                <span className="absolute h-full w-px bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)] sm:h-px sm:w-full sm:bg-gradient-to-r" />
+                <span className="relative h-2 w-2 rounded-full bg-[color:var(--brand-b)] shadow-[0_0_12px_var(--brand-a)]" />
+              </div>
+              <div className="flex items-start gap-3 rounded-2xl border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-3.5 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 text-white">
+                  {s ? <ActivityIcon icon={s.icon} size={20} play /> : <span className="text-[15px]">✓</span>}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{s?.short ?? brand}</span>
+                  <span className="mt-0.5 block break-words text-[14px] leading-snug text-white/90">{r.how}</span>
+                </span>
+              </div>
             </motion.li>
-          ))}
-        </ul>
-      </div>
-      <div className="relative flex h-8 items-center justify-center sm:h-auto" aria-hidden="true">
-        <motion.span
-          className="absolute h-full w-px origin-left bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)] sm:h-px sm:w-full sm:bg-gradient-to-r"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
-        />
-        <span className="relative grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] text-[13px] text-white shadow-[0_0_24px_var(--brand-a)]">
-          <span className="sm:hidden">↓</span>
-          <span className="hidden sm:inline">→</span>
-        </span>
-      </div>
-      <div className="rounded-2xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 p-4">
-        <p className="label-mono !text-[10px] !text-white/55">How {brand} solves it</p>
-        <ul className="mt-2.5 grid gap-2">
-          {solves.map((s, i) => (
-            <motion.li
-              key={s.slug}
-              initial={{ opacity: 0, x: reduced ? 0 : 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.35 + i * 0.1, duration: 0.45, ease }}
-              className="flex items-center gap-2.5 text-[14px] font-medium text-white"
-            >
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/5">
-                <ActivityIcon icon={s.icon} size={18} play />
-              </span>
-              {s.short}
-            </motion.li>
-          ))}
-        </ul>
-      </div>
+          );
+        })}
+      </ol>
+
+      {mix.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4">
+          <p className="label-mono !text-[10px] !text-white/55">Your mix: where {brand} would put the work</p>
+          <ul className="mt-3 grid gap-3">
+            {mix.map(({ s, n }, i) => (
+              <li key={s.slug} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1.5 sm:grid-cols-[28px_minmax(0,10rem)_minmax(0,1fr)_auto]">
+                <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/15 bg-white/5 text-white">
+                  <ActivityIcon icon={s.icon} size={16} play />
+                </span>
+                <span className="min-w-0 break-words text-[13px] font-medium leading-snug text-white">{s.short}</span>
+                <span className="col-span-3 h-2 overflow-hidden rounded-full bg-white/10 sm:col-span-1 sm:row-start-1 sm:[grid-column-start:3]">
+                  <motion.span
+                    className="block h-full rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]"
+                    initial={{ width: reduced ? `${(n / rows.length) * 100}%` : "0%" }}
+                    animate={{ width: `${(n / rows.length) * 100}%` }}
+                    transition={{ delay: reduced ? 0 : 0.4 + i * 0.08, duration: 0.7, ease }}
+                  />
+                </span>
+                <span className="row-start-1 font-digits text-[11px] font-black text-white/60 [grid-column-start:3] sm:[grid-column-start:4]">
+                  {n} of {rows.length}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The plan as a line of numbered stops: a vertical line on phones, one column per step on wider screens. */
+function PlanLine({ steps, reduced }: { steps: AiQuizResult["steps"]; reduced: boolean }) {
+  if (!steps.length) return null;
+  return (
+    <div className="mt-8">
+      <p className="label-mono !text-white/55">Your plan</p>
+      <ol className="mt-3 grid gap-3 sm:[grid-template-columns:var(--cols)] sm:gap-4" style={{ ["--cols" as string]: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((s, i) => (
+          <motion.li
+            key={`${i}-${s.title}`}
+            initial={{ opacity: 0, y: reduced ? 0 : 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: reduced ? 0 : 0.2 + i * 0.12, duration: 0.45, ease }}
+            className="relative flex gap-3 sm:block"
+          >
+            {i < steps.length - 1 && (
+              <span
+                className="absolute bottom-[-12px] left-4 top-8 w-px bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)] sm:bottom-auto sm:left-10 sm:right-[-16px] sm:top-4 sm:h-px sm:w-auto sm:bg-gradient-to-r"
+                aria-hidden="true"
+              />
+            )}
+            <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] font-digits text-[12px] font-black text-paper shadow-[0_0_20px_var(--brand-a)]">
+              {i + 1}
+            </span>
+            <span className="block min-w-0 flex-1 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-3.5 sm:mt-3">
+              <span className="block font-display font-semibold text-white">{s.title}</span>
+              <span className="mt-1 block text-[13.5px] leading-relaxed text-nl-ink">{s.text}</span>
+            </span>
+          </motion.li>
+        ))}
+      </ol>
     </div>
   );
 }

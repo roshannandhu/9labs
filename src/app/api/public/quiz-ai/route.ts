@@ -14,7 +14,7 @@ const schema = z.object({
   ref: z
     .string()
     .min(1)
-    .max(24)
+    .max(64)
     .regex(/^[A-Za-z0-9-]+$/),
   answers: z
     .record(z.string().max(80), z.array(z.string().max(80)).max(12))

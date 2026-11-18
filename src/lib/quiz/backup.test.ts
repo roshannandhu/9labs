@@ -13,10 +13,11 @@ test("runBackup: votes tally per pointsTo, ties break toward the lower card numb
   assert.equal(result.source, "backup");
 });
 
-test("runBackup: no answers still returns a ranked (if arbitrary) list, never throws", () => {
+test("runBackup: no answers still returns one match, never pads, never throws", () => {
   const result = runBackup(site, {}, {});
   assert.ok(result);
-  assert.equal(result.matches.length, 3);
+  assert.equal(result.matches.length, 1);
+  assert.deepEqual(result.answers, []);
 });
 
 test("runBackup: nothing anywhere has a pointsTo is the true last-resort null", () => {
@@ -27,7 +28,9 @@ test("runBackup: nothing anywhere has a pointsTo is the true last-resort null", 
 test("runBackup + buildQuizLines: a zero-signal pick (pointsTo: null) plus Other text still ranks, and the text is echoed verbatim", () => {
   const result = runBackup(site, { event: ["none"] }, { event: "We're planning something unusual, not a normal event" });
   assert.ok(result);
-  assert.equal(result.matches.length, 3); // tied at 0 votes, still a ranked (arbitrary) list
+  // the pick points nowhere, so the typed text (it names an event) is keyword-matched and votes
+  assert.ok(result.answers[0].slug);
+  assert.equal(result.matches[0].slug, result.answers[0].slug);
   // "none" has no pointsTo, so it contributes nothing to highlights — only the typed text does
   assert.deepEqual(result.highlights, ["We're planning something unusual, not a normal event"]);
 
@@ -55,4 +58,29 @@ test("buildQuizWhatsappText: no percentages, just numbered titles between the ad
   assert.match(text, /^Hi Nine Labs!/);
   assert.doesNotMatch(text, /%/);
   assert.match(text, /Suggested for us: 1\) /);
+});
+
+test("runBackup: one row per answered question — picks use the option's `solves`, typed-only answers are keyword-matched", () => {
+  const result = runBackup(site, { goal: ["sales"], when: ["month"] }, { make: "I need product photography for my online shop" });
+  assert.ok(result);
+  assert.deepEqual(result.answers.map((a) => a.q), ["goal", "make", "when"], "quiz order");
+  assert.equal(result.answers[0].how, site.quiz.questions.find((q) => q.id === "goal")!.options.find((o) => o.id === "sales")!.solves);
+  assert.equal(result.answers[0].slug, "advertising");
+  assert.equal(result.answers[1].own, true);
+  assert.equal(result.answers[1].slug, "photography-events-filming");
+  assert.equal(result.answers[2].slug, null, "'when' answers point nowhere");
+});
+
+test("runBackup: the number of matches follows result.matches, up to 5", () => {
+  const all = { who: ["startup"], goal: ["sales"], where: ["social"], online: ["zero"], make: ["photo"], event: ["soon"], tech: ["little"], budget: ["unsure"], when: ["asap"] };
+  const result = runBackup({ ...site, quiz: { ...site.quiz, result: { ...site.quiz.result, matches: 5 } } }, all, {});
+  assert.ok(result);
+  assert.equal(result.matches.length, 5);
+  assert.equal(result.answers.length, 9);
+});
+
+test("answerRows: typed words lean to the services their question is about", () => {
+  const result = runBackup(site, {}, { tech: "we copy orders from WhatsApp into Excel by hand every night" });
+  assert.ok(result);
+  assert.ok(["ai-consultancy", "it-consultancy"].includes(result.answers[0].slug ?? ""), String(result.answers[0].slug));
 });

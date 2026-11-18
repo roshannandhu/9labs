@@ -20,47 +20,75 @@ import { AiHealthView, OUTCOME_LABEL } from "@/studio/AiHealth";
 const FIT_LABEL = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
 
 const TABS = [
-  ["build", "Build"],
-  ["test", "Test"],
-  ["knowledge", "Knowledge"],
-  ["ai", "AI"],
-  ["result", "Result"],
+  ["build", "Questions"],
+  ["result", "Result page"],
+  ["test", "Try it"],
+  ["knowledge", "AI knowledge"],
   ["insights", "Insights"],
 ] as const;
+
+/** Rarely needed settings, folded away so the everyday ones stay easy to see. */
+function More({ children, label = "More options" }: { children: React.ReactNode; label?: string }) {
+  return (
+    <details className="group rounded-xl border border-dashed border-st-border">
+      <summary className="cursor-pointer select-none px-3 py-2 text-[12.5px] font-medium text-st-sub hover:text-st-ink">{label}</summary>
+      <div className="grid gap-3.5 px-3 pb-3 pt-1">{children}</div>
+    </details>
+  );
+}
 type Tab = (typeof TABS)[number][0];
 
-function OptionEditor({ qi, oi, o }: { qi: number; oi: number; o: QuizOption }) {
+function OptionEditor({ qi, oi, o, q }: { qi: number; oi: number; o: QuizOption; q: QuizQuestion }) {
   const draft = useDraft();
   const services = draft.site.services;
+  const svc = services.find((s) => s.icon === o.pointsTo);
   return (
-    <div className="rounded-xl border border-st-border p-3">
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <TextField path={["site", "quiz", "questions", qi, "options", oi, "label"]} label="" placeholder="Answer" />
-        </div>
-        <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] text-st-sub" title="Choosing this clears the other answers (e.g. &quot;Nothing yet&quot;)">
-          <input type="checkbox" checked={!!o.only} onChange={(e) => { checkpoint(); setDraft(["site", "quiz", "questions", qi, "options", oi, "only"] as Path, e.target.checked); }} className="h-3.5 w-3.5 accent-[var(--st-purple)]" />
-          Stands alone
-        </label>
-      </div>
-      <label className="mt-2.5 block">
-        <span className="st-label">Points to</span>
-        <select
-          className="st-field mt-1.5"
+    <div className="grid gap-2.5 rounded-xl border border-st-border p-3">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end">
+        <TextField path={["site", "quiz", "questions", qi, "options", oi, "label"]} label={`Answer ${oi + 1}`} placeholder="Answer" />
+        <label className="block min-w-0">
+          <span className="st-label">Solved by</span>
+          <select
+          className="st-field mt-1.5 w-full"
           value={o.pointsTo ?? ""}
           onChange={(e) => {
             checkpoint();
             setDraft(["site", "quiz", "questions", qi, "options", oi, "pointsTo"] as Path, e.target.value || null);
           }}
         >
-          <option value="">— none —</option>
+          <option value="">— no service —</option>
           {services.map((s) => (
             <option key={s.slug} value={s.icon}>
               {s.title}
             </option>
           ))}
         </select>
-      </label>
+        </label>
+        <Button
+          variant="ghost"
+          className="justify-self-start text-st-danger sm:mb-0.5"
+          disabled={q.options.length <= 2}
+          title={q.options.length <= 2 ? "A question needs at least 2 answers" : "Remove this answer"}
+          onClick={() => {
+            checkpoint();
+            setDraft(["site", "quiz", "questions", qi, "options"] as Path, q.options.filter((_, j) => j !== oi));
+          }}
+        >
+          ✕ Remove
+        </Button>
+      </div>
+      <TextField
+        path={["site", "quiz", "questions", qi, "options", oi, "solves"]}
+        label="How we help (shown on the result)"
+        placeholder={svc ? svc.description : "One sentence: what Nine Labs does about this answer"}
+        help="The AI rewrites this for each visitor when it's on; scoring shows it as written. Empty = the service's description."
+      />
+      {q.multi && (
+        <label className="flex items-center gap-1.5 text-[11.5px] text-st-sub">
+          <input type="checkbox" checked={!!o.only} onChange={(e) => { checkpoint(); setDraft(["site", "quiz", "questions", qi, "options", oi, "only"] as Path, e.target.checked); }} className="h-3.5 w-3.5 accent-[var(--st-purple)]" />
+          Stands alone — picking it clears the other answers (e.g. &quot;Nothing yet&quot;)
+        </label>
+      )}
     </div>
   );
 }
@@ -92,20 +120,11 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
   return (
     <div className="grid gap-3.5">
       <AreaField path={["site", "quiz", "questions", qi, "q"]} label="Question" rows={2} />
-      <Row>
-        <TextField path={["site", "quiz", "questions", qi, "label"]} label="Short name" help="Used in the WhatsApp summary." />
-        <RoleField qi={qi} />
-        <CheckField path={["site", "quiz", "questions", qi, "multi"]} label="Several answers allowed" help="Off (recommended): the quiz moves on by itself after a tap. On: visitors must press Next." />
-      </Row>
-      <TextField path={["site", "quiz", "questions", qi, "hint"]} label="Hint under the question" placeholder="Optional" />
-      <Row>
-        <CheckField path={["site", "quiz", "questions", qi, "allowOther"]} label="Allow &quot;Other&quot; — a free-text answer" />
-        <TextField path={["site", "quiz", "questions", qi, "otherPlaceholder"]} label="Other — placeholder text" placeholder="Optional" />
-      </Row>
+      <CheckField path={["site", "quiz", "questions", qi, "allowOther"]} label="Visitors can also type their own words" help="Adds an “Other — in your own words” card. The AI reads it; scoring matches it to a service by its words." />
 
       <div className="grid gap-2">
         {q.options.map((o, oi) => (
-          <OptionEditor key={o.id} qi={qi} oi={oi} o={o} />
+          <OptionEditor key={o.id} qi={qi} oi={oi} o={o} q={q} />
         ))}
       </div>
       <div className="flex gap-2">
@@ -119,6 +138,15 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
           + Add an answer
         </Button>
       </div>
+      <More>
+        <Row>
+          <TextField path={["site", "quiz", "questions", qi, "label"]} label="Short name" help="Shown on the result and in the WhatsApp summary." />
+          <RoleField qi={qi} />
+        </Row>
+        <TextField path={["site", "quiz", "questions", qi, "hint"]} label="Hint under the question" placeholder="Optional" />
+        <TextField path={["site", "quiz", "questions", qi, "otherPlaceholder"]} label="Placeholder in the “own words” box" placeholder="Tell us in a sentence or two…" />
+        <CheckField path={["site", "quiz", "questions", qi, "multi"]} label="Several answers allowed" help="Off (recommended): the quiz moves on by itself after a tap. On: visitors must press Next." />
+      </More>
     </div>
   );
 }
@@ -126,8 +154,23 @@ function QuestionEditor({ qi, q }: { qi: number; q: QuizQuestion }) {
 function BuildTab() {
   const draft = useDraft();
   const questions = draft.site.quiz.questions;
+  const allOther = questions.every((q) => q.allowOther);
   return (
     <>
+      <div className="flex flex-col gap-2 rounded-xl border border-st-border bg-st-panel p-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[13px] text-st-sub">
+          {questions.length} questions. Each answer is <strong className="text-st-ink">solved by</strong> one service, with a line on <strong className="text-st-ink">how we help</strong>. Open a question to edit it; drag to reorder.
+        </p>
+        <Button
+          className="shrink-0"
+          onClick={() => {
+            checkpoint();
+            setDraft(["site", "quiz", "questions"] as Path, questions.map((q) => ({ ...q, allowOther: !allOther })));
+          }}
+        >
+          {allOther ? "Turn off own words everywhere" : "Allow own words on every question"}
+        </Button>
+      </div>
       <SortableList
         items={questions}
         keyOf={(q) => q.id}
@@ -141,7 +184,11 @@ function BuildTab() {
         renderItem={(q, qi) => (
           <details>
             <summary className="cursor-pointer text-[13.5px] font-semibold text-st-ink">
-              {qi + 1}. {q.q || "New question"} <span className="font-normal text-st-dim">— {q.options.length} answers</span>
+              {qi + 1}. {q.q || "New question"}{" "}
+              <span className="font-normal text-st-dim">
+                — {q.options.length} answers{q.allowOther ? " + own words" : ""}
+                {q.options.some((o) => !o.pointsTo && !o.solves) ? " · some answers have no service" : ""}
+              </span>
             </summary>
             <div className="mt-3.5">
               <QuestionEditor qi={qi} q={q} />
@@ -155,7 +202,7 @@ function BuildTab() {
           const n = questions.length + 1;
           setDraft(["site", "quiz", "questions"] as Path, [
             ...questions,
-            { id: `q${Date.now().toString(36)}`, label: `Question ${n}`, q: "New question", multi: false, options: [{ id: `a${Date.now().toString(36)}1`, label: "Answer 1" }, { id: `a${Date.now().toString(36)}2`, label: "Answer 2" }] },
+            { id: `q${Date.now().toString(36)}`, label: `Question ${n}`, q: "New question", multi: false, allowOther: true, options: [{ id: `a${Date.now().toString(36)}1`, label: "Answer 1" }, { id: `a${Date.now().toString(36)}2`, label: "Answer 2" }] },
           ]);
         }}
       >
@@ -191,6 +238,22 @@ function ResultView({ result, services }: { result: AiQuizResult; services: Serv
           ))}
         </p>
       )}
+      {result.answers.length > 0 && (
+        <ol className="grid gap-1.5">
+          {result.answers.map((a) => (
+            <li key={a.q} className="grid gap-0.5 rounded-lg border border-st-border px-2.5 py-2 text-[12.5px] sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-3">
+              <span className="min-w-0 break-words text-st-ink">
+                {a.own ? "✎ " : ""}
+                {a.said}
+              </span>
+              <span className="min-w-0 break-words text-st-sub">
+                <strong className="text-st-ink">{services.find((s) => s.slug === a.slug)?.short ?? "—"}:</strong> {a.how}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="st-micro">Services shown</p>
       <ol className="grid gap-2">
         {result.matches.map((m) => {
           const s = services.find((sv) => sv.slug === m.slug);
@@ -310,7 +373,7 @@ function TestTab() {
       </Box>
 
       <div className="grid content-start gap-4">
-        <Box title="AI result" help="What the visitor would see, with which layer answered and what the retriever pulled from the knowledge base.">
+        <Box title="AI result" help="What the visitor would see when AI is on.">
           {error ? (
             <p className="text-[13px] text-st-danger">{error}</p>
           ) : !run ? (
@@ -323,21 +386,23 @@ function TestTab() {
                   {run.ai.source} · {run.ai.latencyMs} ms · retrieval: {run.ai.retrieved.mode}
                 </span>
               </p>
-              {run.ai.attempts.map((a, i) => (
-                <p key={i} className="text-[11.5px] text-st-dim">
-                  {a.provider}: {a.ok ? `ok (${a.tokensIn}→${a.tokensOut} tokens, ${a.latencyMs} ms)` : `failed — ${a.reason}${a.detail ? `: ${a.detail}` : ""}`}
-                </p>
-              ))}
-              {run.ai.retrieved.titles.length > 0 && <p className="text-[11.5px] text-st-dim">Context used: {run.ai.retrieved.titles.join(" · ")}</p>}
+              <More label="Technical details">
+                {run.ai.attempts.map((a, i) => (
+                  <p key={i} className="break-words text-[11.5px] text-st-dim">
+                    {a.provider}: {a.ok ? `ok (${a.tokensIn}→${a.tokensOut} tokens, ${a.latencyMs} ms)` : `failed — ${a.reason}${a.detail ? `: ${a.detail}` : ""}`}
+                  </p>
+                ))}
+                {run.ai.retrieved.titles.length > 0 && <p className="break-words text-[11.5px] text-st-dim">Facts used: {run.ai.retrieved.titles.join(" · ")}</p>}
+              </More>
               {run.ai.result ? <ResultView result={run.ai.result} services={draft.site.services} /> : <p className="text-[13px] text-st-sub">Last resort — the visitor sees their own answers and the WhatsApp button.</p>}
             </>
           )}
         </Box>
-        <Box title="Scoring result" help="What visitors get in “Scoring only” mode, or when the AI is out of quota or fails — worked out from each answer's “Points to”.">
+        <Box title="Scoring result" help="What visitors get in “Scoring only” mode, or when the AI is out of quota or fails — from each answer's “Solved by” and “How we help”.">
           {!answered ? (
             <p className="text-[13px] text-st-sub">Pick some answers to see the scoring result.</p>
           ) : !backup ? (
-            <p className="text-[13px] text-st-sub">No answer points anywhere yet — add a “Points to” on the Build tab.</p>
+            <p className="text-[13px] text-st-sub">No answer is solved by a service yet — set “Solved by” on the Questions tab.</p>
           ) : (
             <ResultView result={backup} services={draft.site.services} />
           )}
@@ -479,13 +544,13 @@ function KnowledgeTab() {
       <div className="flex flex-col gap-3 rounded-2xl border border-st-border bg-st-panel p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
-            <h3 className="font-display text-[17px] font-semibold text-st-ink">Knowledge Base</h3>
+            <h3 className="font-display text-[17px] font-semibold text-st-ink">What the AI knows</h3>
             <span className="rounded-full bg-st-purple/15 px-2.5 py-0.5 text-[11px] font-medium text-st-purple">
-              {entries.length} Grounding Entries
+              {entries.length} facts
             </span>
           </div>
           <p className="mt-1 text-[13px] text-st-sub">
-            The factual corpus used by the RAG vector engine to tailor answers, recommend services, and construct steps.
+            Facts about Nine Labs the AI may use when it writes a visitor&apos;s plan. It never makes up anything that isn&apos;t here or in your services.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -495,7 +560,7 @@ function KnowledgeTab() {
             disabled={reindexing}
             className="text-[12.5px]"
           >
-            {reindexing ? "Indexing..." : "Reindex All"}
+            {reindexing ? "Refreshing…" : "Refresh AI search"}
           </Button>
           <Button
             variant="primary"
@@ -516,7 +581,7 @@ function KnowledgeTab() {
             }}
             className="text-[12.5px]"
           >
-            + Add Entry
+            + Add a fact
           </Button>
         </div>
       </div>
@@ -857,34 +922,20 @@ function ModeSwitch() {
   );
 }
 
-function AiTab() {
+/** Always on top of the page: which mode the quiz runs in. */
+function ModeCard() {
   const draft = useDraft();
-  const ai = draft.site.quiz.ai;
-
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-      <Box title="How results are worked out" help="Publish to apply. The API keys are Worker secrets (GROQ_API_KEY, GEMINI_API_KEY), never stored here.">
+    <div className="flex flex-col gap-3 rounded-2xl border border-st-border bg-st-panel p-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0 lg:max-w-[52%]">
+        <p className="text-[14px] font-semibold text-st-ink">How results are worked out</p>
+        <p className="mt-1 text-[12.5px] text-st-sub">
+          Both modes show every answer and how {draft.site.shortName} solves it, as a picture. Publish to apply.
+        </p>
+      </div>
+      <div className="min-w-0 lg:w-[46%]">
         <ModeSwitch />
-        <SelectField
-          path={["site", "quiz", "ai", "tone"]}
-          label="Tone"
-          options={[
-            { value: "friendly", label: "Friendly" },
-            { value: "professional", label: "Professional" },
-            { value: "short", label: "Short and direct" },
-          ]}
-        />
-        <AreaField path={["site", "quiz", "ai", "notes"]} label="About Nine Labs (for the AI)" help="A few facts the AI should always know — who you are, what you're best at. Don't put prices here." rows={4} />
-        <Row>
-          <NumField path={["site", "quiz", "ai", "maxOtherChars"]} label="Max “Other” characters" min={50} max={1000} step={10} />
-          <NumField path={["site", "quiz", "ai", "geminiDailyLimitEstimate"]} label="Gemini daily limit (your estimate)" help="Gemini doesn't report its quota; this sets the % below." min={0} step={50} />
-        </Row>
-        <CheckField path={["site", "quiz", "ai", "allowPrices"]} label="Allow prices" help="Even when on, the AI only quotes prices from knowledge entries marked “allow prices”." />
-      </Box>
-
-      <Box title="AI health" help="Last 7 days of quiz results. Never stores what visitors typed.">
-        <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
-      </Box>
+      </div>
     </div>
   );
 }
@@ -899,11 +950,30 @@ function ResultTab() {
           <TextField path={["site", "quiz", "result", "label"]} label="Label" />
           <TextField path={["site", "quiz", "result", "heading"]} label="Heading" />
         </Row>
-        <AreaField path={["site", "quiz", "result", "summary"]} label="Opening sentence" rows={2} help="{who} {goal} {when} are replaced." />
-        <TextField path={["site", "quiz", "result", "why"]} label="“Why” line" help="{answers} becomes their own answers." />
-        <NumField path={["site", "quiz", "result", "matches"]} label="How many activities to recommend" min={1} max={5} />
+        <NumField path={["site", "quiz", "result", "matches"]} label="Services to recommend" help="Shown under the answer-by-answer picture." min={1} max={5} />
+        <More>
+          <AreaField path={["site", "quiz", "result", "summary"]} label="Opening sentence (scoring mode)" rows={2} help="{who} {goal} {when} are replaced. The AI writes its own." />
+          <TextField path={["site", "quiz", "result", "why"]} label="“Why” line" help="{answers} becomes their own answers." />
+        </More>
       </Box>
-      <Box title="The three-step plan" help="{first} {firstDescription} {next} are replaced.">
+      <Box title="How the AI writes" help="Used when the mode is “AI + scoring”. The API keys are Worker secrets, never stored here.">
+        <SelectField
+          path={["site", "quiz", "ai", "tone"]}
+          label="Tone"
+          options={[
+            { value: "friendly", label: "Friendly" },
+            { value: "professional", label: "Professional" },
+            { value: "short", label: "Short and direct" },
+          ]}
+        />
+        <AreaField path={["site", "quiz", "ai", "notes"]} label="About Nine Labs (for the AI)" help="A few facts the AI should always know — who you are, what you're best at. Don't put prices here." rows={4} />
+        <More>
+          <NumField path={["site", "quiz", "ai", "maxOtherChars"]} label="Longest “own words” answer (characters)" min={50} max={1000} step={10} />
+          <NumField path={["site", "quiz", "ai", "geminiDailyLimitEstimate"]} label="Gemini daily limit (your estimate)" help="Gemini doesn't report its quota; this sets the % on Insights." min={0} step={50} />
+          <CheckField path={["site", "quiz", "ai", "allowPrices"]} label="Allow prices" help="Even when on, the AI only quotes prices from facts marked “allow prices”." />
+        </More>
+      </Box>
+      <Box title="The three-step plan" help="In scoring mode: {first} {firstDescription} {next} are replaced. The AI writes its own steps.">
         {steps.map((s, i) => (
           <div key={i} className="grid gap-2">
             <TextField path={["site", "quiz", "result", "steps", i, "title"]} label={`Step ${i + 1} title`} />
@@ -912,22 +982,26 @@ function ResultTab() {
         ))}
       </Box>
       <Box title="WhatsApp and e-mail">
-        <Row>
-          <TextField path={["site", "quiz", "result", "whatsappCta"]} label="WhatsApp button" />
-          <TextField path={["site", "quiz", "result", "retake"]} label="Retake link" />
-          <TextField path={["site", "quiz", "result", "ebooksCta"]} label="E-books link" />
-        </Row>
-        <Row>
-          <TextField path={["site", "quiz", "result", "whatsappIntro"]} label="Message — first line" />
-          <TextField path={["site", "quiz", "result", "whatsappOutro"]} label="Message — last line" />
-        </Row>
+        <TextField path={["site", "quiz", "result", "whatsappCta"]} label="WhatsApp button" />
         <CheckField path={["site", "quiz", "result", "emailEnabled"]} label="Offer “e-mail me this plan”" />
+        <More>
+          <Row>
+            <TextField path={["site", "quiz", "result", "whatsappIntro"]} label="Message — first line" />
+            <TextField path={["site", "quiz", "result", "whatsappOutro"]} label="Message — last line" />
+          </Row>
+          <Row>
+            <TextField path={["site", "quiz", "result", "retake"]} label="Retake link" />
+            <TextField path={["site", "quiz", "result", "ebooksCta"]} label="E-books link" />
+          </Row>
+        </More>
       </Box>
     </>
   );
 }
 
 function InsightsTab() {
+  const draft = useDraft();
+  const ai = draft.site.quiz.ai;
   const results = useQuizResults();
   const weekAgo = useNow() - 7 * 86_400_000;
   const week = results.filter((r) => new Date(r.createdAt).getTime() > weekAgo);
@@ -943,6 +1017,9 @@ function InsightsTab() {
         <StatTile label="Finished, 7 days" value={week.length} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
         <StatTile label="Followed through" value={actions.whatsapp + actions.email} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
       </div>
+      <Box title="AI health" help="Last 7 days of quiz results. Never stores what visitors typed.">
+        <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
+      </Box>
       <Box title="Most recommended">{ranked.length === 0 ? <p className="text-[13px] text-st-sub">No quizzes finished yet.</p> : <BarList items={items} color="var(--st-series-quiz)" />}</Box>
       <Box title="Recent results">
         <div className="grid gap-1.5">
@@ -961,13 +1038,13 @@ export default function QuizLabPage() {
   const [tab, setTab] = useState<Tab>("build");
   return (
     <div className="grid gap-5">
-      <PageHeader title="Quiz" description="The 9 Quiz — questions, what each answer points to, the AI/backup result and what visitors chose." />
+      <PageHeader title="Quiz" description="The 9 Quiz: the questions, how Nine Labs solves each answer, and what visitors chose." />
+      <ModeCard />
       <Tabs layoutId="quiz-tabs" active={tab} onChange={setTab} tabs={TABS.map(([id, label]) => ({ id, label }))} />
       <div className="grid gap-4">
         {tab === "build" && <BuildTab />}
         {tab === "test" && <TestTab />}
         {tab === "knowledge" && <KnowledgeTab />}
-        {tab === "ai" && <AiTab />}
         {tab === "result" && <ResultTab />}
         {tab === "insights" && <InsightsTab />}
       </div>

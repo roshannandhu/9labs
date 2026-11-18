@@ -153,6 +153,7 @@ function makeQuizResults(): QuizResult[] {
       ai: {
         wants: `You're exploring ${shuffled[0].short.toLowerCase()}, and your main goal is "grow the business".`,
         highlights: [],
+        answers: [],
         matches: shuffled.map((s, j) => ({ slug: s.slug, fit: fit[j], how: s.description })),
         steps: site.quiz.result.steps,
         tags: { who: "business", goal: "grow" },

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { SiteData } from "@/content/site";
-import type { AiQuizResult, QuizAnswers, QuizOther, QuizSource } from "./types";
+import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther, QuizSource } from "./types";
 
 /**
  * The AI result contract (docs/AI_RAG_SYSTEM.md §5) and the checks every model reply must pass
@@ -12,10 +12,11 @@ const text = (max: number) => z.string().trim().min(1).max(max);
 const replySchema = z.object({
   wants: text(700),
   highlights: z.array(z.string().trim().max(120)).max(10).default([]),
+  answers: z.array(z.object({ q: z.string().trim().max(40), slug: z.string().trim().max(80).nullish(), how: z.string().trim().max(400) })).max(40).default([]),
   matches: z
     .array(z.object({ slug: z.string().trim().min(1).max(80), fit: z.enum(["best", "also", "consider"]), how: text(500) }))
     .min(1)
-    .max(5),
+    .max(9),
   steps: z.array(z.object({ title: text(90), text: text(320) })).min(3),
   tags: z.object({ goal: z.string().trim().max(60).optional(), who: z.string().trim().max(60).optional(), when: z.string().trim().max(60).optional() }).partial().default({}),
 });
@@ -28,6 +29,11 @@ export type ResultRules = {
   allowPrices: boolean;
   /** Answer labels + "Other" text — highlights must be quoted from these. */
   sourceTexts: string[];
+  /** The scoring rows (backup.ts `answerRows`): the AI may rewrite each `how`, never `said`; any
+   *  question it skips keeps its scoring row. */
+  rows: QuizAnswerRow[];
+  /** How many services to show (admin: result.matches, 1–5). */
+  maxMatches: number;
 };
 
 /** Money, or a promised date/deadline/guarantee. The model is told never to say these unless allowed. */
@@ -51,6 +57,19 @@ export function extractJson(reply: string): unknown {
   }
 }
 
+/** Some models split one step into `{"title"}` + `{"text"}` — join such halves back together. */
+function mendSteps(raw: unknown): unknown {
+  const r = raw as { steps?: unknown };
+  if (!r || !Array.isArray(r.steps)) return raw;
+  const out: Record<string, unknown>[] = [];
+  for (const s of r.steps as Record<string, unknown>[]) {
+    const prev = out.at(-1);
+    if (prev && prev.title && !prev.text && s && !s.title && s.text) prev.text = s.text;
+    else out.push({ ...s });
+  }
+  return { ...r, steps: out };
+}
+
 export function checkAiReply(reply: string, rules: ResultRules, source: QuizSource): ResultCheck {
   let raw: unknown;
   try {
@@ -58,7 +77,7 @@ export function checkAiReply(reply: string, rules: ResultRules, source: QuizSour
   } catch {
     return { ok: false, reason: "bad", detail: "not JSON" };
   }
-  const parsed = replySchema.safeParse(raw);
+  const parsed = replySchema.safeParse(mendSteps(raw));
   if (!parsed.success) return { ok: false, reason: "bad", detail: `shape: ${parsed.error.issues[0]?.path.join(".")} ${parsed.error.issues[0]?.message}` };
   const r = parsed.data;
 
@@ -74,7 +93,14 @@ export function checkAiReply(reply: string, rules: ResultRules, source: QuizSour
   const result: AiQuizResult = {
     wants: clip(clean(r.wants), 600),
     highlights: [],
-    matches: matches.slice(0, 3),
+    answers: rules.rows.map((row) => {
+      const a = r.answers.find((x) => x.q === row.q && x.how);
+      // a row that breaks the price/promise rule keeps its scoring text — the rest of the reply stands
+      if (!a || (!rules.allowPrices && (PRICE.test(a.how) || PROMISE.test(a.how)))) return row;
+      const slug = a.slug && known.has(a.slug) ? a.slug : row.slug;
+      return { ...row, slug, how: clip(clean(a.how), 220) };
+    }),
+    matches: matches.slice(0, Math.max(1, Math.min(5, rules.maxMatches || 3))),
     steps: r.steps.slice(0, 3).map((s) => ({ title: clip(clean(s.title), 80), text: clip(clean(s.text), 280) })),
     tags: Object.fromEntries(Object.entries(r.tags).filter(([, v]) => v).map(([k, v]) => [k, clean(v as string)])),
     source,
@@ -99,6 +125,8 @@ export function checkAiReply(reply: string, rules: ResultRules, source: QuizSour
 export const aiQuizResultSchema = z.object({
   wants: z.string(),
   highlights: z.array(z.string()),
+  // optional: results saved before per-answer rows existed
+  answers: z.array(z.object({ q: z.string(), said: z.string(), own: z.boolean().optional(), how: z.string(), slug: z.string().nullable() })).default([]),
   matches: z.array(z.object({ slug: z.string(), fit: z.enum(["best", "also", "consider"]), how: z.string() })).min(1),
   steps: z.array(z.object({ title: z.string(), text: z.string() })),
   tags: z.object({ goal: z.string().optional(), who: z.string().optional(), when: z.string().optional() }),

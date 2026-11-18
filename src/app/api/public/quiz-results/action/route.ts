@@ -12,7 +12,7 @@ const schema = z.object({
   ref: z
     .string()
     .min(1)
-    .max(24)
+    .max(64)
     .regex(/^[A-Za-z0-9-]+$/),
   action: z.literal("whatsapp"),
   name: z.string().trim().min(2).max(80),
