@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import { waLink } from "@/content/site";
+import { navInPageOrder } from "@/lib/site-href";
 import type { FaqItem, Page, SectionKey, SiteData } from "@/content/types";
 
 /** The site's real content, read once on the server (getPublicContent) and passed down as props — no client fetch, no hydration gap. */
@@ -9,7 +10,8 @@ const Ctx = createContext<SiteData | null>(null);
 const PagesCtx = createContext<Page[]>([]);
 const FaqsCtx = createContext<FaqItem[]>([]);
 
-export function SiteProvider({ site, pages, faqs, children }: { site: SiteData; pages: Page[]; faqs: FaqItem[]; children: React.ReactNode }) {
+export function SiteProvider({ site: raw, pages, faqs, children }: { site: SiteData; pages: Page[]; faqs: FaqItem[]; children: React.ReactNode }) {
+  const site = useMemo(() => ({ ...raw, nav: navInPageOrder(raw.nav, raw.sections) }), [raw]);
   return (
     <Ctx.Provider value={site}>
       <PagesCtx.Provider value={pages}>

@@ -21,3 +21,13 @@ export const navHref = (href: string, home: boolean) => {
 
 /** A public-site page linked from the admin, which lives on its own host (admin.…). */
 export const publicHref = (href: string) => `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}${siteHref(href)}`;
+
+/**
+ * The menu in the page's own order: links to homepage sections are re-ordered to match `sections`
+ * (Website → Sections in the admin), every other link keeps its slot. The two lists used to drift apart.
+ */
+export function navInPageOrder<T extends { id: string }>(nav: T[], sections: readonly string[]): T[] {
+  const inPage = (n: T) => sections.includes(n.id);
+  const ordered = nav.filter(inPage).sort((a, b) => sections.indexOf(a.id) - sections.indexOf(b.id));
+  return nav.map((n) => (inPage(n) ? ordered.shift()! : n));
+}
