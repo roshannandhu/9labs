@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSite } from "@/components/providers/SiteProvider";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
@@ -497,11 +497,31 @@ export function BridgeStory() {
   const stopsRef = useRef<number[]>([0, 0.5, 1]);
   const [flap, setFlap] = useState({ cur: 0, prev: 0, k: 0 });
   const step = reduced ? LAST : flap.cur;
+  // The timeline (~130 measured SVG parts + a pin) is the heaviest thing on the page: building it at
+  // hydration froze phones for seconds. Build it once the section is ~1.5 screens away instead — long
+  // before it is visible. Reloads, back/forward and #links build at once (the browser may restore past it).
+  const [armed, setArmed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const nav = performance.getEntriesByType?.("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return !!location.hash || window.scrollY > 0 || (!!nav && nav.type !== "navigate");
+  });
+  useEffect(() => {
+    const el = root.current;
+    if (!el || armed) return;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && (setArmed(true), io.disconnect()), { rootMargin: "150% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [armed]);
+  const lateBuild = useRef(false);
 
   useGSAP(
     () => {
       const el = root.current;
       if (!el || reduced) return;
+      if (!armed) {
+        lateBuild.current = true;
+        return;
+      }
       // Hydration renders the server's guess (wide) first; on phones a re-render with the real value
       // follows at once. Building the measured SVG tweens for that throwaway layout costs ~1s on low-end phones.
       if (wide !== window.matchMedia("(min-width: 768px)").matches) return;
@@ -574,12 +594,19 @@ export function BridgeStory() {
         onUpdate: (self) => setStep(self.progress),
       });
       stRef.current = st;
+      // built after the page settled: the pin adds scroll length, so later triggers must re-measure once
+      if (lateBuild.current) {
+        lateBuild.current = false;
+        // refresh runs in creation order: put this pin before the triggers below it, or they ignore its length
+        ScrollTrigger.sort();
+        ScrollTrigger.refresh();
+      }
       setStep(st.progress);
       return () => {
         stRef.current = null;
       };
     },
-    { scope: root, dependencies: [reduced, wide, short], revertOnUpdate: true },
+    { scope: root, dependencies: [reduced, wide, short, armed], revertOnUpdate: true },
   );
 
   const handleGoToStop = (i: number) => {
