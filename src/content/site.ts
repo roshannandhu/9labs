@@ -129,12 +129,12 @@ export const site: SiteData = {
     { label: "Home", href: "#home", id: "home" },
     { label: "Services", href: "#services", id: "services" },
     { label: "About", href: "#about", id: "about" },
-    { label: "The 9 Quiz", href: "#quiz", id: "quiz" },
     { label: "Free E-books", href: "#ebooks", id: "ebooks" },
+    { label: "The 9 Quiz", href: "#quiz", id: "quiz" },
     { label: "Contact", href: "#contact", id: "contact" },
   ],
   navCta: { label: "Start The 9 Quiz", action: "quiz" },
-  sections: ["services", "about", "quiz", "ebooks", "faq", "contact"],
+  sections: ["services", "about", "ebooks", "quiz", "faq", "contact"],
 
   hero: {
     eyebrow: "Marketing · Events · Technology",
