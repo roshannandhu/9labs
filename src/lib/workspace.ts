@@ -8,9 +8,13 @@ export function normalizeWorkspace(saved: unknown): Workspace {
   const d = defaultWorkspace();
   if (!saved || typeof saved !== "object") return d;
   const s = saved as Partial<Workspace>;
+  const site = deepMerge(d.site, s.site);
+  // The address belongs to the deployment, not the content: a save made on localhost must never leak into
+  // the live canonical / og:image / sitemap / JSON-LD.
+  site.url = process.env.NEXT_PUBLIC_SITE_URL || site.url;
   return {
     schema: WORKSPACE_SCHEMA,
-    site: deepMerge(d.site, s.site),
+    site,
     pages: Array.isArray(s.pages) && s.pages.length ? (s.pages as Workspace["pages"]) : d.pages,
     faqs: Array.isArray(s.faqs) ? (s.faqs as Workspace["faqs"]) : d.faqs,
     delivery: { ...d.delivery, ...(s.delivery ?? {}) },

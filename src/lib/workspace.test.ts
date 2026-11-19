@@ -40,3 +40,13 @@ test("normalizeWorkspace: pages/faqs fall back to today's defaults only when the
   assert.equal(withPages.pages, kept);
   assert.deepEqual(withPages.faqs, []); // faqs keeps an empty array as-is, unlike pages
 });
+
+test("the site address comes from the deployment, never from a save made on localhost", () => {
+  const prev = process.env.NEXT_PUBLIC_SITE_URL;
+  process.env.NEXT_PUBLIC_SITE_URL = "https://ninelabsolutions.ae";
+  try {
+    assert.equal(normalizeWorkspace({ site: { url: "http://localhost:3002" } }).site.url, "https://ninelabsolutions.ae");
+  } finally {
+    if (prev === undefined) delete process.env.NEXT_PUBLIC_SITE_URL; else process.env.NEXT_PUBLIC_SITE_URL = prev;
+  }
+});

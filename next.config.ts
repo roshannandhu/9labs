@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: process.env.NEXT_BASE_PATH ?? "",
   },
   reactStrictMode: true,
+  // SOURCEMAPS=1 next build → readable browser stacks for profiling (never on in the deployed build)
+  productionBrowserSourceMaps: process.env.SOURCEMAPS === "1",
   // The admin runs on its own host (src/lib/host-route.ts); locally that's admin.localhost.
   allowedDevOrigins: ["admin.localhost"],
   images: { unoptimized: true },
