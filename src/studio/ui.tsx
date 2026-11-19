@@ -31,7 +31,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`st-panel p-4 transition-shadow sm:p-5 ${interactive ? "hover:shadow-[var(--st-glow)]" : ""} ${className}`}>
+    <section className={`st-panel min-w-0 p-4 transition-shadow sm:p-5 ${interactive ? "hover:shadow-[var(--st-glow)]" : ""} ${className}`}>
       {(label || title || right) && (
         <div className="mb-3.5 flex items-start justify-between gap-3">
           <div>
@@ -42,7 +42,7 @@ export function Panel({
           {right}
         </div>
       )}
-      <div className="grid gap-3.5">{children}</div>
+      <div className="grid min-w-0 gap-3.5">{children}</div>
       {footer && <div className="mt-4 border-t border-st-border pt-3.5">{footer}</div>}
     </section>
   );

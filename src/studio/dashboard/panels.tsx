@@ -188,14 +188,22 @@ const FEED_TONE = { enquiry: "enquiry", book: "ebook", quiz: "quiz" } as const;
 export function LatestActivityPanel({ data }: { data: DashboardData }) {
   return (
     <Panel label="Latest activity">
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         {data.feed.length === 0 && <p className="text-[13px] text-st-sub">Nothing yet — it&apos;ll show up here the moment someone uses the site.</p>}
         {data.feed.map((f) => (
-          <Link key={`${f.kind}_${f.id}`} href={f.href} className="flex items-center gap-3 rounded-lg px-1.5 py-2 transition-colors hover:bg-st-panel-2">
-            <span className="st-num w-12 shrink-0 text-[11px] text-st-dim">{new Date(f.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
-            <Badge tone={FEED_TONE[f.kind]} icon={<Icon name={FEED_ICON[f.kind]} size={11} />}>
-              {KIND_LABEL[f.kind]}
-            </Badge>
+          <Link
+            key={`${f.kind}_${f.id}`}
+            href={f.href}
+            className="flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-2 transition-colors hover:bg-st-panel-2 sm:gap-3"
+          >
+            <span className="st-num hidden w-12 shrink-0 text-[11px] text-st-dim sm:inline-block">
+              {new Date(f.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <span className="shrink-0">
+              <Badge tone={FEED_TONE[f.kind]} icon={<Icon name={FEED_ICON[f.kind]} size={11} />}>
+                {KIND_LABEL[f.kind]}
+              </Badge>
+            </span>
             <span className="min-w-0 flex-1 truncate text-[12.5px] text-st-ink">{f.title}</span>
             <span className="shrink-0 text-[11px] text-st-dim">{relativeTime(f.createdAt)}</span>
           </Link>

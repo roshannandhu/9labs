@@ -30,7 +30,7 @@ const RANGE_OPTIONS: { value: "7" | "30" | "90"; label: string }[] = [
 
 function Fade({ i, className, children }: { i: number; className?: string; children: React.ReactNode }) {
   return (
-    <motion.div className={className} variants={fadeUp(i)} initial="hidden" animate="show">
+    <motion.div className={`min-w-0 ${className ?? ""}`} variants={fadeUp(i)} initial="hidden" animate="show">
       {children}
     </motion.div>
   );

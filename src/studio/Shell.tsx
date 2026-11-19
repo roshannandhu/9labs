@@ -433,9 +433,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <TopBar pathname={pathname} />
             <MobileTopBar onMenu={() => setMobileOpen(true)} />
 
-            <main className="min-h-0 flex-1 overflow-y-auto">
+            <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
               <PublishBar />
-              <div className="mx-auto max-w-[1360px] px-4 pb-28 pt-5 sm:px-6 sm:pt-6 lg:px-8">
+              <div className="mx-auto min-w-0 max-w-[1360px] px-4 pb-28 pt-5 sm:px-6 sm:pt-6 lg:px-8">
                 <AnimatePresence mode="wait">
                   <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}>
                     {children}
