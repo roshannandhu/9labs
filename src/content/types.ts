@@ -456,6 +456,10 @@ export type Workspace = {
   faqs: FaqItem[];
   delivery: DeliverySettings;
   email: EbookEmailSettings;
+  retention: RetentionSettings;
 };
+
+/** Leads older than `months` (whole calendar months) move from the database into private R2 archive files. */
+export type RetentionSettings = { enabled: boolean; months: number };
 
 export type Version = { id: string; at: string; summary: string[]; workspace: Workspace };

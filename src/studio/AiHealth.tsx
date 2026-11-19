@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AiHealth } from "@/server/ai/run";
 import { ApiError, api } from "./api";
+import { AiKeysManager, AiQuota } from "./AiKeys";
 import { BarList } from "./charts";
 import { relativeTime } from "./ui";
 
@@ -16,7 +17,7 @@ function KeyChip({ name, set }: { name: string; set: boolean }) {
 /** One line on top: is the AI actually answering visitors right now? */
 function verdict(h: AiHealth, enabled: boolean): { tone: string; text: string } {
   if (!enabled) return { tone: "text-st-warn", text: "Scoring only — every visitor gets the scoring result. Switch to “AI + scoring” in Quiz → AI." };
-  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key set — every visitor gets the scoring result. Add GROQ_API_KEY and/or GEMINI_API_KEY as Worker secrets." };
+  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key in use — every visitor gets the scoring result. Add a Groq or Gemini key under Quiz → Insights → AI keys." };
   const t = h.today;
   if (t.total === 0) return { tone: "text-st-sub", text: "AI ready — no quiz results yet today." };
   const aiShare = Math.round(((t.ok + t.failover) / t.total) * 100);
@@ -28,7 +29,7 @@ function verdict(h: AiHealth, enabled: boolean): { tone: string; text: string } 
  * Live AI health from GET /api/admin/ai/health (the ai_calls log, last 7 days): key status, outcome
  * mix, speed, quota left, failure reasons. Shared by the Dashboard and Quiz → AI.
  */
-export function AiHealthView({ enabled, geminiLimit }: { enabled: boolean; geminiLimit: number }) {
+export function AiHealthView({ enabled, geminiLimit, manageKeys = false }: { enabled: boolean; geminiLimit: number; manageKeys?: boolean }) {
   const [health, setHealth] = useState<AiHealth | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -54,7 +55,6 @@ export function AiHealthView({ enabled, geminiLimit }: { enabled: boolean; gemin
 
   const w = health.week;
   const v = verdict(health, enabled);
-  const geminiPct = geminiLimit > 0 ? Math.round((health.today.geminiCalls / geminiLimit) * 100) : null;
   const reasons = Object.entries(health.reasons).filter(([r]) => r !== "off");
 
   return (
@@ -93,15 +93,11 @@ export function AiHealthView({ enabled, geminiLimit }: { enabled: boolean; gemin
             {(health.latency.median / 1000).toFixed(1)} s / {(health.latency.p95 / 1000).toFixed(1)} s
           </dd>
         </div>
-        <div>
-          <dt className="text-st-dim">Groq left (exact)</dt>
-          <dd className="text-st-ink">{health.groqRate ? `${health.groqRate.remainingRequests ?? "?"} requests · ${health.groqRate.remainingTokens ?? "?"} tokens` : "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-st-dim">Gemini used today (estimate)</dt>
-          <dd className={geminiPct != null && geminiPct >= 80 ? "text-st-warn" : "text-st-ink"}>{geminiPct == null ? "—" : `${health.today.geminiCalls} calls · ${geminiPct}%`}</dd>
-        </div>
       </dl>
+      <div className="border-t border-st-border pt-3">
+        <p className="st-micro mb-2">{manageKeys ? "AI keys & quota" : "AI quota"}</p>
+        {manageKeys ? <AiKeysManager geminiUsed={health.today.geminiCalls} geminiLimit={geminiLimit} /> : <AiQuota geminiUsed={health.today.geminiCalls} geminiLimit={geminiLimit} />}
+      </div>
       {reasons.length > 0 && (
         <p className="flex flex-wrap gap-1.5">
           {reasons.map(([r, n]) => (

@@ -229,6 +229,11 @@ function ResultView({ result, services }: { result: AiQuizResult; services: Serv
   return (
     <>
       <p className="text-[13.5px] text-st-ink">{result.wants}</p>
+      {result.visual && (
+        <p className="text-[12.5px] text-st-sub">
+          <strong className="text-st-ink">AI diagram:</strong> {{ flow: "today → with us", funnel: "where customers slip away", roadmap: "the order we'd work in" }[result.visual.kind]} — “{result.visual.title}”
+        </p>
+      )}
       {result.highlights.length > 0 && (
         <p className="flex flex-wrap gap-1">
           {result.highlights.map((h) => (
@@ -1017,8 +1022,8 @@ function InsightsTab() {
         <StatTile label="Finished, 7 days" value={week.length} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
         <StatTile label="Followed through" value={actions.whatsapp + actions.email} delta={null} compareLabel="" spark={[]} color="var(--st-series-quiz)" />
       </div>
-      <Box title="AI health" help="Last 7 days of quiz results. Never stores what visitors typed.">
-        <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
+      <Box title="AI health, keys & quota" help="Last 7 days of quiz results (never what visitors typed), your AI keys, and how much quota is left.">
+        <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} manageKeys />
       </Box>
       <Box title="Most recommended">{ranked.length === 0 ? <p className="text-[13px] text-st-sub">No quizzes finished yet.</p> : <BarList items={items} color="var(--st-series-quiz)" />}</Box>
       <Box title="Recent results">

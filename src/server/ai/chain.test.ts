@@ -108,3 +108,10 @@ test("buildPrompt: asks for one `answers` row per answered question, by id", () 
   for (const id of ["goal", "make", "when"]) assert.ok(user.includes(`Q [id "${id}"]`), id);
   assert.doesNotMatch(user, /Q \[id "who"\]/);
 });
+
+test("buildPrompt: asks for one diagram and says when to use each kind", () => {
+  const { system } = buildPrompt(site, { goal: ["sales"] }, {}, [], false);
+  for (const kind of ["flow", "funnel", "roadmap"]) assert.ok(system.includes(`"${kind}" when`), kind);
+  assert.match(system, /add a "visual" key/);
+  assert.match(system, /no numbers, durations or prices in the diagram/);
+});

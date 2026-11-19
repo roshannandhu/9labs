@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { isArchiveSlot } from "@/lib/archive";
+import { runArchive } from "@/server/archive";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { retryPendingDeliveries } from "@/server/ebooks";
@@ -13,6 +15,10 @@ export const POST = route(async (req: Request) => {
     await retryPendingDeliveries(8);
     await db().from("rate_hits").delete().lt("window_start", new Date(Date.now() - 2 * 86_400_000).toISOString());
     await db().from("ai_calls").delete().lt("at", new Date(Date.now() - 30 * 86_400_000).toISOString());
+    if (isArchiveSlot(new Date())) {
+      const run = await runArchive().catch((err: unknown) => ({ skipped: err instanceof Error ? err.message : String(err) }));
+      console.log("[archive]", JSON.stringify(run));
+    }
   });
 
   return json({ started: true });

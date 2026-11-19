@@ -8,7 +8,7 @@ import { fetchQuizAi, submitQuizContact, submitQuizEmail, submitQuizResult } fro
 import { opaqueRef } from "@/lib/text";
 import { answerRows, runBackup } from "@/lib/quiz/backup";
 import { cleanPhone } from "@/lib/quiz/result";
-import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther } from "@/lib/quiz/types";
+import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther, QuizVisual, QuizVisualItem } from "@/lib/quiz/types";
 import type { QuizQuestion, Service } from "@/content/site";
 import { buildQuizLines, buildQuizWhatsappText } from "@/lib/quiz/whatsapp";
 import { scrollToId } from "@/lib/scroll";
@@ -435,6 +435,7 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                         {result.source === "backup" ? "Matched from your answers" : "Written for you by our AI"}
                       </p>
                       <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
+                      {result.visual && <AiVisual visual={result.visual} services={site.services} brand={site.shortName} reduced={reduced} />}
                       <SolutionMap rows={rows} questions={questions} services={site.services} brand={site.shortName} reduced={reduced} />
 
                       <p className="label-mono mt-8 !text-white/55">Where we&apos;d start</p>
@@ -726,5 +727,152 @@ function PlanLine({ steps, reduced }: { steps: AiQuizResult["steps"]; reduced: b
         ))}
       </ol>
     </div>
+  );
+}
+
+/**
+ * The AI's own picture of the solution (AI results only): the model picks the story — today vs.
+ * with us, where customers leak away, or the order we'd work in — and sends words + service slugs;
+ * this draws them in the site's look. Scoring results have none; the per-answer map always follows.
+ */
+function AiVisual({ visual, services, brand, reduced }: { visual: QuizVisual; services: Service[]; brand: string; reduced: boolean }) {
+  const kind = { flow: "Today → with us", funnel: "Where customers slip away", roadmap: "The order we'd work in" }[visual.kind];
+  return (
+    <section className="mt-6 rounded-3xl border border-[color:var(--brand-a)]/25 bg-[color:var(--brand-a)]/[0.06] p-4 sm:p-5" aria-label={`${visual.title} — drawn for you by our AI`}>
+      <p className="label-mono !text-[10px] !text-[color:var(--brand-a)]">
+        Drawn for you by our AI <span aria-hidden="true">·</span> {kind}
+      </p>
+      <h3 className="mt-1.5 break-words font-display text-[19px] font-semibold leading-snug text-white sm:text-[21px]">{visual.title}</h3>
+      {visual.kind === "flow" && <VisualFlow before={visual.before} after={visual.after} services={services} brand={brand} reduced={reduced} />}
+      {visual.kind === "funnel" && <VisualFunnel stages={visual.stages} services={services} reduced={reduced} />}
+      {visual.kind === "roadmap" && <VisualRoadmap steps={visual.steps} services={services} reduced={reduced} />}
+    </section>
+  );
+}
+
+const rise = (reduced: boolean, i: number, base = 0.1) => ({
+  initial: { opacity: 0, y: reduced ? 0 : 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { delay: reduced ? 0 : base + i * 0.08, duration: 0.4, ease },
+});
+
+/** Service icon + short name for an item, when the AI named a real service. */
+function ServiceTag({ slug, services }: { slug?: string | null; services: Service[] }) {
+  const s = slug ? services.find((x) => x.slug === slug) : undefined;
+  if (!s) return null;
+  return (
+    <span className="mt-1.5 flex items-center gap-1.5 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/5 text-white">
+        <ActivityIcon icon={s.icon} size={14} play />
+      </span>
+      <span className="min-w-0 break-words">{s.short}</span>
+    </span>
+  );
+}
+
+/** Two columns (stacked on phones): how the job runs today, with its pain, and the same job with us. */
+function VisualFlow({ before, after, services, brand, reduced }: { before: QuizVisualItem[]; after: QuizVisualItem[]; services: Service[]; brand: string; reduced: boolean }) {
+  const column = (items: QuizVisualItem[], today: boolean, base: number) => (
+    <ol className="mt-2 grid gap-0">
+      {items.map((it, i) => (
+        <motion.li key={`${i}-${it.label}`} {...rise(reduced, i, base)} className="relative pb-3 last:pb-0">
+          {i < items.length - 1 && (
+            <span
+              className={`absolute bottom-0 left-[15px] top-8 w-px ${today ? "border-l border-dashed border-white/25" : "bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)]"}`}
+              aria-hidden="true"
+            />
+          )}
+          <div className="flex items-start gap-2.5">
+            <span
+              className={`relative mt-1 grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-[13px] font-black ${today ? "border border-dashed border-white/30 text-white/45" : "bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] text-white shadow-[0_0_14px_var(--brand-a)]"}`}
+              aria-hidden="true"
+            >
+              {today ? "✕" : "✓"}
+            </span>
+            <span className={`min-w-0 flex-1 rounded-2xl px-3 py-2 ${today ? "border border-dashed border-white/20" : "border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10"}`}>
+              <span className={`block break-words text-[14px] font-medium leading-snug ${today ? "text-white/80" : "text-white"}`}>{it.label}</span>
+              {it.note && <span className={`mt-0.5 block break-words text-[12.5px] leading-snug ${today ? "text-white/50" : "text-white/75"}`}>{it.note}</span>}
+              {!today && <ServiceTag slug={it.slug} services={services} />}
+            </span>
+          </div>
+        </motion.li>
+      ))}
+    </ol>
+  );
+  return (
+    <div className="mt-4 grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_32px_minmax(0,1fr)] sm:gap-2">
+      <div>
+        <p className="label-mono !text-[10px] !text-white/50">Today</p>
+        {column(before, true, 0.1)}
+      </div>
+      <div className="flex items-center gap-2 sm:self-stretch sm:justify-center" aria-hidden="true">
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[color:var(--brand-a)] sm:hidden" />
+        <span className="grid h-8 w-8 place-items-center rounded-full border border-[color:var(--brand-a)]/40 bg-[var(--chip-bg)] text-[15px] text-[color:var(--brand-a)] sm:mt-5">
+          <span className="sm:hidden">↓</span>
+          <span className="hidden sm:inline">→</span>
+        </span>
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[color:var(--brand-b)] sm:hidden" />
+      </div>
+      <div>
+        <p className="label-mono !text-[10px] !text-[color:var(--brand-a)]">With {brand}</p>
+        {column(after, false, 0.1 + before.length * 0.08)}
+      </div>
+    </div>
+  );
+}
+
+/** A narrowing funnel, first glance at the top; the stages where people leak away are marked, with who fixes them. */
+function VisualFunnel({ stages, services, reduced }: { stages: (QuizVisualItem & { leak?: boolean | null })[]; services: Service[]; reduced: boolean }) {
+  const n = stages.length;
+  return (
+    <ol className="mt-4 grid gap-2">
+      {stages.map((s, i) => {
+        const width = n > 1 ? 100 - (i * 34) / (n - 1) : 100;
+        return (
+          <motion.li key={`${i}-${s.label}`} {...rise(reduced, i)} className="mx-auto w-full" style={{ maxWidth: `${width}%` }}>
+            <div
+              className={`rounded-2xl px-3.5 py-2.5 text-center ${s.leak ? "border border-dashed border-white/35 bg-white/[0.03]" : "border border-white/10"}`}
+              style={s.leak ? undefined : { background: `linear-gradient(90deg, color-mix(in srgb, var(--brand-a) ${30 - i * 4}%, transparent), color-mix(in srgb, var(--brand-b) ${22 - i * 3}%, transparent))` }}
+            >
+              <span className="block break-words text-[14px] font-medium leading-snug text-white">{s.label}</span>
+              {s.note && <span className="mt-0.5 block break-words text-[12.5px] leading-snug text-white/65">{s.note}</span>}
+              {s.leak && (
+                <span className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  <span className="rounded-full border border-white/25 px-2 py-0.5 font-digits text-[9.5px] font-black uppercase tracking-wide text-white/70">Customers slip away here</span>
+                  <ServiceTag slug={s.slug} services={services} />
+                </span>
+              )}
+            </div>
+            {i < n - 1 && <span className="mx-auto block h-2 w-px bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)]" aria-hidden="true" />}
+          </motion.li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** Numbered stops in the order we'd do them: a vertical line on phones, columns on wider screens. */
+function VisualRoadmap({ steps, services, reduced }: { steps: QuizVisualItem[]; services: Service[]; reduced: boolean }) {
+  return (
+    <ol className="mt-4 grid gap-3 sm:[grid-template-columns:var(--cols)] sm:gap-4" style={{ ["--cols" as string]: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+      {steps.map((s, i) => (
+        <motion.li key={`${i}-${s.label}`} {...rise(reduced, i)} className="relative flex gap-3 sm:block">
+          {i < steps.length - 1 && (
+            <span
+              className="absolute bottom-[-12px] left-4 top-8 w-px bg-gradient-to-b from-[color:var(--brand-a)] to-[color:var(--brand-b)] sm:bottom-auto sm:left-10 sm:right-[-16px] sm:top-4 sm:h-px sm:w-auto sm:bg-gradient-to-r"
+              aria-hidden="true"
+            />
+          )}
+          <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-a)] to-[color:var(--brand-b)] font-digits text-[12px] font-black text-white shadow-[0_0_20px_var(--brand-a)]">
+            {i + 1}
+          </span>
+          <span className="block min-w-0 flex-1 rounded-2xl border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 p-3 sm:mt-3">
+            <span className="block break-words text-[14px] font-medium leading-snug text-white">{s.label}</span>
+            {s.note && <span className="mt-0.5 block break-words text-[12.5px] leading-snug text-white/75">{s.note}</span>}
+            <ServiceTag slug={s.slug} services={services} />
+          </span>
+        </motion.li>
+      ))}
+    </ol>
   );
 }

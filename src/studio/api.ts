@@ -25,7 +25,9 @@ export async function api<T>(path: string, opts: { method?: string; json?: unkno
     body = JSON.stringify(opts.json);
   }
 
-  const url = `${basePath}${path}${path.endsWith("/") ? "" : "/"}`;
+  // routes end in "/" (trailingSlash) — before any "?query", not after it
+  const [p, q] = path.split("?");
+  const url = `${basePath}${p}${p.endsWith("/") ? "" : "/"}${q !== undefined ? `?${q}` : ""}`;
   const res = await fetch(url, { method: opts.method ?? (opts.json !== undefined ? "POST" : "GET"), headers, body });
   const text = await res.text();
   const parsed = text ? JSON.parse(text) : undefined;

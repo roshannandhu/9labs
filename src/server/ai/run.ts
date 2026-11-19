@@ -2,7 +2,7 @@ import "server-only";
 import type { SiteData } from "@/content/site";
 import type { QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { db } from "../db";
-import { aiConfigured } from "../env";
+import { aiReady } from "./keys";
 import { HttpError } from "../http";
 import { newId } from "../leads";
 import { runChain, type ChainOutcome } from "./chain";
@@ -11,7 +11,7 @@ import { callGemini, callGroq } from "./providers";
 
 /** The chain with its real dependencies, plus one telemetry row per run — never any client text. */
 export async function runQuizAi(site: SiteData, answers: QuizAnswers, other: QuizOther, ref: string): Promise<ChainOutcome> {
-  const outcome = await runChain(site, answers, other, { retrieve: retrieveKb, groq: callGroq, gemini: callGemini, configured: aiConfigured() });
+  const outcome = await runChain(site, answers, other, { retrieve: retrieveKb, groq: callGroq, gemini: callGemini, configured: await aiReady() });
   await logAiCall(outcome, ref).catch((err) => console.warn("ai_calls insert failed:", err instanceof Error ? err.message : err));
   return outcome;
 }
@@ -70,7 +70,7 @@ export async function aiHealth(): Promise<AiHealth> {
   const pick = (q: number) => (lat.length ? lat[Math.min(lat.length - 1, Math.floor(q * lat.length))] : 0);
   const rate = rows.find((r) => r.rl_remaining_requests != null);
   return {
-    keys: aiConfigured(),
+    keys: await aiReady(),
     today: { ...count(today), groqCalls: today.filter((r) => r.tried?.includes("groq")).length, geminiCalls: today.filter((r) => r.tried?.includes("gemini")).length, tokensIn: today.reduce((n, r) => n + r.tokens_in, 0), tokensOut: today.reduce((n, r) => n + r.tokens_out, 0) },
     week: count(rows),
     reasons,

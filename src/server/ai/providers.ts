@@ -1,5 +1,6 @@
 import "server-only";
-import { env, geminiKeys, groqKeys } from "../env";
+import { env } from "../env";
+import { aiKeys } from "./keys";
 import { AiError, type AiFailReason, type ProviderReply } from "./types";
 
 export { AiError };
@@ -55,7 +56,7 @@ export function parseGroqReset(v: string | null, now = Date.now()): string | nul
 const num = (v: string | null) => (v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v));
 
 export async function callGroq(system: string, user: string, timeoutMs = 8000): Promise<ProviderReply> {
-  return withKeys(groqKeys(), "groq", async (key) => {
+  return withKeys((await aiKeys()).groq, "groq", async (key) => {
     const res = await timedFetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -66,7 +67,7 @@ export async function callGroq(system: string, user: string, timeoutMs = 8000): 
           // gpt-oss models think before answering; a short think keeps us well inside the timeout
           ...(env().GROQ_MODEL.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
           temperature: 0.3,
-          max_tokens: 2000,
+          max_tokens: 2600,
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: system },
@@ -92,7 +93,7 @@ export async function callGroq(system: string, user: string, timeoutMs = 8000): 
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export async function callGemini(system: string, user: string, timeoutMs = 10000): Promise<ProviderReply> {
-  return withKeys(geminiKeys(), "gemini", async (key) => {
+  return withKeys((await aiKeys()).gemini, "gemini", async (key) => {
     const res = await timedFetch(
       `${GEMINI}/${encodeURIComponent(env().GEMINI_MODEL)}:generateContent`,
       {
@@ -101,7 +102,7 @@ export async function callGemini(system: string, user: string, timeoutMs = 10000
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 2200, responseMimeType: "application/json" },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2800, responseMimeType: "application/json" },
         }),
       },
       timeoutMs,
@@ -118,7 +119,7 @@ export async function callGemini(system: string, user: string, timeoutMs = 10000
 /** Gemini embeddings, `EMBED_DIMS` wide; batched (the API takes up to 100 per call). */
 export async function embedTexts(texts: string[], taskType: "RETRIEVAL_QUERY" | "RETRIEVAL_DOCUMENT", timeoutMs = 8000): Promise<number[][]> {
   const model = env().GEMINI_EMBED_MODEL;
-  return withKeys(geminiKeys(), "gemini-embed", async (key) => {
+  return withKeys((await aiKeys()).gemini, "gemini-embed", async (key) => {
     const out: number[][] = [];
     for (let i = 0; i < texts.length; i += 100) {
       const res = await timedFetch(

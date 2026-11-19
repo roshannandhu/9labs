@@ -1,7 +1,7 @@
 import "server-only";
 import type { SiteData } from "@/content/site";
 import { db } from "../db";
-import { aiConfigured } from "../env";
+import { aiReady } from "./keys";
 import { embedTexts } from "./providers";
 import type { KbEntry, KbHit, KbInput, KbKind } from "./types";
 
@@ -64,7 +64,7 @@ export async function listKbEntries(): Promise<KbEntry[]> {
 
 /** Embeds when a Gemini key exists; a failed embed still saves the entry (it then shows "not indexed"). */
 async function embedOrNull(texts: string[]): Promise<(number[] | null)[]> {
-  if (!aiConfigured().gemini || !texts.length) return texts.map(() => null);
+  if (!texts.length || !(await aiReady()).gemini) return texts.map(() => null);
   try {
     return await embedTexts(texts, "RETRIEVAL_DOCUMENT");
   } catch (err) {
@@ -126,7 +126,7 @@ export async function reindexKb(): Promise<{ total: number; indexed: number }> {
  * to fit in one prompt, so the AI is never left without context.
  */
 export async function retrieveKb(query: string, k = 6): Promise<{ hits: KbHit[]; mode: "vector" | "all" }> {
-  if (aiConfigured().gemini) {
+  if ((await aiReady()).gemini) {
     try {
       const [vec] = await embedTexts([query], "RETRIEVAL_QUERY");
       const { data, error } = await db().rpc("match_kb", { query_embedding: vec, match_count: k });

@@ -39,3 +39,33 @@ export async function getObject(key: string): Promise<Response> {
   if (!r2Configured()) return devStorage.getObject(key);
   return s3().fetch(`${bucketUrl()}/${key}`);
 }
+
+export async function putObject(key: string, body: string, contentType: string): Promise<void> {
+  if (!r2Configured()) return devStorage.writeFile(key, new TextEncoder().encode(body).buffer as ArrayBuffer);
+  const res = await s3().fetch(`${bucketUrl()}/${key}`, { method: "PUT", body, headers: { "Content-Type": contentType } });
+  if (!res.ok) throw new Error(`R2 upload failed (${res.status}).`);
+}
+
+const unxml = (s: string) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+
+/** Every object under `prefix` (ListObjectsV2, following continuation tokens). */
+export async function listObjects(prefix: string): Promise<{ key: string; size: number; at: string }[]> {
+  if (!r2Configured()) return devStorage.list(prefix);
+  const out: { key: string; size: number; at: string }[] = [];
+  let token = "";
+  do {
+    const url = new URL(bucketUrl());
+    url.searchParams.set("list-type", "2");
+    url.searchParams.set("prefix", prefix);
+    if (token) url.searchParams.set("continuation-token", token);
+    const res = await s3().fetch(url.toString());
+    if (!res.ok) throw new Error(`R2 list failed (${res.status}).`);
+    const xml = await res.text();
+    for (const m of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)) {
+      const tag = (t: string) => m[1].match(new RegExp(`<${t}>([\\s\\S]*?)</${t}>`))?.[1] ?? "";
+      out.push({ key: unxml(tag("Key")), size: Number(tag("Size")), at: tag("LastModified") });
+    }
+    token = /<IsTruncated>true<\/IsTruncated>/.test(xml) ? unxml(xml.match(/<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/)?.[1] ?? "") : "";
+  } while (token);
+  return out;
+}

@@ -15,6 +15,7 @@ export function normalizeWorkspace(saved: unknown): Workspace {
     faqs: Array.isArray(s.faqs) ? (s.faqs as Workspace["faqs"]) : d.faqs,
     delivery: { ...d.delivery, ...(s.delivery ?? {}) },
     email: { ...d.email, ...(s.email ?? {}) },
+    retention: { ...d.retention, ...(s.retention ?? {}) },
   };
 }
 

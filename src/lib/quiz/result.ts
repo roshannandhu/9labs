@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { SiteData } from "@/content/site";
-import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther, QuizSource } from "./types";
+import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther, QuizSource, QuizVisual, QuizVisualItem } from "./types";
 
 /**
  * The AI result contract (docs/AI_RAG_SYSTEM.md §5) and the checks every model reply must pass
@@ -8,6 +8,14 @@ import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther, QuizSource } 
  * is never "fixed up" into something the model didn't say, except harmless trimming.
  */
 const text = (max: number) => z.string().trim().min(1).max(max);
+
+/** The AI's diagram (types.ts `QuizVisual`). Checked on its own: a bad diagram is dropped, the rest of the reply stands. */
+const visualItem = z.object({ label: text(240), note: z.string().trim().max(400).nullish(), slug: z.string().trim().max(80).nullish() });
+const visualSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("flow"), title: text(140), before: z.array(visualItem).min(2).max(5), after: z.array(visualItem).min(2).max(5) }),
+  z.object({ kind: z.literal("funnel"), title: text(140), stages: z.array(visualItem.extend({ leak: z.boolean().nullish() })).min(3).max(6) }),
+  z.object({ kind: z.literal("roadmap"), title: text(140), steps: z.array(visualItem).min(2).max(5) }),
+]);
 
 const replySchema = z.object({
   wants: text(700),
@@ -19,6 +27,7 @@ const replySchema = z.object({
     .max(9),
   steps: z.array(z.object({ title: text(90), text: text(320) })).min(3),
   tags: z.object({ goal: z.string().trim().max(60).optional(), who: z.string().trim().max(60).optional(), when: z.string().trim().max(60).optional() }).partial().default({}),
+  visual: z.unknown().optional(),
 });
 
 export type ResultCheck = { ok: true; result: AiQuizResult } | { ok: false; reason: "bad" | "blocked"; detail: string };
@@ -70,6 +79,33 @@ function mendSteps(raw: unknown): unknown {
   return { ...r, steps: out };
 }
 
+/**
+ * The model's diagram, tidied: short labels, real service slugs only (others → no icon), a funnel
+ * must show at least one leak, and nothing may mention a price or promise. Anything off → null, and
+ * the overlay simply shows the per-answer map without it.
+ */
+function checkVisual(raw: unknown, known: Set<string>, allowPrices: boolean): QuizVisual | null {
+  const p = visualSchema.safeParse(raw);
+  if (!p.success) return null;
+  const v = p.data;
+  const item = (x: z.infer<typeof visualItem>): QuizVisualItem => ({
+    label: clip(clean(x.label), 40),
+    ...(x.note && clean(x.note) ? { note: clip(clean(x.note), 90) } : {}),
+    slug: x.slug && known.has(x.slug) ? x.slug : null,
+  });
+  const title = clip(clean(v.title), 80);
+  let out: QuizVisual;
+  if (v.kind === "flow") out = { kind: "flow", title, before: v.before.slice(0, 4).map(item), after: v.after.slice(0, 4).map(item) };
+  else if (v.kind === "funnel") {
+    out = { kind: "funnel", title, stages: v.stages.slice(0, 5).map((x) => ({ ...item(x), leak: !!x.leak })) };
+    if (!out.stages.some((x) => x.leak)) return null;
+  } else out = { kind: "roadmap", title, steps: v.steps.slice(0, 4).map(item) };
+  const items = out.kind === "flow" ? [...out.before, ...out.after] : out.kind === "funnel" ? out.stages : out.steps;
+  const words = [out.title, ...items.flatMap((x) => [x.label, x.note ?? ""])].join(" ");
+  if (!allowPrices && (PRICE.test(words) || PROMISE.test(words))) return null;
+  return out;
+}
+
 export function checkAiReply(reply: string, rules: ResultRules, source: QuizSource): ResultCheck {
   let raw: unknown;
   try {
@@ -104,6 +140,7 @@ export function checkAiReply(reply: string, rules: ResultRules, source: QuizSour
     steps: r.steps.slice(0, 3).map((s) => ({ title: clip(clean(s.title), 80), text: clip(clean(s.text), 280) })),
     tags: Object.fromEntries(Object.entries(r.tags).filter(([, v]) => v).map(([k, v]) => [k, clean(v as string)])),
     source,
+    visual: checkVisual(r.visual, known, rules.allowPrices),
   };
 
   if (!rules.allowPrices) {
@@ -131,6 +168,8 @@ export const aiQuizResultSchema = z.object({
   steps: z.array(z.object({ title: z.string(), text: z.string() })),
   tags: z.object({ goal: z.string().optional(), who: z.string().optional(), when: z.string().optional() }),
   source: z.enum(["groq", "gemini", "backup"]),
+  // optional, and a damaged one never sinks the whole result
+  visual: visualSchema.nullable().optional().catch(null),
 });
 
 /**

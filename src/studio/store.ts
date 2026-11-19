@@ -3,6 +3,7 @@
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
 import { defaultWorkspace } from "@/content/defaults";
 import type { AdminRole, AdminUser, BookRequest, Enquiry, OutboxKind, OutboxMail, QuizResult, Workspace } from "@/content/types";
+import type { ArchiveFile, ArchiveListItem, ArchiveRun } from "@/lib/archive";
 import { ApiError, api } from "./api";
 import { supabase } from "./supabase";
 import { diffDeep } from "@/lib/diff";
@@ -319,6 +320,23 @@ export async function downloadBackup(): Promise<void> {
   const a = document.createElement("a");
   a.href = url;
   a.download = res.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "nine-labs-backup.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export const listArchives = () => api<{ archives: ArchiveListItem[] }>("/api/admin/archives").then((r) => r.archives);
+export const readArchive = (name: string) => api<ArchiveFile>(`/api/admin/archives/${encodeURIComponent(name)}`);
+export async function runArchiveNow(): Promise<ArchiveRun> {
+  const run = await api<ArchiveRun>("/api/admin/archives", { method: "POST", json: {} });
+  if ("archived" in run) await refreshLeads();
+  return run;
+}
+export async function downloadArchive(name: string): Promise<void> {
+  const file = await readArchive(name);
+  const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(url);
 }

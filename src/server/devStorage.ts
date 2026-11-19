@@ -23,6 +23,14 @@ export async function writeFile(key: string, body: ReadableStream | ArrayBuffer 
   await fsWrite(file, Buffer.from(buf));
 }
 
+export async function list(prefix: string): Promise<{ key: string; size: number; at: string }[]> {
+  const { readdir, stat } = await import("node:fs/promises");
+  const path = await import("node:path");
+  const dir = path.join(process.cwd(), "uploads", safeKey(prefix));
+  const names = await readdir(dir).catch(() => [] as string[]);
+  return Promise.all(names.map(async (n) => ({ key: `${prefix}${n}`, ...(await stat(path.join(dir, n)).then((s) => ({ size: s.size, at: s.mtime.toISOString() }))) })));
+}
+
 export async function getObject(key: string): Promise<Response> {
   const { readFile } = await import("node:fs/promises");
   const path = await import("node:path");

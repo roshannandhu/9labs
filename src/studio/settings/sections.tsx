@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ArchiveFile, ArchiveListItem, ArchiveRow } from "@/lib/archive";
 import { waLink } from "@/content/site";
 import type { AdminRole } from "@/content/types";
 import { SocialIcon } from "@/components/icons/SocialIcon";
-import { addAdmin, checkpoint, clearSampleLeads, downloadBackup, loadSampleData, removeAdmin, resetAll, restoreBackup, setDraft, updateAdmin } from "@/studio/store";
-import { ColorField, Dropzone, Slider, TextField } from "../Field";
+import { addAdmin, checkpoint, clearSampleLeads, downloadArchive, downloadBackup, listArchives, loadSampleData, readArchive, removeAdmin, resetAll, restoreBackup, runArchiveNow, setDraft, updateAdmin } from "@/studio/store";
+import { CheckField, ColorField, Dropzone, NumField, Slider, TextField } from "../Field";
 import { Icon } from "../Icon";
 import { useAdmins, useDraft, useSession } from "../state";
-import { Avatar, Button, Panel, RoleNote, Segmented, Switch, useConfirm, useToast } from "../ui";
+import { Avatar, Button, Drawer, Panel, RoleNote, Segmented, Switch, useConfirm, useToast } from "../ui";
 
 /** A setting card: a title, a one-line description, the fields, and a footer naming where it shows up. */
 function SettingCard({ title, help, appearsOn, children }: { title: string; help?: string; appearsOn?: string; children: React.ReactNode }) {
@@ -402,6 +403,13 @@ export function BackupSection() {
         </Button>
       </SettingCard>
 
+      <SettingCard title="Auto-clean old leads" help="Keeps the database small: every night, leads older than this move into a private archive file in Cloudflare R2, a whole month per file. Takes effect after Publish.">
+        <CheckField path={["retention", "enabled"]} label="Auto-clean is on" />
+        <NumField path={["retention", "months"]} label="Keep in the database (months)" help="Enquiries, e-book requests, quiz results and the e-mail log older than this are archived, then removed from the database." min={1} max={60} />
+      </SettingCard>
+
+      <ArchivesCard />
+
       <SettingCard title="Restore from a backup" help="Replaces content and leads; the team stays.">
         <Dropzone
           accept="application/json"
@@ -478,6 +486,146 @@ export function BackupSection() {
         </Button>
       </SettingCard>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ Archives (R2) */
+
+type ArchivePart = "enquiries" | "bookRequests" | "quizResults" | "outbox";
+const PART_LABEL: Record<ArchivePart, string> = { enquiries: "Enquiries", bookRequests: "E-book requests", quizResults: "Quiz results", outbox: "E-mails" };
+const s = (v: unknown) => (typeof v === "string" ? v : "");
+/** The two lines each archived row shows in the viewer: who, then what. */
+const PART_LINES: Record<ArchivePart, (r: ArchiveRow) => [string, string]> = {
+  enquiries: (r) => [s(r.name) || "—", [s(r.service_title) || s(r.service), s(r.channel)].filter(Boolean).join(" · ")],
+  bookRequests: (r) => [[s(r.name), s(r.email)].filter(Boolean).join(" · ") || "—", [s(r.book_slug), s(r.status)].filter(Boolean).join(" · ")],
+  quizResults: (r) => [s(r.email) || s(r.ref) || "—", s(r.top) || "No recommendation"],
+  outbox: (r) => [s(r.to_email) || "—", [s(r.subject), s(r.status)].filter(Boolean).join(" · ")],
+};
+const rangeLabel = (name: string) => name.match(/^archive_(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})/)?.slice(1).join(" → ") ?? name;
+const kb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+
+function ArchivesCard() {
+  const toast = useToast();
+  const [items, setItems] = useState<ArchiveListItem[] | null>(null);
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setItems(await listArchives());
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not list the archives.");
+    }
+  }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one fetch on mount
+  useEffect(() => void load(), [load]);
+
+  return (
+    <SettingCard title="Archives in storage" help="Private files in Cloudflare R2 with the leads moved out of the database. View them here or download the file. Only owners can see them.">
+      <div className="grid gap-3">
+        {error && <p className="rounded-lg bg-st-danger-bg px-3 py-2 text-[12.5px] text-st-danger">{error}</p>}
+        {items === null && !error && <p className="st-help">Loading…</p>}
+        {items?.length === 0 && <p className="st-help">No archives yet. The first one appears once leads are older than the months set above.</p>}
+        {items && items.length > 0 && (
+          <ul className="grid divide-y divide-st-border rounded-xl border border-st-border">
+            {items.map((a) => (
+              <li key={a.name} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-medium text-st-ink">{rangeLabel(a.name)}</span>
+                  <span className="block text-[11.5px] text-st-dim">
+                    {kb(a.size)} · saved {new Date(a.at).toLocaleDateString()}
+                  </span>
+                </span>
+                <span className="flex gap-2">
+                  <Button onClick={() => setOpen(a.name)}>View</Button>
+                  <Button
+                    onClick={() =>
+                      void downloadArchive(a.name).catch((err: unknown) => toast("bad", err instanceof Error ? err.message : "Could not download."))
+                    }
+                  >
+                    <Icon name="download" size={13} /> Download
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button
+          className="w-fit"
+          disabled={running}
+          onClick={async () => {
+            setRunning(true);
+            try {
+              const run = await runArchiveNow();
+              toast("ok", "archived" in run ? `Archived ${rangeLabel(run.archived.name)}.` : run.skipped);
+              await load();
+            } catch (err) {
+              toast("bad", err instanceof Error ? err.message : "Could not archive.");
+            } finally {
+              setRunning(false);
+            }
+          }}
+        >
+          {running ? "Archiving…" : "Archive old leads now"}
+        </Button>
+      </div>
+      <ArchiveViewer name={open} onClose={() => setOpen(null)} />
+    </SettingCard>
+  );
+}
+
+/** Read-only: shows what an archive file holds, a tab per kind of lead. Nothing here edits or restores. */
+function ArchiveViewer({ name, onClose }: { name: string | null; onClose: () => void }) {
+  const [file, setFile] = useState<ArchiveFile | null>(null);
+  const [error, setError] = useState("");
+  const [part, setPart] = useState<ArchivePart>("enquiries");
+
+  useEffect(() => {
+    if (!name) return;
+    let live = true;
+    readArchive(name)
+      .then((f) => {
+        if (!live) return;
+        setFile(f);
+        setPart((Object.keys(PART_LABEL) as ArchivePart[]).find((p) => f[p].length > 0) ?? "enquiries");
+      })
+      .catch((err: unknown) => live && setError(err instanceof Error ? err.message : "Could not open the archive."));
+    return () => {
+      live = false;
+      setFile(null);
+      setError("");
+    };
+  }, [name]);
+
+  const rows = file?.[part] ?? [];
+  return (
+    <Drawer open={Boolean(name)} onClose={onClose} title={name ? rangeLabel(name) : "Archive"} wide>
+      {error && <p className="rounded-lg bg-st-danger-bg px-3 py-2 text-[12.5px] text-st-danger">{error}</p>}
+      {!file && !error && <p className="st-help">Opening…</p>}
+      {file && (
+        <div className="grid gap-4">
+          <Segmented layoutId="archive-part" size="sm" value={part} onChange={setPart} options={(Object.keys(PART_LABEL) as ArchivePart[]).map((p) => ({ value: p, label: `${PART_LABEL[p]} (${file[p].length})` }))} />
+          {rows.length === 0 ? (
+            <p className="st-help">None in this month.</p>
+          ) : (
+            <ul className="grid divide-y divide-st-border rounded-xl border border-st-border">
+              {rows.map((r) => {
+                const [who, what] = PART_LINES[part](r);
+                return (
+                  <li key={r.id} className="grid gap-0.5 px-3 py-2.5">
+                    <span className="text-[11.5px] text-st-dim">{new Date(r.created_at).toLocaleString()}</span>
+                    <span className="break-words text-[13px] font-medium text-st-ink">{who}</span>
+                    {what && <span className="break-words text-[12.5px] text-st-sub">{what}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </Drawer>
   );
 }
 

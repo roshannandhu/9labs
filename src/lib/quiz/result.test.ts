@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkAiReply, cleanPhone, cleanQuizInput, extractJson } from "./result.ts";
+import { aiQuizResultSchema, checkAiReply, cleanPhone, cleanQuizInput, extractJson } from "./result.ts";
 import { site } from "../../content/site.ts";
 
 const rules = { slugs: site.services.map((s) => s.slug), allowPrices: false, sourceTexts: ["More customers and sales", "we sell handmade candles"], rows: [], maxMatches: 3 };
@@ -112,4 +112,57 @@ test("checkAiReply: matches follow the admin's count, up to 5", () => {
   const r = checkAiReply(JSON.stringify(five), { ...rules, maxMatches: 5 }, "groq");
   assert.ok(r.ok);
   assert.equal(r.result.matches.length, 5);
+});
+
+const flow = {
+  kind: "flow",
+  title: "Orders without the night shift",
+  before: [{ label: "WhatsApp order arrives", note: "easy to miss" }, { label: "Copied into Excel by hand", note: "every night" }],
+  after: [{ label: "Order saved automatically", slug: "it-consultancy" }, { label: "Daily report", note: "ready each morning", slug: "made-up-service" }],
+};
+
+test("checkAiReply: a good diagram is kept; a slug we don't offer loses its icon, not the diagram", () => {
+  const r = checkAiReply(JSON.stringify({ ...good, visual: flow }), rules, "groq");
+  assert.ok(r.ok);
+  assert.equal(r.result.visual?.kind, "flow");
+  const v = r.result.visual as Extract<NonNullable<typeof r.result.visual>, { kind: "flow" }>;
+  assert.equal(v.after[0].slug, "it-consultancy");
+  assert.equal(v.after[1].slug, null);
+  assert.equal(v.before[0].note, "easy to miss");
+});
+
+test("checkAiReply: a broken, leak-less or price-bearing diagram is dropped, the rest of the reply stands", () => {
+  const bad = [
+    { kind: "pie", title: "x" },
+    { ...flow, before: [{ label: "only one" }] },
+    { kind: "funnel", title: "No leaks", stages: [{ label: "See" }, { label: "Visit" }, { label: "Buy" }] },
+    { ...flow, title: "Save AED 2,000 a month" },
+    { kind: "roadmap", title: "Plan", steps: [{ label: "Brand", note: "done within 2 weeks" }, { label: "Ads" }] },
+    "not an object",
+  ];
+  for (const visual of bad) {
+    const r = checkAiReply(JSON.stringify({ ...good, visual }), rules, "groq");
+    assert.ok(r.ok, JSON.stringify(visual));
+    assert.equal(r.result.visual, null, JSON.stringify(visual));
+  }
+  const none = checkAiReply(JSON.stringify(good), rules, "groq");
+  assert.ok(none.ok);
+  assert.equal(none.result.visual, null, "no diagram sent → none shown");
+});
+
+test("checkAiReply: a funnel keeps its leaks; long labels are clipped", () => {
+  const funnel = { kind: "funnel", title: "Where customers slip away", stages: [{ label: "They see your posts" }, { label: "They open your page " + "very ".repeat(20), leak: true, slug: "digital-social-media-marketing" }, { label: "They message you" }] };
+  const r = checkAiReply(JSON.stringify({ ...good, visual: funnel }), rules, "groq");
+  assert.ok(r.ok);
+  const v = r.result.visual as Extract<NonNullable<typeof r.result.visual>, { kind: "funnel" }>;
+  assert.deepEqual(v.stages.map((x) => x.leak), [false, true, false]);
+  assert.ok(v.stages[1].label.length <= 40);
+});
+
+test("aiQuizResultSchema: a stored result with a damaged diagram still loads, without it", () => {
+  const stored = { ...good, answers: [], highlights: [], steps: good.steps.slice(0, 3), source: "groq", visual: { kind: "flow", title: "x" } };
+  const p = aiQuizResultSchema.safeParse(stored);
+  assert.ok(p.success);
+  assert.equal(p.data.visual, null);
+  assert.ok(aiQuizResultSchema.safeParse({ ...stored, visual: undefined }).success, "older results have no diagram");
 });

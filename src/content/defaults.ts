@@ -348,5 +348,6 @@ export function defaultWorkspace(): Workspace {
     faqs: structuredClone(defaultFaqs),
     delivery: { ...defaultDelivery },
     email: { ...defaultEmail },
+    retention: { enabled: true, months: 6 },
   };
 }

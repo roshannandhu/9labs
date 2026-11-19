@@ -26,6 +26,20 @@ export type QuizAnswerRow = {
   slug: string | null;
 };
 
+/** One box in an AI diagram: a few words, an optional short note, and the service behind it. */
+export type QuizVisualItem = { label: string; note?: string | null; slug?: string | null };
+/**
+ * A diagram the AI picks for this one visitor (AI results only — scoring has none and the overlay
+ * shows the per-answer map alone). The model sends words and slugs; the overlay draws them.
+ *   flow    — today's process (with its pain) → the same job done with Nine Labs
+ *   funnel  — how customers reach them, and where they leak away (leak: true) + who fixes it
+ *   roadmap — the order Nine Labs would tackle things in
+ */
+export type QuizVisual =
+  | { kind: "flow"; title: string; before: QuizVisualItem[]; after: QuizVisualItem[] }
+  | { kind: "funnel"; title: string; stages: (QuizVisualItem & { leak?: boolean | null })[] }
+  | { kind: "roadmap"; title: string; steps: QuizVisualItem[] };
+
 export type AiQuizResult = {
   /** 2–3 sentences, "what you want," in the client's own words. */
   wants: string;
@@ -39,4 +53,6 @@ export type AiQuizResult = {
   steps: QuizResultStep[];
   tags: QuizResultTags;
   source: QuizSource;
+  /** The AI's diagram for this visitor; absent/null for scoring results or when the AI's one failed its checks. */
+  visual?: QuizVisual | null;
 };
