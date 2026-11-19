@@ -3,6 +3,16 @@
   "name": "ninelabs",
   "main": "custom-worker.js",
   "triggers": { "crons": ["*/15 * * * *"] },
+  // Custom Domains (Cloudflare makes the DNS record + certificate). The zones must be on this account first.
+  // Which host serves what: src/lib/host-route.ts.
+  "routes": [
+    { "pattern": "ninelabsolutions.ae", "custom_domain": true },
+    { "pattern": "www.ninelabsolutions.ae", "custom_domain": true },
+    { "pattern": "admin.ninelabsolutions.ae", "custom_domain": true },
+    { "pattern": "www.admin.ninelabsolutions.ae", "custom_domain": true },
+    { "pattern": "ninelabsolutions.com", "custom_domain": true },
+    { "pattern": "www.ninelabsolutions.com", "custom_domain": true }
+  ],
   "compatibility_date": "2026-11-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
