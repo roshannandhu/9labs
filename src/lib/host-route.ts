@@ -20,19 +20,13 @@ const PASS = /^\/(api|_next)(\/|$)|\.[a-z0-9]+$/i;
 
 export type HostRoute = { redirect: string } | { rewrite: string } | null;
 
-// Admin rooms (src/studio/rooms.ts): on the old workers.dev address these were admin links.
-const ADMIN_ROOM = /^\/(inbox|books|quiz|settings)(\/|$)/;
-
 export function hostRoute(url: URL): HostRoute {
-  // The workers.dev address is a fallback only: send people to the real domains.
-  if (url.hostname.endsWith(".workers.dev") && !PASS.test(url.pathname)) {
-    const admin = ADMIN_PREFIX.test(url.pathname) || ADMIN_ROOM.test(url.pathname);
-    return { redirect: `https://${admin ? ADMIN : SITE}${url.pathname.replace(ADMIN_PREFIX, "") || "/"}${url.search}` };
-  }
-  const host = CANONICAL[url.hostname.toLowerCase().replace(/^www\./, "")];
+  // ponytail: the workers.dev address doubles as a second admin host for testing; drop `testAdmin` to retire it.
+  const testAdmin = url.hostname.endsWith(".workers.dev");
+  const host = testAdmin ? url.hostname : CANONICAL[url.hostname.toLowerCase().replace(/^www\./, "")];
   if (!host) return null;
   const origin = (h: string) => `${url.protocol}//${h}${url.port ? `:${url.port}` : ""}`;
-  const adminHost = host.startsWith("admin.") ? host : `admin.${host}`;
+  const adminHost = testAdmin || host.startsWith("admin.") ? host : `admin.${host}`;
   const search = url.search;
 
   // /admin/... anywhere → the same page at the admin host's root

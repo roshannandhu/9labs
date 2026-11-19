@@ -29,11 +29,11 @@ test("the admin host serves the admin at its root; API and files pass", () => {
   for (const p of ["/api/admin/ai/keys/", "/_next/static/x.js", "/favicon.ico"]) assert.equal(r(`https://admin.ninelabsolutions.ae${p}`), null, p);
 });
 
-test("the old workers.dev address sends people to the real domains", () => {
+test("the workers.dev address is a second admin host (testing)", () => {
   const w = "https://ninelabs.ninelabs-web.workers.dev";
-  assert.deepEqual(r(`${w}/admin/`), to("https://admin.ninelabsolutions.ae/"));
-  assert.deepEqual(r(`${w}/books/`), to("https://admin.ninelabsolutions.ae/books/"));
-  assert.deepEqual(r(`${w}/inbox/?tab=quiz`), to("https://admin.ninelabsolutions.ae/inbox/?tab=quiz"));
-  assert.deepEqual(r(`${w}/about/`), to("https://ninelabsolutions.ae/about/"));
+  assert.deepEqual(r(`${w}/`), as("/admin/"));
+  assert.deepEqual(r(`${w}/books/`), as("/admin/books/"));
+  assert.deepEqual(r(`${w}/inbox/?tab=quiz`), as("/admin/inbox/?tab=quiz"));
+  assert.deepEqual(r(`${w}/admin/quiz/`), to(`${w}/quiz/`));
   assert.equal(r(`${w}/api/cron/tick/`), null);
 });
