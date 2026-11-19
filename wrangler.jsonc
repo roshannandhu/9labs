@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ninelabs",
   "main": "custom-worker.js",
+  "workers_dev": true,
   "triggers": { "crons": ["*/15 * * * *"] },
   // Custom Domains (Cloudflare makes the DNS record + certificate). The zones must be on this account first.
   // Which host serves what: src/lib/host-route.ts.
