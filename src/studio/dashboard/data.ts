@@ -26,10 +26,10 @@ export type StatusItem = { icon: "check" | "alert"; tone: "good" | "warn" | "dan
 
 /** Where a `checkWorkspace` error (or a related setting) can actually be fixed, in the new 5-room admin. */
 function fixHref(path: Issue["path"]): string {
-  if (path[0] === "site" && path[1] === "quiz") return "/admin/quiz";
-  if (path[0] === "site" && path[1] === "contact") return "/admin/settings?section=company";
-  if (path[0] === "site" && path[1] === "ebooks") return "/admin/books";
-  return "/admin/settings";
+  if (path[0] === "site" && path[1] === "quiz") return "/quiz";
+  if (path[0] === "site" && path[1] === "contact") return "/settings?section=company";
+  if (path[0] === "site" && path[1] === "ebooks") return "/books";
+  return "/settings";
 }
 
 const budgetKey = (v: string) => (v.trim() ? v : "Not given");
@@ -95,18 +95,18 @@ export function useDashboardData(range: Range) {
 
     const status: StatusItem[] = [
       pending > 0
-        ? { icon: "alert", tone: "warn", label: `${pending} unpublished change${pending === 1 ? "" : "s"}`, action: { label: "Review", href: "/admin" } }
+        ? { icon: "alert", tone: "warn", label: `${pending} unpublished change${pending === 1 ? "" : "s"}`, action: { label: "Review", href: "/" } }
         : { icon: "check", tone: "good", label: "Website is up to date" },
       errors.length > 0
         ? { icon: "alert", tone: "danger", label: `${errors.length} to fix before publishing`, detail: errors[0].message, action: { label: "Fix it", href: fixHref(errors[0].path) } }
         : { icon: "check", tone: "good", label: "No blocking problems" },
       liveNoPdf.length > 0
-        ? { icon: "alert", tone: "warn", label: `${liveNoPdf.length} book${liveNoPdf.length === 1 ? "" : "s"} without a PDF`, action: { label: "Open Books", href: "/admin/books" } }
+        ? { icon: "alert", tone: "warn", label: `${liveNoPdf.length} book${liveNoPdf.length === 1 ? "" : "s"} without a PDF`, action: { label: "Open Books", href: "/books" } }
         : { icon: "check", tone: "good", label: "Every live book has a PDF" },
-      whatsappOk ? { icon: "check", tone: "good", label: "WhatsApp number is set" } : { icon: "alert", tone: "danger", label: "No WhatsApp number set", action: { label: "Add it", href: "/admin/settings?section=company" } },
-      analyticsOn ? { icon: "check", tone: "good", label: "Analytics connected" } : { icon: "alert", tone: "warn", label: "Analytics not set", action: { label: "Open Settings", href: "/admin/settings?section=google" } },
+      whatsappOk ? { icon: "check", tone: "good", label: "WhatsApp number is set" } : { icon: "alert", tone: "danger", label: "No WhatsApp number set", action: { label: "Add it", href: "/settings?section=company" } },
+      analyticsOn ? { icon: "check", tone: "good", label: "Analytics connected" } : { icon: "alert", tone: "warn", label: "Analytics not set", action: { label: "Open Settings", href: "/settings?section=google" } },
       hasSampleData
-        ? { icon: "alert", tone: "warn", label: "Demo data is showing", action: { label: "Remove it", href: "/admin/settings?section=backup" } }
+        ? { icon: "alert", tone: "warn", label: "Demo data is showing", action: { label: "Remove it", href: "/settings?section=backup" } }
         : { icon: "check", tone: "good", label: "Real data only" },
     ];
 

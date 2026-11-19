@@ -1029,7 +1029,7 @@ function InsightsTab() {
       <Box title="Recent results">
         <div className="grid gap-1.5">
           {results.slice(0, 8).map((r) => (
-            <Link key={r.id} href={`/admin/inbox?tab=quiz&id=${r.id}`} className="flex items-center justify-between rounded-lg bg-st-panel-2 px-3 py-2 text-[12.5px] transition-colors hover:bg-st-panel-3">
+            <Link key={r.id} href={`/inbox?tab=quiz&id=${r.id}`} className="flex items-center justify-between rounded-lg bg-st-panel-2 px-3 py-2 text-[12.5px] transition-colors hover:bg-st-panel-3">
               <span className="text-st-ink">{r.top}</span> <span className="text-st-dim">{relativeTime(r.createdAt)}</span>
             </Link>
           ))}

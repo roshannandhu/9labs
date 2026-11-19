@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Ebook } from "@/content/site";
 import { BookCover } from "@/components/ebooks/BookCover";
-import { siteHref } from "@/lib/site-href";
+import { publicHref } from "@/lib/site-href";
 import { checkpoint, setDraft } from "@/studio/store";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, ImageField, ListField, NumField, PdfField, TextField } from "../Field";
@@ -102,7 +102,7 @@ export function BookEditor({ index, onDelete }: { index: number; onDelete: () =>
         <TiltCover book={book} className="mx-auto w-[160px] lg:w-full" />
         <p className="mt-2.5 text-center text-[11.5px] text-st-dim">{book.cover ? "Your own image" : "Designed cover"}</p>
         {liveOnSite ? (
-          <a href={siteHref(`/ebooks/${book.slug}/`)} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center justify-center gap-1 text-[12px] font-medium text-st-purple hover:underline">
+          <a href={publicHref(`/ebooks/${book.slug}/`)} target="_blank" rel="noopener noreferrer" className="mt-1 flex items-center justify-center gap-1 text-[12px] font-medium text-st-purple hover:underline">
             Open on website ↗
           </a>
         ) : (
@@ -178,7 +178,7 @@ export function BookEditor({ index, onDelete }: { index: number; onDelete: () =>
         <Panel label="Requests">
           <p className="text-[13px] text-st-sub">
             {requests.length} request{requests.length === 1 ? "" : "s"} · {downloads} download{downloads === 1 ? "" : "s"} — see them in the{" "}
-            <Link href="/admin/inbox?tab=books" className="font-medium text-st-purple hover:underline">
+            <Link href="/inbox?tab=books" className="font-medium text-st-purple hover:underline">
               Inbox →
             </Link>
           </p>

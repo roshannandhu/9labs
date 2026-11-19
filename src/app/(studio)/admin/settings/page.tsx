@@ -37,7 +37,7 @@ function SettingsInner() {
 
   const setSection = (id: SectionId) => {
     setSectionState(id);
-    router.replace(`/admin/settings?section=${id}`);
+    router.replace(`/settings?section=${id}`);
     setMobileShowList(false);
   };
 

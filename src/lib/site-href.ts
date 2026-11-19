@@ -18,3 +18,6 @@ export const navHref = (href: string, home: boolean) => {
   const section = Object.keys(fullPage).find((k) => fullPage[k] === href) ?? href;
   return siteHref(home ? section : (fullPage[section] ?? (section.startsWith("#") ? `/${section}` : section)));
 };
+
+/** A public-site page linked from the admin, which lives on its own host (admin.…). */
+export const publicHref = (href: string) => `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}${siteHref(href)}`;

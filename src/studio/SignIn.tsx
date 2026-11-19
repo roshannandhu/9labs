@@ -111,7 +111,7 @@ export function SignIn() {
   const continueWithGoogle = async () => {
     setBusy(true);
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}${base}/admin/` } });
+    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}${base}/` } });
   };
 
   return (

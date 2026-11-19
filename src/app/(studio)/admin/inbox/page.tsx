@@ -49,7 +49,7 @@ function InboxInner() {
   const switchTab = (t: Tab) => {
     setTabState(t);
     setLimit(PAGE_SIZE);
-    router.replace(`/admin/inbox?tab=${t}`);
+    router.replace(`/inbox?tab=${t}`);
   };
 
   const filteredEnquiries = useMemo(() => {
@@ -102,7 +102,7 @@ function InboxInner() {
   useEffect(() => {
     if (sp.get("export") !== "1") return;
     exportCsv();
-    router.replace(`/admin/inbox?tab=${tab}`);
+    router.replace(`/inbox?tab=${tab}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once for the one-shot `export=1` param only
   }, []);
 

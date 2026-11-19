@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { LogoMark } from "@/components/brand/LogoMark";
 import { useTheme } from "@/components/layout/ThemeToggle";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { siteHref } from "@/lib/site-href";
+import { publicHref } from "@/lib/site-href";
 import { checkWorkspace } from "@/lib/checks";
 import { refreshLeads, signOut, startAuth } from "@/studio/store";
 import { setAdminTheme } from "./theme";
@@ -90,7 +90,7 @@ function SidebarBody({ pathname, rail, onToggleRail, onNavigate }: { pathname: s
 
   return (
     <div className={`flex h-full shrink-0 flex-col bg-st-panel ${rail ? "w-[68px]" : "w-[248px]"}`}>
-      <Link href="/admin" onClick={onNavigate} className={`flex items-center gap-2.5 px-5 pb-4 pt-5 ${rail ? "justify-center px-0" : ""}`}>
+      <Link href="/" onClick={onNavigate} className={`flex items-center gap-2.5 px-5 pb-4 pt-5 ${rail ? "justify-center px-0" : ""}`}>
         <LogoMark className="h-6" />
         {!rail && <span className="font-display text-[13px] font-semibold text-st-sub">Nine Labs</span>}
       </Link>
@@ -124,7 +124,7 @@ function SidebarBody({ pathname, rail, onToggleRail, onNavigate }: { pathname: s
             {!rail && <span>Collapse</span>}
           </button>
         )}
-        <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-st-sub hover:bg-st-panel-2 hover:text-st-ink ${rail ? "justify-center px-0" : ""}`}>
+        <a href={publicHref("/")} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-st-sub hover:bg-st-panel-2 hover:text-st-ink ${rail ? "justify-center px-0" : ""}`}>
           <Icon name="external" size={16} />
           {!rail && <span>View website</span>}
         </a>
@@ -221,7 +221,7 @@ function MobileTopBar({ onMenu }: { onMenu: () => void }) {
                       <p className="text-[12px] capitalize text-st-dim">{session.role}</p>
                     </div>
                   </div>
-                  <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2.5 rounded-xl px-1 py-2.5 text-[13.5px] font-medium text-st-sub">
+                  <a href={publicHref("/")} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2.5 rounded-xl px-1 py-2.5 text-[13.5px] font-medium text-st-sub">
                     <Icon name="external" size={16} /> View website
                   </a>
                   <button type="button" onClick={() => signOut()} className="flex w-full items-center gap-2.5 rounded-xl px-1 py-2.5 text-left text-[13.5px] font-medium text-st-danger">
@@ -283,7 +283,7 @@ function TopBar({ pathname }: { pathname: string }) {
       <IconButton label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setAdminTheme(theme === "dark" ? "light" : "dark")}>
         <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
       </IconButton>
-      <a href={siteHref("/")} target="_blank" rel="noopener noreferrer" title="View website" aria-label="View website" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-st-sub transition-colors hover:bg-st-panel-2 hover:text-st-ink">
+      <a href={publicHref("/")} target="_blank" rel="noopener noreferrer" title="View website" aria-label="View website" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-st-sub transition-colors hover:bg-st-panel-2 hover:text-st-ink">
         <Icon name="external" size={15} />
       </a>
     </header>
@@ -341,7 +341,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const sync = useSync();
   const deniedEmail = useDeniedEmail();
-  const pathname = usePathname();
+  // Prerendered at /admin/..., shown at /... on the admin host: drop the prefix so both agree.
+  const pathname = usePathname().replace(/^\/admin(?=\/|$)/, "") || "/";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [railPref, setRailPref] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);

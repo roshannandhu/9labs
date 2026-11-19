@@ -52,7 +52,7 @@ function BooksInner() {
     if (sp.get("new") !== "1") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the one-shot `new=1` param means "create a book right now"
     createBook();
-    router.replace("/admin/books");
+    router.replace("/books");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once for the one-shot `new=1` param only
   }, []);
 

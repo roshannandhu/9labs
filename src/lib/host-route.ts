@@ -1,24 +1,35 @@
-// Host-level redirects, run by custom-worker.js before Next sees the request.
-// ninelabsolutions.ae is the one public site; admin.ninelabsolutions.ae is the admin.
-// www.* and the .com twins all land on those two. Unknown hosts (workers.dev, localhost) pass through.
+// Which host serves what (run by src/proxy.ts on every request).
+// ninelabsolutions.ae is the public site; admin.ninelabsolutions.ae IS the admin, at its root
+// (admin.…/inbox/ shows the page built at /admin/inbox/). www.* and the .com twins land on those two.
+// Locally the same split is localhost:3002 and admin.localhost:3002. Other hosts (workers.dev) pass through.
 export const SITE = "ninelabsolutions.ae";
 export const ADMIN = `admin.${SITE}`;
 
-const ADMIN_PATH = /^\/admin(\/|$)/;
-// Paths the admin page itself needs from its own host: its routes, the API, build assets, public files.
-const ADMIN_PASS = /^\/(admin|api|_next)(\/|$)|\.[a-z0-9]+$/i;
+const CANONICAL: Record<string, string> = {
+  [SITE]: SITE,
+  "ninelabsolutions.com": SITE,
+  [ADMIN]: ADMIN,
+  "admin.ninelabsolutions.com": ADMIN,
+  localhost: "localhost",
+  "admin.localhost": "admin.localhost",
+};
 
-/** Where to 308 this URL, or null to serve it as is. */
-export function hostRedirect(url: URL): string | null {
-  const host = url.hostname.toLowerCase().replace(/^www\./, "");
-  const rest = url.pathname + url.search;
-  const to = (h: string, path = rest) => (h === url.hostname && path === rest ? null : `https://${h}${path}`);
+const ADMIN_PREFIX = /^\/admin(?=\/|$)/;
+// Served as they are on the admin host: the API, build assets, public files.
+const PASS = /^\/(api|_next)(\/|$)|\.[a-z0-9]+$/i;
 
-  if (host === ADMIN || host === "admin.ninelabsolutions.com") {
-    return to(ADMIN, ADMIN_PASS.test(url.pathname) ? rest : `/admin${url.pathname}${url.search}`);
-  }
-  if (host === SITE || host === "ninelabsolutions.com") {
-    return to(ADMIN_PATH.test(url.pathname) ? ADMIN : SITE);
-  }
+export type HostRoute = { redirect: string } | { rewrite: string } | null;
+
+export function hostRoute(url: URL): HostRoute {
+  const host = CANONICAL[url.hostname.toLowerCase().replace(/^www\./, "")];
+  if (!host) return null;
+  const origin = (h: string) => `${url.protocol}//${h}${url.port ? `:${url.port}` : ""}`;
+  const adminHost = host.startsWith("admin.") ? host : `admin.${host}`;
+  const search = url.search;
+
+  // /admin/... anywhere → the same page at the admin host's root
+  if (ADMIN_PREFIX.test(url.pathname)) return { redirect: `${origin(adminHost)}${url.pathname.replace(ADMIN_PREFIX, "") || "/"}${search}` };
+  if (host !== url.hostname.toLowerCase()) return { redirect: `${origin(host)}${url.pathname}${search}` };
+  if (host === adminHost && !PASS.test(url.pathname)) return { rewrite: `/admin${url.pathname}${search}` };
   return null;
 }

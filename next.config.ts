@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: process.env.NEXT_BASE_PATH ?? "",
   },
   reactStrictMode: true,
+  // The admin runs on its own host (src/lib/host-route.ts); locally that's admin.localhost.
+  allowedDevOrigins: ["admin.localhost"],
   images: { unoptimized: true },
   serverExternalPackages: ["worker-mailer"],
   turbopack: {

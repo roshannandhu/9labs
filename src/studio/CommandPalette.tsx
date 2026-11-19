@@ -63,7 +63,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
     const goTo: Hit[] = [
       ...ROOMS.filter((r) => !query || r.title.toLowerCase().includes(query)).map((r): Hit => ({ key: `room_${r.id}`, label: r.title, icon: r.icon, go: go(r.path) })),
-      ...SETTINGS_SECTIONS.filter((s) => !query || s.label.toLowerCase().includes(query)).map((s): Hit => ({ key: `settings_${s.id}`, label: s.label, sub: "Settings", icon: "settings", go: go(`/admin/settings?section=${s.id}`) })),
+      ...SETTINGS_SECTIONS.filter((s) => !query || s.label.toLowerCase().includes(query)).map((s): Hit => ({ key: `settings_${s.id}`, label: s.label, sub: "Settings", icon: "settings", go: go(`/settings?section=${s.id}`) })),
     ];
 
     const leads: Hit[] = query
@@ -75,8 +75,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
     const actionList: Hit[] = [
       { key: "action_theme", label: theme === "dark" ? "Switch to light theme" : "Switch to dark theme", icon: theme === "dark" ? "sun" : "moon", go: () => { setAdminTheme(theme === "dark" ? "light" : "dark"); onClose(); } },
-      { key: "action_new_book", label: "New book", icon: "plus", go: go("/admin/books?new=1") },
-      { key: "action_export", label: "Export the inbox as CSV", icon: "download", go: go("/admin/inbox?export=1") },
+      { key: "action_new_book", label: "New book", icon: "plus", go: go("/books?new=1") },
+      { key: "action_export", label: "Export the inbox as CSV", icon: "download", go: go("/inbox?export=1") },
     ];
     const hasBlockingErrors = checkWorkspace(draft).some((i) => i.level === "error");
     if (pending > 0 && !hasBlockingErrors) {

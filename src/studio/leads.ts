@@ -9,7 +9,7 @@ export type FeedItem = { kind: LeadKind; id: string; title: string; sub: string;
 export const KIND_LABEL: Record<LeadKind, string> = { enquiry: "Service enquiry", book: "E-book request", quiz: "Quiz result" };
 export const KIND_TAB: Record<LeadKind, string> = { enquiry: "enquiries", book: "books", quiz: "quiz" };
 
-const href = (kind: LeadKind, id: string) => `/admin/inbox?tab=${KIND_TAB[kind]}&id=${id}`;
+const href = (kind: LeadKind, id: string) => `/inbox?tab=${KIND_TAB[kind]}&id=${id}`;
 
 export function toFeed(enquiries: Enquiry[], bookRequests: BookRequest[], quizResults: QuizResult[], ebooks: Ebook[]): FeedItem[] {
   const bookTitle = (slug: string) => ebooks.find((b) => b.slug === slug)?.title ?? slug;

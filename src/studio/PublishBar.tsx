@@ -12,10 +12,10 @@ import { Button, LiveDot, useConfirm, useToast } from "./ui";
 
 /** Where a `checkWorkspace` error can actually be fixed, in the new 5-room admin. */
 function fixHref(path: Issue["path"]): string {
-  if (path[0] === "site" && path[1] === "quiz") return "/admin/quiz";
-  if (path[0] === "site" && path[1] === "contact") return "/admin/settings?section=company";
-  if (path[0] === "site" && path[1] === "ebooks") return "/admin/books";
-  return "/admin/settings";
+  if (path[0] === "site" && path[1] === "quiz") return "/quiz";
+  if (path[0] === "site" && path[1] === "contact") return "/settings?section=company";
+  if (path[0] === "site" && path[1] === "ebooks") return "/books";
+  return "/settings";
 }
 
 /** The bridge bar: crosses unpublished changes from Draft to Live. A floating pill on laptop, a full-width bar above the bottom tabs on phone. Shown only when there's something to cross. */

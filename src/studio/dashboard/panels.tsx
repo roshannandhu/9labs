@@ -17,11 +17,11 @@ const compareLabel = (range: Range) => `vs previous ${range} days`;
 export function KpiStrip({ data, range }: { data: DashboardData; range: Range }) {
   const compare = compareLabel(range);
   const tiles = [
-    { key: "total", label: "Total leads", href: "/admin/inbox", color: "var(--st-purple)", ...data.kpis.total },
-    { key: "enquiries", label: "Enquiries", href: "/admin/inbox?tab=enquiries", color: "var(--st-series-enquiry)", ...data.kpis.enquiries },
-    { key: "ebooks", label: "E-book requests", href: "/admin/inbox?tab=books", color: "var(--st-series-ebook)", ...data.kpis.ebooks },
-    { key: "quiz", label: "Quiz results", href: "/admin/inbox?tab=quiz", color: "var(--st-series-quiz)", ...data.kpis.quiz },
-    { key: "whatsapp", label: "WhatsApp taps", href: "/admin/inbox", color: "var(--st-good)", ...data.kpis.whatsapp },
+    { key: "total", label: "Total leads", href: "/inbox", color: "var(--st-purple)", ...data.kpis.total },
+    { key: "enquiries", label: "Enquiries", href: "/inbox?tab=enquiries", color: "var(--st-series-enquiry)", ...data.kpis.enquiries },
+    { key: "ebooks", label: "E-book requests", href: "/inbox?tab=books", color: "var(--st-series-ebook)", ...data.kpis.ebooks },
+    { key: "quiz", label: "Quiz results", href: "/inbox?tab=quiz", color: "var(--st-series-quiz)", ...data.kpis.quiz },
+    { key: "whatsapp", label: "WhatsApp taps", href: "/inbox", color: "var(--st-good)", ...data.kpis.whatsapp },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -98,7 +98,7 @@ const DELIVERY_BADGE: Record<"pending" | "sent" | "failed", { tone: "warn" | "go
 export function EbooksPanel({ data }: { data: DashboardData }) {
   const maxRequests = Math.max(1, ...data.books.map((b) => b.requests));
   return (
-    <Panel label="E-books" footer={<Link href="/admin/books" className="text-[12.5px] font-medium text-st-purple hover:underline">Manage books →</Link>}>
+    <Panel label="E-books" footer={<Link href="/books" className="text-[12.5px] font-medium text-st-purple hover:underline">Manage books →</Link>}>
       <div className="grid gap-3">
         {data.books.map((row) => (
           <div key={row.book.id} className="flex items-center gap-3">
@@ -229,7 +229,7 @@ export function SystemStatusPanel({ data }: { data: DashboardData }) {
 export function AiHealthPanel() {
   const ai = useDraft().site.quiz.ai;
   return (
-    <Panel label="Quiz AI" right={<Link href="/admin/quiz" className="text-[12px] text-st-purple hover:underline">Quiz → AI settings</Link>}>
+    <Panel label="Quiz AI" right={<Link href="/quiz" className="text-[12px] text-st-purple hover:underline">Quiz → AI settings</Link>}>
       <AiHealthView enabled={ai.enabled} geminiLimit={ai.geminiDailyLimitEstimate} />
     </Panel>
   );
