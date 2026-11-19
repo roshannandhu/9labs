@@ -51,7 +51,16 @@ export const LAB_ENABLED = process.env.NEXT_PUBLIC_DEMO_LAB === "true";
 
 export function DemoSettingsProvider({ children, initial }: { children: React.ReactNode; initial?: Partial<DemoSettings> }) {
   const site = useSite();
-  const base = useMemo(() => ({ ...DEFAULT_SETTINGS, ...initial }), [initial]);
+  // The grid strength, brand colours and WhatsApp-button toggle follow the published site (Look,
+  // SEO & tracking) from the first render; the Concept Lab, when it's on, keeps its own stored choices.
+  const base = useMemo<DemoSettings>(
+    () => ({
+      ...DEFAULT_SETTINGS,
+      ...initial,
+      ...(LAB_ENABLED ? {} : { grid: site.theme.grid, blue: site.theme.colors.blue || DEFAULT_SETTINGS.blue, purple: site.theme.colors.purple || DEFAULT_SETTINGS.purple, whatsapp: site.contact.whatsappFab }),
+    }),
+    [initial, site],
+  );
   const [settings, setSettings] = useState<DemoSettings>(base);
   const [systemReduced, setSystemReduced] = useState(false);
   const [ready, setReady] = useState(false);
@@ -63,8 +72,9 @@ export function DemoSettingsProvider({ children, initial }: { children: React.Re
     const params = new URLSearchParams(window.location.search);
     const next: DemoSettings = { ...base, ...stored };
     if (params.get("motion") === "reduce") next.motion = "reduce";
+    // keep the same object when nothing differs: a new one re-renders every useDemo() reader after hydration
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate client-only settings after SSR
-    setSettings(next);
+    setSettings((cur) => (JSON.stringify(cur) === JSON.stringify(next) ? cur : next));
     setReady(true);
 
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -73,14 +83,6 @@ export function DemoSettingsProvider({ children, initial }: { children: React.Re
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, [base]);
-
-  // The grid strength, brand colours and WhatsApp-button toggle follow the published site (Look,
-  // SEO & tracking). The Concept Lab, when it's on, keeps its own stored choices instead.
-  useEffect(() => {
-    if (LAB_ENABLED) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- applies the server-provided site's values over the client-only defaults, once ready
-    setSettings((cur) => ({ ...cur, grid: site.theme.grid, blue: site.theme.colors.blue || DEFAULT_SETTINGS.blue, purple: site.theme.colors.purple || DEFAULT_SETTINGS.purple, whatsapp: site.contact.whatsappFab }));
-  }, [site]);
 
   const reduced = settings.motion === "reduce" || (settings.motion === "system" && systemReduced);
 

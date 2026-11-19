@@ -189,7 +189,7 @@ html.lenis body {
   line-height: 1.2;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgb(var(--fg-rgb) / 0.55);
+  color: rgb(var(--fg-rgb) / 0.62); /* 0.62: passes WCAG 4.5:1 even on the footer's darker lilac */
 }
 
 @utility font-accent {

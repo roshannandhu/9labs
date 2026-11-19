@@ -118,7 +118,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="container-x flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pb-24 pt-6 text-[12.5px] text-white/45 sm:flex-row sm:pb-24">
+      <div className="container-x flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pb-24 pt-6 text-[12.5px] text-white/[0.62] sm:flex-row sm:pb-24">
         <p>{f.copyright}</p>
         <p>{site.location}</p>
       </div>
