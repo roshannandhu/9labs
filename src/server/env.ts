@@ -35,6 +35,9 @@ const schema = z.object({
   GEMINI_EMBED_MODEL: z.string().optional().default("gemini-embedding-001"),
   /** Whole-site cap on AI result calls per day (an abuse brake on top of the per-IP limit). */
   AI_DAILY_CAP: z.coerce.number().optional().default(500),
+  /** Edge-cache purge on publish (src/server/purge.ts): the .ae zone id + a token allowed to purge it. */
+  CF_ZONE_ID: z.string().optional().default(""),
+  CF_PURGE_TOKEN: z.string().optional().default(""),
 });
 
 type Env = z.infer<typeof schema>;
@@ -69,6 +72,8 @@ export function env(): Env {
       GEMINI_MODEL: process.env.GEMINI_MODEL || undefined,
       GEMINI_EMBED_MODEL: process.env.GEMINI_EMBED_MODEL || undefined,
       AI_DAILY_CAP: process.env.AI_DAILY_CAP || undefined,
+      CF_ZONE_ID: process.env.CF_ZONE_ID,
+      CF_PURGE_TOKEN: process.env.CF_PURGE_TOKEN,
     });
   }
   return cached;

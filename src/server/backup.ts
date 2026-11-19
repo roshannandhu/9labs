@@ -4,6 +4,7 @@ import { seedSampleData } from "@/lib/sample";
 import { normalizeWorkspace } from "@/lib/workspace";
 import type { BookRequest, Enquiry, OutboxMail, QuizResult, Workspace } from "@/content/types";
 import { db } from "./db";
+import { purgeSiteCache } from "./purge";
 import { HttpError } from "./http";
 import { readWorkspace, setPublishedMemo } from "./content";
 import { deleteAllLeads, deleteLeadsNotIn, listBookRequests, listEnquiries, listQuizResults, upsertBookRequests, upsertEnquiries, upsertOutboxRows, upsertQuizResults } from "./leads";
@@ -37,6 +38,7 @@ export async function restoreBackup(raw: unknown): Promise<void> {
   ]);
 
   setPublishedMemo(published);
+  await purgeSiteCache();
 }
 
 export async function resetAll(): Promise<void> {
@@ -51,6 +53,7 @@ export async function resetAll(): Promise<void> {
   if (error) throw error;
   await Promise.all([deleteAllLeads(), db().from("versions").delete().neq("id", "00000000-0000-0000-0000-000000000000"), db().from("rate_hits").delete().neq("key", "")]);
   setPublishedMemo(fresh);
+  await purgeSiteCache();
 }
 
 export async function loadSampleData(): Promise<void> {

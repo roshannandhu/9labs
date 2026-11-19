@@ -8,6 +8,7 @@ import { defaultWorkspace } from "@/content/defaults";
 import { toSite } from "@/content/toSite";
 import type { AdminRole, Workspace } from "@/content/types";
 import { db } from "./db";
+import { purgeSiteCache } from "./purge";
 import { HttpError } from "./http";
 import { firstForbiddenChange } from "@/lib/permissions";
 
@@ -100,5 +101,6 @@ export async function publishDraft(summary: string[], expectedRev: number, updat
   if (old?.length) await db().from("versions").delete().in("id", old.map((v) => v.id as string));
 
   setPublishedMemo(current.data);
+  await purgeSiteCache();
   return { published: current.data };
 }
