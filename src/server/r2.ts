@@ -46,7 +46,13 @@ export async function putObject(key: string, body: string, contentType: string):
   if (!res.ok) throw new Error(`R2 upload failed (${res.status}).`);
 }
 
-const unxml = (s: string) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+export async function deleteObject(key: string): Promise<void> {
+  if (!r2Configured()) return;
+  const res = await s3().fetch(`${bucketUrl()}/${key}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`R2 delete failed (${res.status}).`);
+}
+
+const unxml =(s: string) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 
 /** Every object under `prefix` (ListObjectsV2, following continuation tokens). */
 export async function listObjects(prefix: string): Promise<{ key: string; size: number; at: string }[]> {
