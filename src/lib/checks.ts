@@ -39,7 +39,8 @@ function checkQuiz(ws: Workspace): Issue[] {
 
 function checkCompany(ws: Workspace): Issue[] {
   const out: Issue[] = [];
-  if (!/^\d{8,15}$/.test(ws.site.contact.whatsappNumber)) {
+  // "+971 50 123 4567" is fine: waLink keeps only the digits
+  if (!/^\d{8,15}$/.test(ws.site.contact.whatsappNumber.replace(/\D/g, ""))) {
     out.push({ path: ["site", "contact", "whatsappNumber"], message: "Add a WhatsApp number in Company details — every Talk-to-us and quiz message needs one.", level: "error" });
   }
   if (!ws.site.contact.email.trim()) out.push({ path: ["site", "contact", "email"], message: "Add a company e-mail in Company details.", level: "warning" });

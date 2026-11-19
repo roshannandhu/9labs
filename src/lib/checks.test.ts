@@ -24,6 +24,12 @@ test("an empty WhatsApp number blocks publish", () => {
   assert.ok(issues.some((i) => i.level === "error" && i.message.includes("WhatsApp")));
 });
 
+test("a WhatsApp number typed with + and spaces is accepted", () => {
+  const ws = defaultWorkspace();
+  ws.site.contact.whatsappNumber = "+91 7736786683";
+  assert.ok(!checkWorkspace(ws).some((i) => i.message.includes("WhatsApp")));
+});
+
 test("two books sharing a link name is an error", () => {
   const ws = defaultWorkspace();
   ws.site.ebooks[1].slug = ws.site.ebooks[0].slug;
