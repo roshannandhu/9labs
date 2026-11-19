@@ -347,14 +347,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {typeof document !== "undefined" &&
         createPortal(
-          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[200] flex flex-col items-center gap-2 px-4">
+          <div className="pointer-events-none fixed inset-x-0 top-4 z-[200] flex flex-col items-center gap-2 px-4 sm:top-auto sm:bottom-4">
             <AnimatePresence>
               {toasts.map((t) => (
                 <motion.div
                   key={t.id}
-                  initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                   className="pointer-events-auto flex items-center gap-2 rounded-xl border-l-[3px] bg-st-panel px-4 py-2.5 text-[13.5px] font-medium text-st-ink shadow-[var(--st-shadow)]"
                   style={{ borderLeftColor: t.kind === "ok" ? "var(--st-purple)" : "var(--st-danger)" }}
                 >

@@ -294,7 +294,7 @@ function BottomTabs({ pathname }: { pathname: string }) {
   const active = roomByPath(pathname)?.id;
   const badges = useRoomBadges();
   return (
-    <nav className="st-glass st-scrollbox flex shrink-0 items-center justify-around border-t border-st-border px-1 pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Rooms">
+    <nav className="st-glass st-scrollbox relative z-50 flex shrink-0 items-center justify-around border-t border-st-border px-1 pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Rooms">
       {ROOMS.map((r) => {
         const on = active === r.id;
         const dot = (r.id === "inbox" && badges.inboxToday > 0) || (r.id === "books" && badges.missingPdf) || (r.id === "quiz" && badges.quizErrors);
@@ -435,7 +435,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
             <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
               <PublishBar />
-              <div className="mx-auto min-w-0 max-w-[1360px] px-4 pb-28 pt-5 sm:px-6 sm:pt-6 lg:px-8">
+              <div className="mx-auto min-w-0 max-w-[1360px] px-4 pb-36 pt-5 sm:px-6 sm:pb-28 sm:pt-6 lg:px-8">
                 <AnimatePresence mode="wait">
                   <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}>
                     {children}
