@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useSite } from "@/components/providers/SiteProvider";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { useNear } from "@/lib/useNear";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SpringHeading } from "@/components/layout/SpringHeading";
 import { SplitFlap } from "./SplitFlap";
@@ -500,18 +501,7 @@ export function BridgeStory() {
   // The timeline (~130 measured SVG parts + a pin) is the heaviest thing on the page: building it at
   // hydration froze phones for seconds. Build it once the section is ~1.5 screens away instead — long
   // before it is visible. Reloads, back/forward and #links build at once (the browser may restore past it).
-  const [armed, setArmed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const nav = performance.getEntriesByType?.("navigation")[0] as PerformanceNavigationTiming | undefined;
-    return !!location.hash || window.scrollY > 0 || (!!nav && nav.type !== "navigate");
-  });
-  useEffect(() => {
-    const el = root.current;
-    if (!el || armed) return;
-    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && (setArmed(true), io.disconnect()), { rootMargin: "150% 0px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [armed]);
+  const armed = useNear(root);
   const lateBuild = useRef(false);
 
   useGSAP(

@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useNear } from '@/lib/useNear';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -86,11 +87,13 @@ const AnimatedContent = ({
 }: AnimatedContentProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const callbacksRef = useRef({ onStart, onComplete, onDisappearanceComplete });
+  // scroll-triggered blocks start `invisible`, so their setup can wait until they are ~1.5 screens away
+  const near = useNear(ref, trigger !== 'mount');
   callbacksRef.current = { onStart, onComplete, onDisappearanceComplete };
 
   useIsomorphicLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return undefined;
+    if (!el || !near) return undefined;
 
     let scroller: Element | string | null = container || document.getElementById('snap-main-container') || null;
     if (typeof scroller === 'string') scroller = document.querySelector(scroller);
@@ -236,7 +239,8 @@ const AnimatedContent = ({
     scrub,
     disappearAfter,
     disappearDuration,
-    disappearEase
+    disappearEase,
+    near
   ]);
 
   return (
