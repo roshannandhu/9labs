@@ -26,7 +26,11 @@ export const bookFolder = (slug: string | undefined, role: UploadFolder["role"])
 /** Gets a signed URL from the server, PUTs the file straight to it, and returns the saved ref. */
 export async function uploadFile(blob: Blob, name: string, kind: UploadKind, folder?: UploadFolder): Promise<string> {
   const { url, ref } = await api<{ url: string; ref: string }>("/api/admin/uploads", { json: { kind, name, size: blob.size, type: blob.type, ...folder } });
-  const put = await fetch(url, { method: "PUT", headers: { "Content-Type": blob.type }, body: blob });
+  // The file goes straight from the browser to R2, so the bucket must allow this admin's address (CORS);
+  // a blocked or dropped request surfaces as a bare TypeError ("Failed to fetch") — say what it means.
+  const put = await fetch(url, { method: "PUT", headers: { "Content-Type": blob.type }, body: blob }).catch(() => {
+    throw new Error("Couldn't reach file storage — check your connection and try again. If it keeps failing, storage isn't accepting uploads from this address.");
+  });
   if (!put.ok) throw new Error("The upload failed. Try again.");
   return ref;
 }
