@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { waLink } from "@/content/site";
 import { downloadCsv } from "@/lib/csv";
+import { bookSummary, enquirySummary, quizSummary } from "@/lib/leadSummary";
 import { Icon } from "@/studio/Icon";
 import { LeadDrawer } from "@/studio/inbox/LeadDrawer";
 import type { LeadKind } from "@/studio/leads";
@@ -81,7 +82,7 @@ function InboxInner() {
         inPeriod(r.createdAt, period) &&
         (outcome === "all" || r.action === outcome) &&
         (topMatch === "all" || r.top === topMatch) &&
-        (!query || [r.top, r.email, r.ref, r.matches].join(" ").toLowerCase().includes(query)),
+        (!query || [r.name, r.phone, r.top, r.email, r.ref, r.matches].join(" ").toLowerCase().includes(query)),
     );
   }, [quizResults, q, period, outcome, topMatch]);
 
@@ -95,7 +96,7 @@ function InboxInner() {
     } else if (tab === "books") {
       downloadCsv("ebook-requests", ["Received", "Name", "E-mail", "Phone", "Company", "Book", "Delivery", "Downloads", "Source page"], filteredBooks.map((r) => [r.createdAt, r.name, r.email, r.phone, r.company, r.bookSlug, r.status, r.downloads, r.source]));
     } else {
-      downloadCsv("quiz-results", ["Finished", "Top match", "Matches", "What they did", "E-mail", "Ref", "Summary"], filteredQuiz.map((r) => [r.createdAt, r.top, r.matches, r.action, r.email, r.ref, r.summary]));
+      downloadCsv("quiz-results", ["Finished", "Name", "Phone", "E-mail", "What they want", "Top match", "Matches", "What they did", "Ref", "Answers"], filteredQuiz.map((r) => [r.createdAt, r.name, r.phone, r.email, r.ai?.wants ?? "", r.top, r.matches, r.action, r.ref, r.summary]));
     }
   };
 
@@ -232,6 +233,7 @@ function InboxInner() {
                   )}
                   {tab === "quiz" && (
                     <>
+                      <th className="px-3 py-2.5 font-medium">Customer</th>
                       <th className="px-3 py-2.5 font-medium">Top match</th>
                       <th className="px-3 py-2.5 font-medium">Other matches</th>
                       <th className="px-3 py-2.5 font-medium">What they did</th>
@@ -294,7 +296,11 @@ function InboxInner() {
                 {tab === "quiz" &&
                   (visible as typeof filteredQuiz).map((r) => (
                     <tr key={r.id} onClick={() => setOpenId(r.id)} className="cursor-pointer hover:bg-st-panel-2">
-                      <td className="px-3 py-2.5 font-medium text-st-ink">{r.top}</td>
+                      <td className="px-3 py-2.5">
+                        <p className="font-medium text-st-ink">{r.name || "—"}</p>
+                        {r.phone && <p className="text-[11.5px] text-st-dim">{r.phone}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-st-ink">{r.top}</td>
                       <td className="max-w-[200px] truncate px-3 py-2.5 text-st-sub">{r.matches}</td>
                       <td className="px-3 py-2.5">
                         <Badge tone={r.action === "none" ? "default" : "quiz"}>{r.action === "whatsapp" ? "WhatsApp" : r.action === "email" ? "E-mail" : "Only looked"}</Badge>
@@ -316,9 +322,7 @@ function InboxInner() {
                     <p className="truncate font-medium text-st-ink">{e.name}</p>
                     <Icon name={e.channel === "whatsapp" ? "whatsapp" : "mail"} size={13} />
                   </div>
-                  <p className="truncate text-[12px] text-st-dim">
-                    {e.serviceTitle} {e.company && `· ${e.company}`}
-                  </p>
+                  <p className="line-clamp-2 text-[12px] text-st-sub">{enquirySummary(e)}</p>
                   <p className="text-[11px] text-st-dim">{relativeTime(e.createdAt)}</p>
                 </button>
               ))}
@@ -329,7 +333,8 @@ function InboxInner() {
                     <p className="truncate font-medium text-st-ink">{r.name}</p>
                     <Badge tone={r.status === "sent" ? "good" : r.status === "failed" ? "danger" : r.status === "rejected" ? "default" : "warn"}>{r.status}</Badge>
                   </div>
-                  <p className="truncate text-[12px] text-st-dim">{draft.site.ebooks.find((b) => b.slug === r.bookSlug)?.title ?? r.bookSlug}</p>
+                  <p className="line-clamp-2 text-[12px] text-st-sub">{bookSummary(r, draft.site.ebooks.find((b) => b.slug === r.bookSlug)?.title ?? r.bookSlug)}</p>
+                  {(r.email || r.phone) && <p className="truncate text-[11.5px] text-st-dim">{[r.email, r.phone].filter(Boolean).join(" · ")}</p>}
                   <p className="text-[11px] text-st-dim">{relativeTime(r.createdAt)}</p>
                 </button>
               ))}
@@ -337,10 +342,11 @@ function InboxInner() {
               (visible as typeof filteredQuiz).map((r) => (
                 <button key={r.id} type="button" onClick={() => setOpenId(r.id)} className="st-panel flex flex-col gap-1.5 p-3.5 text-left">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-medium text-st-ink">{r.top}</p>
+                    <p className="truncate font-medium text-st-ink">{r.name || r.top}</p>
                     <Badge tone={r.action === "none" ? "default" : "quiz"}>{r.action === "whatsapp" ? "WhatsApp" : r.action === "email" ? "E-mail" : "Only looked"}</Badge>
                   </div>
-                  <p className="truncate text-[12px] text-st-dim">{r.matches}</p>
+                  <p className="line-clamp-2 text-[12px] text-st-sub">{quizSummary(r, (slug) => draft.site.services.find((s) => s.slug === slug)?.title ?? slug)}</p>
+                  {(r.email || r.phone) && <p className="truncate text-[11.5px] text-st-dim">{[r.phone, r.email].filter(Boolean).join(" · ")}</p>}
                   <p className="text-[11px] text-st-dim">{relativeTime(r.createdAt)}</p>
                 </button>
               ))}

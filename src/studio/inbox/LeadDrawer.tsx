@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { waLink } from "@/content/site";
+import { bookSummary, enquirySummary, quizSummary } from "@/lib/leadSummary";
 import { getOutboxHtml, removeLead } from "@/studio/store";
 import { Icon } from "../Icon";
 import type { LeadKind } from "../leads";
@@ -77,6 +78,44 @@ function Header({ title, badge, time, ref: refCode }: { title: string; badge: Re
   );
 }
 
+/** The one-line "who wants what" (src/lib/leadSummary.ts), first thing in every lead. */
+function Summary({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-st-purple/30 bg-st-purple/10 p-3.5">
+      <p className="st-micro mb-1 text-st-purple">Summary</p>
+      <p className="text-[13.5px] leading-relaxed text-st-ink">{text}</p>
+    </div>
+  );
+}
+
+/** Everything the customer gave about themselves, each copyable, with the ways to reach them. */
+function Customer({ name, company, email, phone, waText, mailSubject }: { name: string; company?: string; email?: string; phone?: string; waText?: string; mailSubject?: string }) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return (
+    <div className="st-card grid gap-3 bg-st-panel-2 p-3.5">
+      <p className="st-micro">Customer</p>
+      <Field label="Name">{name && <span className="flex items-center gap-1.5">{name} <CopyButton value={name} label="Name" /></span>}</Field>
+      <Field label="Company">{company}</Field>
+      <Field label="E-mail">{email && <span className="flex items-center gap-1.5 break-all">{email} <CopyButton value={email} label="E-mail" /></span>}</Field>
+      <Field label="Phone / WhatsApp">{phone && <span className="flex items-center gap-1.5">{phone} <CopyButton value={phone} label="Phone" /></span>}</Field>
+      {(digits || email) && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {digits && (
+            <a href={waLink(digits, waText ?? "")} target="_blank" rel="noopener noreferrer" className="st-btn st-btn-primary">
+              <Icon name="whatsapp" size={14} /> WhatsApp
+            </a>
+          )}
+          {email && (
+            <a href={`mailto:${email}${mailSubject ? `?subject=${encodeURIComponent(mailSubject)}` : ""}`} className="st-btn">
+              <Icon name="mail" size={14} /> E-mail
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DeleteFooter({ onDelete }: { onDelete: () => void }) {
   const confirm = useConfirm();
   return (
@@ -103,6 +142,8 @@ function EnquiryBody({ id, onClose }: { id: string; onClose: () => void }) {
   return (
     <div className="grid gap-5">
       <Header title={e.name} badge={<Badge tone="enquiry">Service enquiry</Badge>} time={exactTime(e.createdAt)} ref={e.ref || undefined} />
+      <Summary text={enquirySummary(e)} />
+      <Customer name={e.name} company={e.company} />
 
       {e.channel === "whatsapp" ? (
         <div className="rounded-xl border border-st-border bg-st-panel-2 p-3.5 text-[13px] text-st-sub">
@@ -123,7 +164,7 @@ function EnquiryBody({ id, onClose }: { id: string; onClose: () => void }) {
       )}
 
       <div className="grid gap-3.5">
-        <Field label="Company">{e.company}</Field>
+        <p className="st-micro -mb-1.5">What they want</p>
         <Field label="Service">
           <span className="flex items-center gap-1.5">
             {svc && <Icon name="building" size={13} />}
@@ -174,7 +215,6 @@ function BookBody({ id, onClose }: { id: string; onClose: () => void }) {
 
   if (!r) return null;
   const book = draft.site.ebooks.find((b) => b.slug === r.bookSlug);
-  const digits = r.phone.replace(/\D/g, "");
   const firstName = r.name.trim().split(/\s+/)[0] || "there";
   const waMessage = `Hi ${firstName}, this is ${draft.site.shortName} about your request for "${book?.title ?? r.bookSlug}".`;
 
@@ -183,32 +223,11 @@ function BookBody({ id, onClose }: { id: string; onClose: () => void }) {
   return (
     <div className="grid gap-5">
       <Header title={r.name} badge={<Badge tone="ebook">E-book request</Badge>} time={exactTime(r.createdAt)} />
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        {digits && (
-          <a href={waLink(digits, waMessage)} target="_blank" rel="noopener noreferrer" className="st-btn st-btn-primary">
-            <Icon name="whatsapp" size={14} /> WhatsApp
-          </a>
-        )}
-        <a href={`mailto:${r.email}?subject=${encodeURIComponent(`Your e-book: ${book?.title ?? r.bookSlug}`)}`} className="st-btn">
-          <Icon name="mail" size={14} /> E-mail
-        </a>
-      </div>
+      <Summary text={bookSummary(r, book?.title ?? r.bookSlug)} />
+      <Customer name={r.name} company={r.company} email={r.email} phone={r.phone} waText={waMessage} mailSubject={`Your e-book: ${book?.title ?? r.bookSlug}`} />
 
       <div className="grid gap-3.5">
-        <Field label="E-mail">
-          <span className="flex items-center gap-1.5">
-            {r.email} <CopyButton value={r.email} label="E-mail" />
-          </span>
-        </Field>
-        <Field label="Phone">
-          {r.phone && (
-            <span className="flex items-center gap-1.5">
-              {r.phone} <CopyButton value={r.phone} label="Phone" />
-            </span>
-          )}
-        </Field>
-        <Field label="Company">{r.company}</Field>
+        <p className="st-micro -mb-1.5">What they want</p>
         <Field label="Book">{book?.title ?? r.bookSlug}</Field>
         <Field label="Came from">{r.source}</Field>
       </div>
@@ -266,6 +285,7 @@ function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
   const r = quizResults.find((x) => x.id === id);
   if (!r) return null;
   const site = draft.site;
+  const serviceTitle = (slug: string) => site.services.find((s) => s.slug === slug)?.title ?? slug;
   const SOURCE = { groq: "AI · Groq", gemini: "AI · Gemini", backup: "Backup", none: "Last resort" } as const;
   const FIT = { best: "Best fit", also: "Also useful", consider: "Worth considering" } as const;
   const actionLabel = r.action === "whatsapp" ? "Opened WhatsApp" : r.action === "email" ? `Asked for the plan by e-mail (${r.email})` : "Only looked at the result";
@@ -275,25 +295,11 @@ function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
 
   return (
     <div className="grid gap-5">
-      <Header title={r.top || "Quiz result"} badge={<Badge tone="quiz">{SOURCE[r.source] ?? "Quiz result"}</Badge>} time={exactTime(r.createdAt)} ref={r.ref || undefined} />
+      <Header title={r.name || r.top || "Quiz result"} badge={<Badge tone="quiz">{SOURCE[r.source] ?? "Quiz result"}</Badge>} time={exactTime(r.createdAt)} ref={r.ref || undefined} />
+      <Summary text={quizSummary(r, serviceTitle)} />
+      {(r.name || r.phone || r.email) && <Customer name={r.name} email={r.email} phone={r.phone} waText={`Hi ${r.name.trim().split(/\s+/)[0] || "there"}, this is ${site.shortName} about your 9 Quiz result.`} mailSubject="Your 9 Quiz plan" />}
 
-      {(r.name || r.phone) && (
-        <Field label="Contact">
-          {[r.name, r.phone].filter(Boolean).join(" · ")}
-        </Field>
-      )}
-      {r.phone && (
-        <a href={`https://wa.me/${r.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="st-btn st-btn-primary w-fit">
-          Open WhatsApp chat
-        </a>
-      )}
-      {r.email && (
-        <a href={`mailto:${r.email}?subject=${encodeURIComponent("Your 9 Quiz plan")}`} className="st-btn st-btn-primary w-fit">
-          <Icon name="mail" size={14} /> E-mail {r.email}
-        </a>
-      )}
-
-      {r.ai?.wants && <Field label="What they want">{r.ai.wants}</Field>}
+      <Field label="What they want">{r.ai?.wants || (r.top && `Help with ${r.top}`)}</Field>
 
       <div>
         <p className="st-micro mb-1.5">Their answers</p>
@@ -324,7 +330,7 @@ function QuizBody({ id, onClose }: { id: string; onClose: () => void }) {
             {r.ai.matches.map((m) => (
               <li key={m.slug} className="rounded-xl bg-st-panel-2 p-3 text-[12.5px]">
                 <strong className="text-st-ink">
-                  {site.services.find((s) => s.slug === m.slug)?.title ?? m.slug}
+                  {serviceTitle(m.slug)}
                 </strong>{" "}
                 <span className="text-st-purple">· {FIT[m.fit]}</span>
                 <p className="mt-0.5 text-st-sub">{m.how}</p>
