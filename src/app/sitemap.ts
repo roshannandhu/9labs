@@ -4,5 +4,16 @@ import { site } from "@/content/site";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [{ url: `${site.url}/`, lastModified: new Date("2026-11-08"), changeFrequency: "weekly", priority: 1 }];
+  const baseUrl = site.url.replace(/\/$/, "");
+
+  return [
+    {
+      url: `${baseUrl}/`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 1.0,
+      images: [`${baseUrl}/opengraph-image`],
+    },
+  ];
 }
+
