@@ -12,7 +12,7 @@ export function buildJsonLd(site: SiteData) {
         name: site.name,
         url: site.url,
         description: site.hero.sub,
-        slogan: site.about.statement,
+        slogan: site.about.statement.replace(/\*/g, ""),
         email: site.contact.email,
         address: {
           "@type": "PostalAddress",

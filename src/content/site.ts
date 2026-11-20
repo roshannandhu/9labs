@@ -99,7 +99,7 @@ export type Ebook = {
 export const site: SiteData = {
   name: "Nine Labs Solutions",
   shortName: "Nine Labs",
-  location: "Dubai South, Dubai, UAE",
+  location: "Dubai South District, Dubai, UAE",
   type: "Marketing, events and technology company",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ninelabs.example",
   tagline: "Marketing, events and technology — the bridge between your business and your results.",
@@ -141,20 +141,20 @@ export const site: SiteData = {
     eyebrowExtra: " — Dubai South",
     headline: "Marketing, events and technology,",
     headlineAccent: "built to deliver results.",
-    sub: "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes.",
+    sub: "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in the UAE and beyond grow with a clear method and measurable outcomes.",
     primary: { label: "Start The 9 Quiz", action: "quiz" },
     secondary: { label: "Download our free e-books", action: "link", href: "#ebooks" },
-    caption: "9 services · one team",
+    caption: "9 services · one vision",
   },
 
   servicesSection: {
     label: "Our 9 labs",
-    heading: "Nine activities.",
-    accent: "One team.",
+    heading: "Nine team.",
+    accent: "Nine activities.",
     intro:
-      "Everything a brand needs to grow — from the first strategy session to the last frame of the event film — planned and delivered by one team.",
-    outro: "All nine.",
-    outroAccent: "One team.",
+      "Everything your Idea needs to launch, scale, and stand out — from initial strategy to final production, all under one roof.",
+    outro: "Nine teams.",
+    outroAccent: "One vision.",
     cardCta: "Talk to us about this",
   },
 
@@ -259,7 +259,7 @@ export const site: SiteData = {
 
   about: {
     label: "About us",
-    strip: "Nine activities · one team · one aim",
+    strip: "Nine services · nine dedicated teams · one vision",
     story: {
       label: "How we work",
       heading: "Three steps",
@@ -276,21 +276,21 @@ export const site: SiteData = {
     },
     valuesLabel: "Our values",
     valuesHeading: "What we stand on.",
-    valuesIntro: "Five values that hold the bridge up — in every campaign, video, event and strategy.",
+    valuesIntro: "Five core principles behind every strategy we build, every system we deploy, and every brand we scale.",
     more: "Read more about us",
-    statement: "We are the bridge between your business and your results.",
+    statement: "We are the bridge between your business and your *Goal*.",
     body:
-      "Nine Labs Solutions is a marketing, events and technology company based in Dubai South. We are the bridge between your business and your results. We see your company as our own, and we work in both directions: your goals come to us, and our expertise goes to you. Nine activities, one team, one aim: results you can see.",
+      "Nine Labs Solutions is a marketing, events and technology company based in Dubai. We are the bridge between your business and your results. We see your company as our own, and we work in both directions: your goals come to us, and our expertise goes to you. Nine services, nine dedicated teams, one vision: results you can see.",
     philosophy:
       "A bridge only works when traffic moves in both directions. We don’t see clients as accounts to serve and invoice. We see your company as our own, and your results as our results.",
     stats: [
-      { value: 9, label: "Activities" },
-      { value: 1, label: "Team" },
-      { value: 1, label: "Aim" },
+      { value: 9, label: "Services" },
+      { value: 9, label: "Teams" },
+      { value: 1, label: "Vision" },
     ],
     steps: [
       { n: "01", title: "Your goals reach us", text: "You tell us where you want to go. Your ideas and feedback matter as much as our strategy." },
-      { n: "02", title: "Our expertise reaches you", text: "Nine activities under one roof, applied with a clear, research-led method." },
+      { n: "02", title: "Our expertise reaches you", text: "Nine dedicated services backed by data, research, and specialist execution—tailored to your stage of growth." },
       { n: "03", title: "Together, we get across", text: "Honest reporting and measurable outcomes. We grow when you grow." },
     ],
   },
@@ -664,7 +664,7 @@ export const site: SiteData = {
     title: "Nine Labs Solutions — Marketing, Events & Technology in Dubai",
     titleTemplate: "%s · Nine Labs Solutions",
     description:
-      "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in Dubai and beyond grow with a clear method and measurable outcomes.",
+      "From AI consultancy to video content and live events, Nine Labs Solutions helps brands in the UAE and beyond grow with a clear method and measurable outcomes.",
     keywords: [
       "marketing agency Dubai",
       "digital marketing Dubai",

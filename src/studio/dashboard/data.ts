@@ -89,7 +89,7 @@ export function useDashboardData(range: Range) {
     const issues = checkWorkspace(draft);
     const errors = issues.filter((i) => i.level === "error");
     const liveNoPdf = draft.site.ebooks.filter((b: Ebook) => b.enabled && !b.pdfFileId);
-    const whatsappOk = /^\d{8,15}$/.test(draft.site.contact.whatsappNumber);
+    const whatsappOk = /^\d{8,15}$/.test(draft.site.contact.whatsappNumber.replace(/\D/g, ""));
     const analyticsOn = !!(draft.site.integrations.ga4 || draft.site.integrations.gtm);
     const hasSampleData = [...enquiries, ...bookRequests, ...quizResults].some((l) => isSample(l.id));
 

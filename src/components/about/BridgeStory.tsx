@@ -57,13 +57,6 @@ function SideBridge() {
           <stop offset="0.55" stopColor="var(--brand-a)" stopOpacity="0.22" />
           <stop offset="1" stopColor="var(--brand-a)" stopOpacity="0" />
         </radialGradient>
-        <filter id="bs-glow" x="-50%" y="-200%" width="200%" height="500%">
-          <feGaussianBlur stdDeviation="5" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
       {/* the sun rises behind the result (step 3) */}
@@ -184,7 +177,7 @@ function SideBridge() {
             strokeOpacity="0.22"
           />
           <path className="bs-draw" d={`M${x - 18} ${H.top} H${x + 18}`} {...stroke} stroke="currentColor" strokeOpacity="0.7" strokeWidth={1.6} />
-          <circle className="bs-pop" cx={x} cy={H.top - 10} r="4" fill={i === 0 ? "var(--brand-a)" : "var(--brand-b)"} filter="url(#bs-glow)" />
+          <circle className="bs-pop" cx={x} cy={H.top - 10} r="4" fill={i === 0 ? "var(--brand-a)" : "var(--brand-b)"} stroke={i === 0 ? "var(--brand-a)" : "var(--brand-b)"} strokeOpacity="0.28" strokeWidth="9" />
         </g>
       ))}
 
@@ -201,13 +194,21 @@ function SideBridge() {
       ))}
 
       {/* main cables */}
-      <g filter="url(#bs-glow)">
-        <path className="bs-draw bs-1 bs-cable-l" d={`M${H.x0} 290 Q225 190 330 ${H.top}`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
-        <path className="bs-draw bs-span" d={`M330 ${H.top} Q600 470 870 ${H.top}`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
-        <path className="bs-draw bs-2 bs-cable-r" d={`M870 ${H.top} Q975 190 ${H.x1} 290`} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
+      {/* each cable is drawn twice: a wide faint copy is the glow (a blur filter re-rendered the whole drawing every frame) */}
+      <g>
+        {[
+          { cls: "bs-1 bs-cable-l", d: `M${H.x0} 290 Q225 190 330 ${H.top}` },
+          { cls: "bs-span", d: `M330 ${H.top} Q600 470 870 ${H.top}` },
+          { cls: "bs-2 bs-cable-r", d: `M870 ${H.top} Q975 190 ${H.x1} 290` },
+        ].map((c) => (
+          <g key={c.cls}>
+            <path className={`bs-draw ${c.cls}`} d={c.d} {...stroke} stroke="url(#bs-cable)" strokeWidth={9} strokeOpacity="0.2" />
+            <path className={`bs-draw ${c.cls}`} d={c.d} {...stroke} stroke="url(#bs-cable)" strokeWidth={1.8} />
+          </g>
+        ))}
       </g>
       {/* the spark at the head of the cable while it is strung */}
-      <circle className="bs-spark" r="5" fill="var(--brand-b)" filter="url(#bs-glow)" opacity="0" />
+      <circle className="bs-spark" r="5" fill="var(--brand-b)" stroke="var(--brand-b)" strokeOpacity="0.3" strokeWidth="10" opacity="0" />
 
       {/* ------------------------------------------------ step 3: the deck meets in the middle */}
       <g>
@@ -232,7 +233,7 @@ function SideBridge() {
       {LAMPS.map((x) => (
         <g key={x} className="bs-lamp">
           <path d={`M${x} ${H.deck} V${H.deck - 16}`} {...stroke} stroke="currentColor" strokeOpacity="0.4" />
-          <circle cx={x} cy={H.deck - 18} r="2.6" fill="var(--brand-b)" filter="url(#bs-glow)" />
+          <circle cx={x} cy={H.deck - 18} r="2.6" fill="var(--brand-b)" stroke="var(--brand-b)" strokeOpacity="0.28" strokeWidth="7" />
         </g>
       ))}
 
@@ -256,7 +257,8 @@ function SideBridge() {
       <g transform={`translate(${H.mid} ${H.deck + 8})`}>
         <circle className="bs-burst" r="34" fill="none" stroke="url(#bs-cable)" strokeWidth="2" opacity="0" />
         <g className="bs-nine">
-          <circle r="34" fill="var(--nl-bg)" stroke="url(#bs-cable)" strokeWidth="2" filter="url(#bs-glow)" />
+          <circle r="38" fill="none" stroke="url(#bs-cable)" strokeOpacity="0.22" strokeWidth="12" />
+          <circle r="34" fill="var(--nl-bg)" stroke="url(#bs-cable)" strokeWidth="2" />
           <text y="10" textAnchor="middle" className="bs-nine-text">
             9
           </text>
@@ -460,7 +462,7 @@ function buildBeats(tl: gsap.core.Timeline, q: (s: string) => Element[], scope: 
     .from($(".bs-2 .bs-pop, .bs-2.bs-pop"), { autoAlpha: 0, scale: 0.3, transformOrigin: "50% 50%", duration: 0.15 }, secondAt + 0.65)
     .from($(".bs-cable-r"), { drawSVG: "0%", duration: 0.3 }, secondAt + 0.55)
     .from($(".bs-hang-r"), { drawSVG: "0%", duration: 0.12, stagger: 0.03 }, secondAt + 0.6)
-    .from(span, { drawSVG: "0%", duration: T.span }, spanAt)
+    .from($(".bs-span"), { drawSVG: "0%", duration: T.span }, spanAt)
     .from($(".bs-hang-c"), { drawSVG: "0%", duration: 0.12, stagger: (T.span - 0.12) / 16 }, spanAt);
   if (span) {
     tl.set($(".bs-spark"), { opacity: 1 }, spanAt)
@@ -568,7 +570,8 @@ export function BridgeStory() {
         const t = p * dur;
         const i = t < marks.s1 ? 0 : t < marks.s2 ? 1 : 2;
         setFlap((f) => (f.cur === i ? f : { cur: i, prev: f.cur, k: f.k + 1 }));
-        el.dataset.live = t >= marks.live ? "true" : "false";
+        const live = t >= marks.live ? "true" : "false";
+        if (el.dataset.live !== live) el.dataset.live = live;
       };
 
       const st = ScrollTrigger.create({
@@ -578,7 +581,7 @@ export function BridgeStory() {
         end: () => `+=${Math.round(window.innerHeight * (wide ? 2.4 : 2.6))}`,
         pin: true,
         anticipatePin: 1,
-        scrub: wide ? 0.3 : true,
+        scrub: 0.5,
         animation: tl,
         invalidateOnRefresh: true,
         onUpdate: (self) => setStep(self.progress),

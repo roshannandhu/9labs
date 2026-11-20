@@ -130,8 +130,11 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
 
   const splitText = useMemo(() => {
     if (text === null) return null;
-    return text.split(/(\s+)/).map((word, index) =>
-      word.trim() === '' ? (
+    return text.split(/(\s+)/).map((raw, index) => {
+      // a word wrapped in *stars* is highlighted (the stars themselves are never shown)
+      const accent = raw.includes('*');
+      const word = raw.replace(/\*/g, '');
+      return word.trim() === '' ? (
         word
       ) : (
         <span className="inline-block" data-word key={index}>
@@ -142,13 +145,13 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
               </span>
             ))
           ) : (
-            <span className="inline-block" data-piece>
+            <span className={accent ? 'inline-block font-accent text-gradient' : 'inline-block'} data-piece>
               {word}
             </span>
           )}
         </span>
-      )
-    );
+      );
+    });
   }, [text, splitBy]);
 
   const [mounted, setMounted] = useState(false);
@@ -333,7 +336,7 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
   ]);
 
   return (
-    <h2 ref={containerRef} className={containerClassName} aria-label={text ?? undefined}>
+    <h2 ref={containerRef} className={containerClassName} aria-label={text?.replace(/\*/g, '') ?? undefined}>
       <span
         ref={textRef}
         className={`block ${textClassName}`}

@@ -35,7 +35,10 @@ export function CompanySection() {
   const draft = useDraft();
   const c = draft.site.contact;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c.email);
-  const waOk = /^\d{8,15}$/.test(c.whatsappNumber);
+  const waDigits = c.whatsappNumber.replace(/\D/g, "");
+  const waOk = /^\d{8,15}$/.test(waDigits);
+  // The footer / About show "Phone", but every WhatsApp button opens "WhatsApp number" — two fields, easy to change only one.
+  const phoneDiffers = c.phone.replace(/\D/g, "") !== waDigits && /\d/.test(c.phone);
 
   return (
     <div className="grid gap-4">
@@ -72,7 +75,8 @@ export function CompanySection() {
       <SettingCard title="WhatsApp" appearsOn="Every WhatsApp button, the enquiry window, the quiz">
         <div>
           <TextField path={["site", "contact", "whatsappNumber"]} label="Number" help="Digits only, with the country code — e.g. 971501234567." />
-          <Hint ok={waOk} yes="Valid" no="8–15 digits, country code first" />
+          <Hint ok={waOk} yes={`Every WhatsApp button opens wa.me/${waDigits}`} no="8–15 digits, country code first" />
+          {waOk && phoneDiffers && <p className="st-help mt-1 text-st-warn">The footer shows “{c.phone}”, but the buttons open {waDigits}. Change the Phone above too if they should match.</p>}
         </div>
         <TextField path={["site", "contact", "whatsappText"]} label="Pre-filled message" />
         {waOk && (
@@ -107,6 +111,8 @@ export function CompanySection() {
 
 /* ------------------------------------------------------------------ Google & tracking */
 
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
 export function GoogleSection() {
   const draft = useDraft();
   const seo = draft.site.seo;
@@ -122,7 +128,7 @@ export function GoogleSection() {
           <p className={`mt-1 text-[11px] ${seo.title.length > 60 ? "text-st-warn" : "text-st-dim"}`}>{seo.title.length} / 60</p>
         </div>
         <TextField path={["site", "seo", "titleTemplate"]} label="Title of other pages" help="%s is replaced by the page's own title." />
-        {!seo.titleTemplate.includes("%s") && <p className="text-[11.5px] text-st-warn">Missing %s — every page would share the same title.</p>}
+        {!seo.titleTemplate.includes("%s") && <p className="text-[11.5px] text-st-warn">Missing %s — the site uses “%s · {draft.site.name}” instead.</p>}
         <div>
           <TextField path={["site", "seo", "description"]} label="Description" />
           <p className={`mt-1 text-[11px] ${seo.description.length > 155 ? "text-st-warn" : "text-st-dim"}`}>{seo.description.length} / 155</p>
@@ -130,12 +136,13 @@ export function GoogleSection() {
         <Switch checked={seo.index} onChange={(v) => { checkpoint(); setDraft(["site", "seo", "index"], v); }} label="Allow search engines to list the site" />
       </SettingCard>
 
-      <SettingCard title="Live preview">
-        <div className="rounded-xl border border-st-border bg-white p-4">
-          <p className="truncate text-[13px] text-[#1a0dab]">{seo.title || "Untitled"}</p>
-          <p className="truncate text-[12px] text-[#006621]">{draft.site.url}</p>
-          <p className="mt-0.5 line-clamp-2 text-[12.5px] text-[#545454]">{seo.description || "No description set yet."}</p>
+      <SettingCard title="Live preview" help="Roughly what Google shows. Text past the limit (60 / 155 characters) is cut off with “…”.">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-st-border bg-white p-3.5 sm:p-4">
+          <p className="break-all text-[12px] text-[#202124]">{draft.site.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
+          <p className="mt-0.5 break-words text-[17px] leading-snug text-[#1a0dab] sm:text-[19px]">{clip(seo.title || "Untitled", 60)}</p>
+          <p className="mt-1 break-words text-[13px] leading-snug text-[#4d5156]">{seo.description ? clip(seo.description, 155) : "No description set yet — Google will pick its own text."}</p>
         </div>
+        {!seo.index && <p className="text-[11.5px] text-st-warn">Search engines are blocked from listing the site, so none of this appears in Google.</p>}
       </SettingCard>
 
       <SettingCard title="Analytics & ads" help="Tracking only starts after a visitor accepts cookies.">
@@ -153,7 +160,7 @@ export function GoogleSection() {
         </div>
       </SettingCard>
 
-      <SettingCard title="Cookie notice">
+      <SettingCard title="Cookie notice" help="Shown to visitors only while a Google Analytics, Tag Manager or Meta Pixel ID is set above.">
         <TextField path={["site", "integrations", "cookieText"]} label="Text" />
         <div className="grid gap-3.5 sm:grid-cols-2">
           <TextField path={["site", "integrations", "cookieAccept"]} label="Accept button" />
