@@ -12,6 +12,7 @@ import React, {
 } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useNear } from '@/lib/useNear';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -157,11 +158,16 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
+  // Build once, ~1.5 screens before it can be seen (useNear). Waiting for `mounted` is only needed when a
+  // custom scroller's ref fills in after the first render; with the window it rebuilt every trigger for
+  // nothing (and reverting a ScrollTrigger refreshes the whole page).
+  const near = useNear(containerRef);
+  const ready = near && (mounted || !scrollContainerRef);
 
   useIsomorphicLayoutEffect(() => {
     const el = containerRef.current;
     const textEl = textRef.current;
-    if (!el || !textEl) return;
+    if (!ready || !el || !textEl) return;
     if (scrollContainerRef && !scrollContainerRef.current) return;
 
     const scroller = scrollContainerRef?.current || window;
@@ -316,7 +322,7 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
 
     return () => mm.revert();
   }, [
-    mounted,
+    ready,
     scrollContainerRef,
     text,
     splitBy,
