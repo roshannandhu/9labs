@@ -14,6 +14,26 @@ export type SendMailInput = {
 };
 export type SendMailResult = { ok: boolean; error?: string };
 
+async function sendViaResend(apiKey: string, from: string, input: SendMailInput, replyTo?: string): Promise<void> {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+      reply_to: replyTo || undefined,
+      attachments: input.attachments?.map((a) => ({ filename: a.filename, content: a.content, content_type: a.mimeType })),
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null) as { message?: string } | null;
+    throw new Error(`Resend refused the e-mail (${res.status}): ${detail?.message ?? res.statusText}`);
+  }
+}
+
 /** Always writes the outbox row itself, so no call site has to remember to. */
 export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
   if (!smtpConfigured()) {
@@ -23,6 +43,13 @@ export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_FROM_NAME, MAIL_REPLY_TO } = env();
   try {
+    if (SMTP_HOST === "smtp.resend.com") {
+      // Resend over HTTPS (its SMTP password is the API key). SMTP needs raw sockets, which the deployed
+      // Worker bundle can't load ("Dynamic require of cloudflare:sockets"), so nothing was ever sent.
+      await sendViaResend(SMTP_PASS, `${MAIL_FROM_NAME} <${MAIL_FROM}>`, input, input.replyTo || MAIL_REPLY_TO);
+      await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: "sent" });
+      return { ok: true };
+    }
     const { WorkerMailer } = await import("worker-mailer");
     await WorkerMailer.send(
       {
