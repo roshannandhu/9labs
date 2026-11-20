@@ -126,8 +126,8 @@ export async function spendDownload(id: string, version: number, maxDownloads: n
   return rows?.[0] ?? null;
 }
 
-export async function pendingBookRequestsForRetry(limit: number): Promise<BookRequestRow[]> {
-  const retryAfter = new Date(Date.now() - 15 * 60_000).toISOString();
+export async function pendingBookRequestsForRetry(limit: number, now = false): Promise<BookRequestRow[]> {
+  const retryAfter = new Date(Date.now() - (now ? 0 : 15 * 60_000)).toISOString();
   const notOlderThan = new Date(Date.now() - 14 * 86_400_000).toISOString();
   const { data, error } = await db()
     .from("book_requests")

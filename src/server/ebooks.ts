@@ -5,7 +5,7 @@ import { buildEbookMail } from "@/lib/ebooks/mail";
 import { refKey } from "@/lib/fileRefs";
 import { mailLayout, paragraphs } from "@/lib/mail";
 import { signToken, verifyToken } from "@/lib/tokens";
-import { getPublished } from "./content";
+import { getPublished, readWorkspace } from "./content";
 import { env } from "./env";
 import { type BookRequestRow, findBookRequest, pendingBookRequestsForRetry, spendDownload, updateBookRequest } from "./leads";
 import { sendMail } from "./mail";
@@ -75,7 +75,16 @@ export async function deliverBookRequest(requestId: string): Promise<DeliverResu
   if (!book) return fail("The book for this request no longer exists.");
 
   const pdfKey = refKey(book.pdfFileId);
-  if (!pdfKey) return fail(`“${book.title}” has no PDF yet. Upload one on the book's page — it will send automatically.`);
+  if (!pdfKey) {
+    // Not a failed delivery: the request waits (no attempt used up) and goes out as soon as a published
+    // version of the book has its PDF — Publish sends waiting requests at once (retryPendingDeliveries).
+    const draftBook = (await readWorkspace("draft"))?.data.site.ebooks.find((b) => b.slug === request.book_slug);
+    const error = refKey(draftBook?.pdfFileId)
+      ? `“${book.title}”'s PDF is uploaded but not published yet. Press Publish and it sends right away.`
+      : `“${book.title}” has no PDF yet. Upload one on the book's page, then Publish, and it sends right away.`;
+    await updateBookRequest(request.id, { status: "pending", error, lastAttemptAt: new Date().toISOString() });
+    return { ok: false, error };
+  }
 
   const fileRes = await getObject(pdfKey);
   if (fileRes.status !== 200 || !fileRes.body) return fail("The PDF file could not be found. Upload it again.");
@@ -129,9 +138,12 @@ export async function alertAdminNewRequest(request: Pick<BookRequestRow, "name" 
   });
 }
 
-/** Retries requests that haven't gone out yet (no PDF at the time, or a send failure) — run after every Publish and every 15 minutes from Supabase cron. */
-export async function retryPendingDeliveries(limit: number): Promise<void> {
-  const rows = await pendingBookRequestsForRetry(limit);
+/**
+ * Retries requests that haven't gone out yet (no PDF at the time, or a send failure). The 15-minute cron
+ * waits 15 minutes between tries; a Publish (`now`) tries everything waiting at once — that's when a PDF appears.
+ */
+export async function retryPendingDeliveries(limit: number, now = false): Promise<void> {
+  const rows = await pendingBookRequestsForRetry(limit, now);
   for (const row of rows) {
     const result = await deliverBookRequest(row.id);
     if (result.ok) {
