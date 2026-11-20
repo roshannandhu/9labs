@@ -44,7 +44,7 @@ const ASM_MS = 1700;
  * - **Formed**: a crisp picture or "9" drawn *inside* its slot in the page. The card in focus
  *   keeps redrawing with real time so its small details live; every other card shows a faint still
  *   ghost of its object. The swarm draws nothing while a shape is at rest.
- * - **Moving**: up to 12,000 particles on a strong PC (9,000 / 6,000 on lighter ones, 4,400 on phones), drawn on a canvas that scrolls with the page
+ * - **Moving**: up to 8,000 particles on a strong PC (6,000 / 4,500 on lighter ones, 4,400 on phones), drawn on a canvas that scrolls with the page
  *   (or, card to card, with the carousel), each carrying its own true pixel colour from both shapes
  *   and landing exactly where the crisp version is drawn, so the hand-over has no jump. A device
  *   that can't keep up quietly steps down to 80%, then 60%, of them.
@@ -75,7 +75,7 @@ export function ParticleStage() {
     // up steps the drawn share down (see `keep`), so more particles never means a stutter
     const pc = !phone && window.matchMedia("(pointer: fine) and (min-width: 1024px)").matches;
     const cores = navigator.hardwareConcurrency || 4;
-    const N = phone ? 4400 : pc && cores >= 8 ? 12000 : pc && cores >= 4 ? 9000 : 6000;
+    const N = phone ? 4400 : pc && cores >= 8 ? 8000 : pc && cores >= 4 ? 6000 : 4500;
     const dustDpr = 1;
     const r = rng(9001);
 
@@ -157,6 +157,7 @@ export function ParticleStage() {
       key: string;
       op: number;
       liveT0: number;
+      liveAt: number;
       drift: number;
       fitPx: number;
       lw: number;
@@ -173,7 +174,7 @@ export function ParticleStage() {
       c.className = `particle-rest particle-rest--${name}`;
       c.style.cssText = "position:absolute;left:50%;top:50%;pointer-events:none;opacity:0;z-index:10";
       el.appendChild(c);
-      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), drift: NaN, fitPx: -1, lw: 0, lh: 0, side: 0 }); // NaN/-1: not sized yet
+      rest.set(name, { el, c, g, key: "", op: -1, liveT0: performance.now(), liveAt: 0, drift: NaN, fitPx: -1, lw: 0, lh: 0, side: 0 }); // NaN/-1: not sized yet
     }
 
     const measureSlots = () => {
@@ -277,13 +278,21 @@ export function ParticleStage() {
           PICTURES[target.icon](s.g, px2, pal, 0);
           return;
         }
-        // always redrawn, so its small details can move
-        if (s.key !== `pic|${target.icon}`) {
-          s.key = `pic|${target.icon}`;
-          s.liveT0 = performance.now();
+        // redrawn so its small details move — about 25 times a second, and only while it is near the
+        // screen (a full repaint of a ~500px vector picture every frame was the biggest steady cost)
+        const liveKey = `pic|${target.icon}`;
+        const now = performance.now();
+        if (s.key === liveKey && s.fitPx === px2) {
+          const { b } = gm;
+          if (now - s.liveAt < 40 || b.bottom < -80 || b.top > window.innerHeight + 80 || b.right < -80 || b.left > window.innerWidth + 80) return;
         }
+        if (s.key !== liveKey) {
+          s.key = liveKey;
+          s.liveT0 = now;
+        }
+        s.liveAt = now;
         fit(s, gm.side, px2);
-        PICTURES[target.icon](s.g, px2, pal, (performance.now() - s.liveT0) / 1000);
+        PICTURES[target.icon](s.g, px2, pal, (now - s.liveT0) / 1000);
         return;
       }
       const ch = "9"; // the hero and the finale
@@ -487,13 +496,13 @@ export function ParticleStage() {
         S.c.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
       }
 
-      if (asm >= 1 && keep > 6) {
+      if (asm >= 1 && keep > 4) {
         // only back-to-back flight frames count: a pause between two flights isn't a slow device
         const dt = now - lastT;
         if (lastT && dt < 100) {
           probeSum += dt;
           if (++probe === 30) {
-            if (probeSum / 30 > 21) keep -= 2; // slower than ~48fps: draw a little less
+            if (probeSum / 30 > 18) keep -= 2; // slower than ~55fps: draw a little less (10 → 8 → 6 → 4 of every 10)
             probe = 0;
             probeSum = 0;
           }

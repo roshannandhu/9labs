@@ -11,8 +11,15 @@ export function refKey(ref: string | undefined): string | undefined {
   return ref?.startsWith(PREFIX) ? ref.slice(PREFIX.length) : undefined;
 }
 
-export const isImageRef = (ref: string | undefined): boolean => Boolean(refKey(ref)?.startsWith("images/"));
-export const isPdfRef = (ref: string | undefined): boolean => Boolean(refKey(ref)?.startsWith("pdfs/"));
+/** A book's files sit together: `ebooks/<book-slug>/cover-<id>.jpg`, `logo-<id>.png`, `pdf-<id>.pdf`. Everything else is `images/` or `pdfs/`. */
+export const isImageRef = (ref: string | undefined): boolean => {
+  const key = refKey(ref);
+  return Boolean(key && (key.startsWith("images/") || (key.startsWith("ebooks/") && !key.endsWith(".pdf"))));
+};
+export const isPdfRef = (ref: string | undefined): boolean => {
+  const key = refKey(ref);
+  return Boolean(key && (key.startsWith("pdfs/") || (key.startsWith("ebooks/") && key.endsWith(".pdf"))));
+};
 
 /** Only images are ever served directly (`/media/…`) — a PDF only ever goes out via a signed link. */
 export function mediaUrl(ref: string | undefined): string | undefined {

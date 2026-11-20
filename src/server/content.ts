@@ -8,6 +8,7 @@ import { defaultWorkspace } from "@/content/defaults";
 import { toSite } from "@/content/toSite";
 import type { AdminRole, Workspace } from "@/content/types";
 import { db } from "./db";
+import { removeUnusedBookFiles } from "./bookFiles";
 import { purgeSiteCache } from "./purge";
 import { HttpError } from "./http";
 import { firstForbiddenChange } from "@/lib/permissions";
@@ -89,6 +90,7 @@ export async function publishDraft(summary: string[], expectedRev: number, updat
   const issues = checkWorkspace(current.data);
   if (issues.some((i) => i.level === "error")) throw new HttpError(422, "This can't be published yet.", { issues });
 
+  const before = (await readWorkspace("published"))?.data ?? null;
   const { error: upsertErr } = await db().from("workspace").upsert({ id: "published", data: current.data, rev: current.rev, updated_by: updatedBy, updated_at: new Date().toISOString() });
   if (upsertErr) throw upsertErr;
 
@@ -102,5 +104,6 @@ export async function publishDraft(summary: string[], expectedRev: number, updat
 
   setPublishedMemo(current.data);
   await purgeSiteCache();
+  await removeUnusedBookFiles(before, current.data, current.data);
   return { published: current.data };
 }

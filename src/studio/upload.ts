@@ -19,10 +19,13 @@ export async function resizeImage(file: File, maxSide = 1400, quality = 0.86): P
 }
 
 export type UploadKind = "image" | "pdf";
+/** Where a book's file goes in storage: its own folder, named by the book (see the uploads route). */
+export type UploadFolder = { book: string; role: "cover" | "logo" | "pdf" };
+export const bookFolder = (slug: string | undefined, role: UploadFolder["role"]): UploadFolder | undefined => (slug && /^[a-z0-9-]{1,80}$/.test(slug) ? { book: slug, role } : undefined);
 
 /** Gets a signed URL from the server, PUTs the file straight to it, and returns the saved ref. */
-export async function uploadFile(blob: Blob, name: string, kind: UploadKind): Promise<string> {
-  const { url, ref } = await api<{ url: string; ref: string }>("/api/admin/uploads", { json: { kind, name, size: blob.size, type: blob.type } });
+export async function uploadFile(blob: Blob, name: string, kind: UploadKind, folder?: UploadFolder): Promise<string> {
+  const { url, ref } = await api<{ url: string; ref: string }>("/api/admin/uploads", { json: { kind, name, size: blob.size, type: blob.type, ...folder } });
   const put = await fetch(url, { method: "PUT", headers: { "Content-Type": blob.type }, body: blob });
   if (!put.ok) throw new Error("The upload failed. Try again.");
   return ref;

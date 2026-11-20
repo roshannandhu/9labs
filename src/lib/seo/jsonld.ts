@@ -14,6 +14,8 @@ export function buildJsonLd(site: SiteData) {
         description: site.hero.sub,
         slogan: site.about.statement.replace(/\*/g, ""),
         email: site.contact.email,
+        telephone: site.contact.phone,
+        contactPoint: { "@type": "ContactPoint", contactType: "customer service", email: site.contact.email, telephone: site.contact.phone, areaServed: "AE", availableLanguage: ["English"] },
         address: {
           "@type": "PostalAddress",
           addressLocality: site.geo.locality,

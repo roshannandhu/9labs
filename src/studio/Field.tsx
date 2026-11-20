@@ -6,7 +6,7 @@ import { checkpoint } from "@/studio/store";
 import { Icon } from "./Icon";
 import { useField } from "./state";
 import { rememberUpload, useFileUrl } from "./useFileUrl";
-import { resizeImage, uploadFile } from "./upload";
+import { resizeImage, uploadFile, type UploadFolder } from "./upload";
 import { useToast } from "./ui";
 
 type Base = { path: Path; label: string; help?: string; placeholder?: string; required?: boolean };
@@ -235,7 +235,7 @@ export function Dropzone({ accept, label, hint, onFile, current, busy }: { accep
  * A JPEG photo over 400KB is re-encoded to fit `maxSide`; with `keepFormat`, PNG/SVG/WebP are
  * never re-encoded, so an uploaded logo keeps its transparency.
  */
-export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Base & { maxSide?: number; keepFormat?: boolean }) {
+export function ImageField({ path, label, help, maxSide = 1400, keepFormat, folder }: Base & { maxSide?: number; keepFormat?: boolean; folder?: UploadFolder }) {
   const [value, setValue] = useField<string>(path);
   const { url: stored } = useFileUrl(value);
   const [busy, setBusy] = useState(false);
@@ -253,7 +253,7 @@ export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Ba
     try {
       const skip = keepFormat && /^image\/(png|svg\+xml|webp)$/.test(file.type);
       const blob = !skip && file.type.startsWith("image/") && file.size > 400_000 ? await resizeImage(file, maxSide) : file;
-      const ref = await uploadFile(blob, file.name, "image");
+      const ref = await uploadFile(blob, file.name, "image", folder);
       rememberUpload(ref, blob);
       setValue(ref);
     } catch (err) {
@@ -302,7 +302,7 @@ export function ImageField({ path, label, help, maxSide = 1400, keepFormat }: Ba
 }
 
 /** A required PDF upload (a book's file). Writes the id/name/size as three sibling fields. */
-export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: Path; namePath: Path; sizePath: Path; label: string; help?: string }) {
+export function PdfField({ idPath, namePath, sizePath, label, help, folder }: { idPath: Path; namePath: Path; sizePath: Path; label: string; help?: string; folder?: UploadFolder }) {
   const [fileId, setFileId] = useField<string | undefined>(idPath);
   const [name, setName] = useField<string | undefined>(namePath);
   const [, setSize] = useField<number | undefined>(sizePath);
@@ -314,7 +314,7 @@ export function PdfField({ idPath, namePath, sizePath, label, help }: { idPath: 
     setBusy(true);
     checkpoint();
     try {
-      const ref = await uploadFile(file, file.name, "pdf");
+      const ref = await uploadFile(file, file.name, "pdf", folder);
       setFileId(ref);
       setName(file.name);
       setSize(file.size);

@@ -1,5 +1,5 @@
 import { useId, type CSSProperties } from "react";
-import type { Ebook } from "@/content/site";
+import { COVER_ARTS, type CoverArt, type Ebook } from "@/content/site";
 import { NINE_PATH } from "@/components/hero/nine-path";
 
 /** Break a title into short lines for the cover (works for any title the admin enters). */
@@ -12,6 +12,24 @@ function titleLines(title: string, max = 14) {
   }
   return out.slice(0, 3);
 }
+
+/** The picture a designed cover shows: the admin's pick, or (by default) one of the first three by the book number. */
+export function coverArtOf(book: Pick<Ebook, "n" | "art">): CoverArt {
+  if (book.art && (COVER_ARTS as readonly string[]).includes(book.art)) return book.art;
+  return COVER_ARTS[((((parseInt(book.n, 10) || 1) - 1) % 3) + 3) % 3];
+}
+
+/** Names for the admin's picker. */
+export const COVER_ART_LABELS: Record<CoverArt, string> = {
+  foundation: "Foundation",
+  signal: "Signal",
+  nine: "The 9",
+  growth: "Growth",
+  idea: "Idea",
+  network: "Network",
+  target: "Target",
+  bridge: "Bridge",
+};
 
 /**
  * An uploaded cover's print finish (inline, so the admin's previews get it as well as the site): the
@@ -48,7 +66,7 @@ export function BookCover({ book }: { book: Ebook }) {
   // unique per drawing: the same book is drawn more than once (phone carousel + desktop shelf), and
   // duplicate ids make covers paint from a hidden copy's gradients — i.e. not at all
   const id = uid.replace(/:/g, "");
-  const art = (parseInt(book.n, 10) - 1 + 3) % 3; // three art styles, by order
+  const art = coverArtOf(book);
   const accent = book.tone === "purple" ? "var(--nl-purple)" : "var(--nl-blue)";
   const accent2 = book.tone === "blue" ? "var(--nl-blue-soft)" : "var(--nl-purple)";
   const lines = titleLines(book.title);
@@ -87,7 +105,7 @@ export function BookCover({ book }: { book: Ebook }) {
       <rect x="10" width="1" height="290" fill="white" opacity="0.08" />
 
       {/* art */}
-      {art === 0 && (
+      {art === "foundation" && (
         <g fill="none" strokeLinecap="round" strokeLinejoin="round">
           {[0, 1, 2].map((i) => (
             <g key={i} transform={`translate(0 ${-i * 30})`}>
@@ -102,7 +120,7 @@ export function BookCover({ book }: { book: Ebook }) {
           </text>
         </g>
       )}
-      {art === 1 && (
+      {art === "signal" && (
         <g fill="none" strokeLinecap="round">
           {[18, 34, 50, 66].map((r, i) => (
             <path
@@ -119,7 +137,7 @@ export function BookCover({ book }: { book: Ebook }) {
           <circle cx="100" cy="176" r="3" fill="#fff" />
         </g>
       )}
-      {art === 2 && (
+      {art === "nine" && (
         <g>
           <g transform="translate(66 80) scale(0.17)">
             <path d={NINE_PATH} fill="var(--nl-purple)" fillOpacity="0.5" filter={`url(#blur-${id})`} />
@@ -130,6 +148,79 @@ export function BookCover({ book }: { book: Ebook }) {
           {[50, 70, 90, 110, 130, 150].map((x) => (
             <path key={x} d={`M${x} ${206 - 46 * (1 - Math.pow((x - 100) / 70, 2)) * 0.5} V206`} stroke="white" strokeOpacity="0.18" strokeWidth="0.5" />
           ))}
+        </g>
+      )}
+
+      {art === "growth" && (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          {[0, 1, 2, 3, 4].map((i) => {
+            const h = 22 + i * 18;
+            return <rect key={i} x={50 + i * 22} y={204 - h} width="14" height={h} rx="2" stroke={i === 4 ? accent2 : accent} strokeWidth="1.2" fill="#0a0c16" fillOpacity="0.85" />;
+          })}
+          <path d="M57 166 L79 148 L101 130 L123 112 L145 84" stroke={accent} strokeWidth="5" opacity="0.3" filter={`url(#blur-${id})`} />
+          <path d="M57 166 L79 148 L101 130 L123 112 L145 84" stroke="white" strokeOpacity="0.9" strokeWidth="1.5" />
+          <path d="M134 84 H146 V96" stroke="white" strokeOpacity="0.9" strokeWidth="1.5" />
+          <path d="M40 208 H160" stroke="white" strokeOpacity="0.35" strokeWidth="0.6" />
+        </g>
+      )}
+      {art === "idea" && (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="100" cy="132" r="34" fill={accent} opacity="0.35" filter={`url(#blur-${id})`} />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => {
+            const a = (k * Math.PI) / 4;
+            if (Math.sin(a) > 0.5) return null; // not under the bulb
+            return <path key={k} d={`M${100 + 44 * Math.cos(a)} ${132 + 44 * Math.sin(a)} L${100 + 56 * Math.cos(a)} ${132 + 56 * Math.sin(a)}`} stroke={accent} strokeWidth="1.4" strokeOpacity="0.8" />;
+          })}
+          <circle cx="100" cy="132" r="30" stroke="white" strokeOpacity="0.85" strokeWidth="1.4" fill="#0a0c16" fillOpacity="0.9" />
+          <path d="M92 138 L100 150 L108 138 L100 124" stroke={accent2} strokeWidth="1.4" />
+          <rect x="86" y="160" width="28" height="12" rx="3" stroke="white" strokeOpacity="0.7" strokeWidth="1.2" fill="#0a0c16" />
+          <rect x="90" y="175" width="20" height="6" rx="3" stroke="white" strokeOpacity="0.5" strokeWidth="1" fill="#0a0c16" />
+        </g>
+      )}
+      {art === "network" && (
+        <g fill="none" strokeLinecap="round">
+          {[0, 1, 2, 3, 4, 5].map((k) => {
+            const a = (k * Math.PI) / 3 - Math.PI / 2;
+            const b = ((k + 1) * Math.PI) / 3 - Math.PI / 2;
+            const x = 100 + 50 * Math.cos(a);
+            const y = 138 + 50 * Math.sin(a);
+            return (
+              <g key={k}>
+                <path d={`M100 138 L${x} ${y}`} stroke={accent} strokeOpacity="0.55" strokeWidth="1" />
+                <path d={`M${x} ${y} L${100 + 50 * Math.cos(b)} ${138 + 50 * Math.sin(b)}`} stroke="white" strokeOpacity="0.2" strokeWidth="0.8" />
+                <circle cx={x} cy={y} r="4.5" fill="#0a0c16" stroke={k === 2 ? accent2 : accent} strokeWidth="1.3" />
+              </g>
+            );
+          })}
+          <circle cx="100" cy="138" r="12" fill={accent} opacity="0.5" filter={`url(#blur-${id})`} />
+          <circle cx="100" cy="138" r="8" fill="#0a0c16" stroke="white" strokeOpacity="0.9" strokeWidth="1.4" />
+          <circle cx="100" cy="138" r="2.6" fill="#fff" />
+        </g>
+      )}
+      {art === "target" && (
+        <g fill="none" strokeLinecap="round">
+          {[14, 28, 42, 56].map((r, i) => (
+            <circle key={r} cx="100" cy="138" r={r} stroke={accent} strokeWidth="1.3" strokeOpacity={1 - i * 0.2} />
+          ))}
+          <circle cx="100" cy="138" r="6" fill={accent} opacity="0.9" filter={`url(#blur-${id})`} />
+          <circle cx="100" cy="138" r="3" fill="#fff" />
+          <path d="M104 134 L150 88" stroke="white" strokeOpacity="0.9" strokeWidth="1.6" />
+          <path d="M150 88 L162 90 M150 88 L148 76 M150 88 L158 80" stroke={accent2} strokeWidth="1.4" />
+        </g>
+      )}
+      {art === "bridge" && (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M60 122 Q100 190 140 122" stroke={accent} strokeWidth="5" opacity="0.3" filter={`url(#blur-${id})`} />
+          <path d="M60 122 Q100 190 140 122 M30 186 Q46 140 60 122 M140 122 Q154 140 170 186" stroke={accent} strokeWidth="1.5" />
+          {[70, 80, 90, 100, 110, 120, 130].map((x) => {
+            const t = (x - 60) / 80;
+            return <path key={x} d={`M${x} ${122 + 136 * t * (1 - t)} V190`} stroke="white" strokeOpacity="0.25" strokeWidth="0.6" />;
+          })}
+          <rect x="57" y="116" width="6" height="76" rx="1.5" stroke="white" strokeOpacity="0.8" strokeWidth="1.2" fill="#0a0c16" />
+          <rect x="137" y="116" width="6" height="76" rx="1.5" stroke="white" strokeOpacity="0.8" strokeWidth="1.2" fill="#0a0c16" />
+          <path d="M24 190 H176" stroke="white" strokeOpacity="0.8" strokeWidth="1.4" />
+          <path d="M24 198 H176" stroke="white" strokeOpacity="0.25" strokeWidth="0.8" strokeDasharray="6 6" />
+          <circle cx="100" cy="190" r="4" fill={accent2} />
         </g>
       )}
 

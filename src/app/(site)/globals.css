@@ -1097,11 +1097,9 @@ html[data-intro="playing"] [data-logo-9] {
     background:
       radial-gradient(120% 80% at 50% 0%, rgb(140 83 254 / 0.07), transparent 60%),
       linear-gradient(180deg, var(--surface-1), color-mix(in srgb, var(--surface-1) 82%, var(--surface-2)));
-    transition: box-shadow 0.8s var(--ease-out-expo), filter 0.8s ease;
-    filter: saturate(0.75);
+    transition: box-shadow 0.8s var(--ease-out-expo);
   }
   .scene-card[data-active="true"] {
-    filter: none;
     box-shadow:
       0 40px 80px -40px rgb(90 72 245 / 0.55),
       0 18px 40px -28px rgb(92 224 230 / 0.35);
@@ -1120,7 +1118,6 @@ html[data-intro="playing"] [data-logo-9] {
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
     opacity: 0;
     transition: opacity 0.8s ease;
-    animation: svc-rim 7s linear infinite;
     pointer-events: none;
   }
   /* the mouse light */
@@ -1137,6 +1134,7 @@ html[data-intro="playing"] [data-logo-9] {
   }
   .scene-card[data-active="true"]::before {
     opacity: 1;
+    animation: svc-rim 7s linear infinite;
   }
   .scene-card[data-active="true"]:hover::after {
     opacity: 1;

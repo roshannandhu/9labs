@@ -22,3 +22,12 @@ test("mediaUrl: only an image ref gets a URL — a PDF ref, a plain URL, and not
   assert.equal(mediaUrl("https://example.com/abc.png"), undefined);
   assert.equal(mediaUrl(undefined), undefined);
 });
+
+test("a book's files in ebooks/<book>/ are told apart the same way", () => {
+  assert.equal(isImageRef(makeRef("ebooks/my-book/cover-1a2b3c4d.jpg")), true);
+  assert.equal(isImageRef(makeRef("ebooks/my-book/logo-1a2b3c4d.png")), true);
+  assert.equal(isPdfRef(makeRef("ebooks/my-book/pdf-1a2b3c4d.pdf")), true);
+  assert.equal(isImageRef(makeRef("ebooks/my-book/pdf-1a2b3c4d.pdf")), false);
+  assert.equal(mediaUrl(makeRef("ebooks/my-book/cover-1a2b3c4d.jpg")), "/media/ebooks/my-book/cover-1a2b3c4d.jpg");
+  assert.equal(mediaUrl(makeRef("ebooks/my-book/pdf-1a2b3c4d.pdf")), undefined);
+});

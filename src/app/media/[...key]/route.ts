@@ -2,7 +2,7 @@ import { getObject } from "@/server/r2";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED = /^images\/[a-z0-9-]+\.(png|jpe?g|webp|gif|avif|svg)$/i;
+const ALLOWED = /^(images\/[a-z0-9-]+|ebooks\/[a-z0-9-]+\/(?:cover|logo)-[a-z0-9]+)\.(png|jpe?g|webp|gif|avif|svg)$/i;
 const CONTENT_TYPE: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", avif: "image/avif", svg: "image/svg+xml" };
 
 /** Only images are ever served this way — a PDF only ever goes out via a signed download link. */

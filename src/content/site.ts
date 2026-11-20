@@ -67,6 +67,10 @@ export type QuizQuestion = {
 
 export type Value = { key: string; title: string; line: string };
 
+/** The ideas an admin can pick from for a designed cover (see BookCover.tsx). */
+export const COVER_ARTS = ["foundation", "signal", "nine", "growth", "idea", "network", "target", "bridge"] as const;
+export type CoverArt = (typeof COVER_ARTS)[number];
+
 export type Ebook = {
   id: string;
   slug: string;
@@ -75,6 +79,8 @@ export type Ebook = {
   subtitle: string;
   oneLiner: string;
   tone: "blue" | "purple" | "duo";
+  /** The picture on a designed cover. Missing = auto: one of the first three, by the book number. */
+  art?: CoverArt;
   pages: number;
   readTime: string;
   chapters: string[];

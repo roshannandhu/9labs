@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { Ebook } from "@/content/site";
-import { BookCover } from "@/components/ebooks/BookCover";
+import { COVER_ARTS, type Ebook } from "@/content/site";
+import { BookCover, COVER_ART_LABELS, coverArtOf } from "@/components/ebooks/BookCover";
 import { publicHref } from "@/lib/site-href";
 import { checkpoint, setDraft } from "@/studio/store";
+import { bookFolder } from "../upload";
 import type { Path } from "@/lib/path";
 import { AreaField, CheckField, ImageField, ListField, NumField, PdfField, TextField } from "../Field";
 import { Panel, Segmented, Button, useConfirm, useToast } from "../ui";
@@ -164,15 +165,42 @@ export function BookEditor({ index, onDelete }: { index: number; onDelete: () =>
                   ))}
                 </div>
               </div>
-              <ImageField path={path("coverLogo")} label="Logo on the cover" help="A light or white logo with a transparent background — the cover is dark." keepFormat />
+              <div>
+                <span className="st-label">Cover idea</span>
+                <div className="mt-1.5 grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+                  {(["auto", ...COVER_ARTS] as const).map((id) => {
+                    const picked = (book.art ?? "auto") === id;
+                    const shown = id === "auto" ? coverArtOf({ n: book.n }) : id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          checkpoint();
+                          setDraft(path("art"), id === "auto" ? undefined : id);
+                        }}
+                        aria-pressed={picked}
+                        className={`rounded-xl border-2 p-1 text-center transition-colors ${picked ? "border-st-purple" : "border-transparent hover:border-st-border"}`}
+                      >
+                        <span className="block aspect-[200/290] w-full overflow-hidden rounded-lg">
+                          <BookCover book={{ ...book, art: shown, cover: undefined, coverLogo: undefined }} />
+                        </span>
+                        <span className="mt-1 block text-[11px] text-st-sub">{id === "auto" ? "Auto" : COVER_ART_LABELS[id]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="st-help mt-1 block">Auto picks one of the first three by the book number.</span>
+              </div>
+              <ImageField path={path("coverLogo")} folder={bookFolder(book.slug, "logo")} label="Logo on the cover" help="A light or white logo with a transparent background — the cover is dark." keepFormat />
             </>
           ) : (
-            <ImageField path={path("cover")} label="Your own cover image" help="Portrait, about 2:3 — e.g. 1000 × 1450 px." />
+            <ImageField path={path("cover")} folder={bookFolder(book.slug, "cover")} label="Your own cover image" help="Portrait, about 1 : 1.45 — e.g. 1000 × 1450 px." />
           )}
         </Panel>
 
         <Panel label="The e-book (PDF)">
-          <PdfField idPath={path("pdfFileId")} namePath={path("pdfName")} sizePath={path("pdfSize")} label="PDF file" />
+          <PdfField folder={bookFolder(book.slug, "pdf")} idPath={path("pdfFileId")} namePath={path("pdfName")} sizePath={path("pdfSize")} label="PDF file" />
         </Panel>
 
         <Panel label="Requests">
