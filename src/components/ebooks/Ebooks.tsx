@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { bookCardLabel } from "@/content/site";
+import { bookCardLabel, type Ebook } from "@/content/site";
 import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import ClickSpark from "@/components/reactbits/ClickSpark";
@@ -23,6 +23,20 @@ const HALO: Record<string, [string, string]> = {
   duo: ["var(--nl-blue)", "var(--nl-purple)"],
 };
 const BH = `calc(${BW} * 1.45)`;
+
+/**
+ * The shelf's book, which flies into the dialog (shared layoutId). Memoised: motion snapshots the layout
+ * of every layoutId element its parent re-renders, and the section re-renders on mount and with every
+ * auto-cycle tick — re-measuring the page for nothing (~0.6 s on a throttled phone). The book itself
+ * never changes in those renders, so it now skips them; the fly-in is unchanged.
+ */
+const ShelfBook = memo(function ShelfBook({ book }: { book: Ebook }) {
+  return (
+    <motion.span layoutId={`book-${book.slug}`} className="shelf-book block" transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
+      <Book3D book={book} w={BW} h={BH} d="30px" />
+    </motion.span>
+  );
+});
 
 export function Ebooks() {
   const { settings, reduced } = useDemo();
@@ -129,9 +143,7 @@ export function Ebooks() {
                       {openSlug === b.slug ? (
                         <span className="block h-full w-full" />
                       ) : (
-                        <motion.span layoutId={`book-${b.slug}`} className="shelf-book block" transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-                          <Book3D book={b} w={BW} h={BH} d="30px" />
-                        </motion.span>
+                        <ShelfBook book={b} />
                       )}
                     </span>
                   </span>
