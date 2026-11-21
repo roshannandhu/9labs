@@ -1,0 +1,117 @@
+# Checks every push and pull request; deploys to the live site only when you press "Run workflow".
+#
+# One-time setup (GitHub → Settings → Secrets and variables → Actions):
+#   Secrets:   CLOUDFLARE_API_TOKEN   (a token with "Edit Cloudflare Workers" on the account)
+#              CLOUDFLARE_ACCOUNT_ID
+#   Variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY   (public values)
+#              NEXT_PUBLIC_SITE_URL   (optional, defaults to https://ninelabsolutions.ae)
+# Server secrets (SUPABASE_SECRET_KEY, APP_SECRET, CRON_SECRET, R2_*, SMTP_*, AI keys, CF_PURGE_TOKEN…)
+# never go to GitHub: they live on the Worker (`wrangler secret put` / `wrangler secret bulk`).
+# The deploy refuses to run if one the site can't work without is missing there.
+#
+# To deploy: Actions → "CI / Deploy" → Run workflow → pick the branch.
+
+name: CI / Deploy
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy this branch to the live site after the checks pass
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  check:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # placeholders keep the build working where variables aren't available (pull requests from forks);
+      # nothing built here is deployed
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://ninelabsolutions.ae' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+      - name: Lint
+        run: pnpm lint
+      - name: Unit tests
+        run: pnpm test
+      - name: Build for Cloudflare Workers
+        run: pnpm exec opennextjs-cloudflare build
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://ninelabsolutions.ae' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check settings
+        run: |
+          missing=""
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then echo "::error::Not set in GitHub (secrets/variables):$missing"; exit 1; fi
+
+      - name: Check the Worker's secrets
+        # a deploy without these would take the live site down; the others only switch a feature off
+        run: |
+          pnpm exec wrangler secret list --format json > secrets.json
+          node -e '
+            const have = new Set(JSON.parse(require("fs").readFileSync("secrets.json", "utf8")).map((s) => s.name));
+            const need = ["SUPABASE_SECRET_KEY", "APP_SECRET", "CRON_SECRET"];
+            const want = ["ADMIN_EMAILS", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "SMTP_HOST", "SMTP_PASS", "MAIL_FROM", "CF_ZONE_ID", "CF_PURGE_TOKEN"];
+            for (const n of want) if (!have.has(n)) console.log(`::warning::Worker secret ${n} is not set — that feature stays off`);
+            const gone = need.filter((n) => !have.has(n));
+            if (gone.length) { console.log(`::error::Worker secrets missing: ${gone.join(", ")} — set them with "wrangler secret put" first`); process.exit(1); }
+          '
+          rm secrets.json
+
+      - name: Build
+        run: pnpm exec opennextjs-cloudflare build
+      - name: Deploy
+        run: pnpm exec opennextjs-cloudflare deploy
+
+      - name: Smoke test the live site
+        run: |
+          sleep 10
+          for url in "$NEXT_PUBLIC_SITE_URL/" "https://admin.ninelabsolutions.ae/"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$url")
+            echo "$url → $code"
+            [ "$code" = "200" ] || { echo "::error::$url answered $code after the deploy"; exit 1; }
+          done

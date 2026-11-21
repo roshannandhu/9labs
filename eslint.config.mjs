@@ -11,6 +11,9 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     ".open-next/**",
+    // old exported build output and local wrangler scratch files: not part of the app
+    "_next/**",
+    ".wrangler/**",
     // the static demo's scratch copy and its build output (scripts/build-demo.mjs)
     ".demo-build/**",
     "build/**",

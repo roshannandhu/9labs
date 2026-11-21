@@ -32,7 +32,7 @@ const worker = {
     return res;
   },
   async scheduled(_event, env, ctx) {
-    const req = new Request(`${env.NEXT_PUBLIC_SITE_URL || "https://localhost"}/api/cron/tick/`, { method: "POST", headers: { authorization: `Bearer ${env.CRON_SECRET}` } });
+    const req = new Request(`${env.NEXT_PUBLIC_SITE_URL || "https://ninelabsolutions.ae"}/api/cron/tick/`, { method: "POST", headers: { authorization: `Bearer ${env.CRON_SECRET}` } });
     ctx.waitUntil(handler.fetch(req, env, ctx));
   },
 };
