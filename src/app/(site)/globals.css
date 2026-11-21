@@ -1346,6 +1346,9 @@ html[data-motion-resolved="reduce"] .scene-halo {
   will-change: transform, opacity;
   transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
+.dial-node:disabled {
+  pointer-events: none; /* the dial takes the tap (OrbitNav: tapFarNode) */
+}
 .dial-node--on {
   background: var(--nl-indigo);
   border-color: rgba(255, 255, 255, 0.22);

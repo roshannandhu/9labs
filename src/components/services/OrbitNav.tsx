@@ -201,6 +201,10 @@ export function OrbitArc({
         if (el.classList.contains("dial-node--on") !== isOn) {
           el.classList.toggle("dial-node--on", isOn);
         }
+        // the small faded nodes round the back sit closer than a 24px touch target allows: they stop
+        // being buttons of their own (taps on them are handled by the dial's onClick below)
+        const far = absOff >= 1.5;
+        if (el.disabled !== far) el.disabled = far;
       }
     };
 
@@ -259,8 +263,22 @@ export function OrbitArc({
     };
   }, [active, goTo, n, posRef]);
 
+  // a tap on a far (disabled, pointer-events: none) node lands on the dial: go to the nearest one
+  const tapFarNode = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    let best = -1;
+    let bestD = 22;
+    itemRefs.current.forEach((el, i) => {
+      if (!el?.disabled || el.style.opacity === "0") return;
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (d < bestD) [best, bestD] = [i, d];
+    });
+    if (best >= 0) goTo(best);
+  };
+
   return (
-    <div ref={zoneRef} className="orbit-arc orbit-dial container-x" role="group" aria-label="Choose a service">
+    <div ref={zoneRef} className="orbit-arc orbit-dial container-x" role="group" aria-label="Choose a service" onClick={tapFarNode}>
       <svg className="orbit-dial-svg" aria-hidden="true">
         <defs>
           <linearGradient id="dial-arch-glow" x1="0%" y1="0%" x2="100%" y2="0%">
