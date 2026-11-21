@@ -178,10 +178,13 @@ function ServicesTrack({ heading, services, t }: Part) {
           aria-label="Our nine services"
           className="svc-scroller"
         >
+          {/* spare slots either end: room to swipe past card 9 onto card 1 (and back) — see useServiceTrack */}
+          <div className="svc-buffer" aria-hidden="true" />
           {services.map((s, i) => {
             const Scene = SCENES[s.icon];
             return <Scene key={s.slug} s={s} active={active === i} />;
           })}
+          <div className="svc-buffer" aria-hidden="true" />
         </div>
       </div>
       {/* Laptop / desktop (>= 768px): 3B Frosted Capsule Dock with 3.5s countdown ring and counter */}

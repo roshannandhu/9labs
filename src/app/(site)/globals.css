@@ -1022,6 +1022,13 @@ html[data-intro="playing"] [data-logo-9] {
     scroll-snap-type: none;
   }
 }
+/* one empty card-wide slot before card 1 and after card 9: the carousel loops through them */
+.svc-buffer {
+  flex: 0 0 var(--card-w);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  pointer-events: none;
+}
 .scene-section {
   container-type: inline-size;
 }

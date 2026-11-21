@@ -6,6 +6,7 @@ import { buildEnquiryMessage, enquiryMissingFields, enquiryNameOk, enquiryWhatsa
 import { aiQuizResultSchema } from "@/lib/quiz/result";
 import type { AiQuizResult, QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { shortRef } from "@/lib/text";
+import { trackLead } from "@/components/layout/Tracking";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const post = (path: string, body: unknown, opts: { keepalive?: boolean } = {}) => fetch(`${basePath}/api/public/${path}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: opts.keepalive });
@@ -33,6 +34,7 @@ export function submitEnquiry(site: SiteData, serviceSlug: string, answers: Enqu
     { ref, service: svc.slug, channel, answers: { name: answers.name.trim(), company: answers.company.trim(), needs: answers.needs, budget: answers.budget, timeline: answers.timeline, message: answers.message.trim() } },
     { keepalive: true },
   ).catch(() => {});
+  trackLead("enquiry", { service: svc.slug, method: channel });
 
   return { ok: true, ref, message, number };
 }
@@ -77,10 +79,12 @@ export function submitQuizResult(ref: string, answers: QuizAnswers, other: QuizO
 
 /** The WhatsApp form step: name + phone onto the saved lead (answers ride along in case that save never landed). */
 export function submitQuizContact(ref: string, contact: { name: string; phone: string }, answers: QuizAnswers, other: QuizOther): void {
+  trackLead("quiz", { method: "whatsapp" });
   void (quizSaved.get(ref) ?? Promise.resolve()).then(() => post("quiz-results/action", { ref, action: "whatsapp", ...contact, answers, other }, { keepalive: true }).catch(() => {}));
 }
 
 export function submitQuizEmail(ref: string, email: string, answers: QuizAnswers, other: QuizOther = {}): { ok: boolean } {
+  trackLead("quiz", { method: "email" });
   void (quizSaved.get(ref) ?? Promise.resolve()).then(() => post("quiz-email", { ref, email, answers, other }, { keepalive: true }).catch(() => {}));
   return { ok: true };
 }
@@ -97,6 +101,7 @@ export async function submitEbookRequest(input: EbookSubmitInput): Promise<Ebook
     const res = await post("ebook-requests", input);
     const data = (await res.json()) as EbookSubmitResult;
     if (!res.ok) return { status: "error", error: data?.error ?? "Something went wrong." };
+    if (data.status !== "error") trackLead("ebook", { book: input.bookSlug, method: "email" });
     return data;
   } catch {
     return { status: "error", error: "Could not reach us. Check your connection and try again." };

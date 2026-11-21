@@ -7,6 +7,7 @@ import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { SocialIcon } from "@/components/icons/SocialIcon";
 import LogoLoop from "@/components/reactbits/LogoLoop";
 import { Logo } from "./Logo";
+import { openCookieSettings } from "./Tracking";
 
 export function Footer() {
   const site = useSite();
@@ -120,7 +121,14 @@ export function Footer() {
 
       <div className="container-x flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pb-24 pt-6 text-[12.5px] text-white/[0.62] sm:flex-row sm:pb-24">
         <p>{f.copyright}</p>
-        <p>{site.location}</p>
+        <p className="flex items-center gap-4">
+          {(site.integrations.ga4 || site.integrations.gtm || site.integrations.metaPixel) && (
+            <button type="button" onClick={openCookieSettings} className="underline-offset-2 hover:text-white hover:underline">
+              Cookie settings
+            </button>
+          )}
+          <span>{site.location}</span>
+        </p>
       </div>
     </footer>
   );

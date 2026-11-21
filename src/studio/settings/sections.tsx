@@ -115,6 +115,7 @@ const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trim
 
 export function GoogleSection() {
   const draft = useDraft();
+  const confirm = useConfirm();
   const seo = draft.site.seo;
   const ga4Ok = !draft.site.integrations.ga4 || /^G-[A-Z0-9]+$/i.test(draft.site.integrations.ga4);
   const gtmOk = !draft.site.integrations.gtm || /^GTM-[A-Z0-9]+$/i.test(draft.site.integrations.gtm);
@@ -133,7 +134,15 @@ export function GoogleSection() {
           <TextField path={["site", "seo", "description"]} label="Description" />
           <p className={`mt-1 text-[11px] ${seo.description.length > 155 ? "text-st-warn" : "text-st-dim"}`}>{seo.description.length} / 155</p>
         </div>
-        <Switch checked={seo.index} onChange={(v) => { checkpoint(); setDraft(["site", "seo", "index"], v); }} label="Allow search engines to list the site" />
+        <Switch
+          checked={seo.index}
+          onChange={async (v) => {
+            if (!v && !(await confirm({ title: "Hide the site from Google?", body: "Once published, search engines are told not to list the site. It drops out of Google results over the following days, and coming back can take weeks." }))) return;
+            checkpoint();
+            setDraft(["site", "seo", "index"], v);
+          }}
+          label="Allow search engines to list the site"
+        />
       </SettingCard>
 
       <SettingCard title="Live preview" help="Roughly what Google shows. Text past the limit (60 / 155 characters) is cut off with “…”.">
@@ -159,6 +168,12 @@ export function GoogleSection() {
           <Hint ok={!!draft.site.integrations.metaPixel && pixelOk} yes="Valid format" no={draft.site.integrations.metaPixel ? "Digits only" : "Not set"} />
         </div>
       </SettingCard>
+
+      {draft.site.integrations.ga4 && draft.site.integrations.gtm && (
+        <p className="-mt-2 text-[11.5px] text-st-warn">
+          Both a Google Analytics ID and a Tag Manager ID are set. If your Tag Manager container also has a Google Analytics tag, every visit is counted twice — keep one of the two.
+        </p>
+      )}
 
       <SettingCard title="Cookie notice" help="Shown to visitors only while a Google Analytics, Tag Manager or Meta Pixel ID is set above.">
         <TextField path={["site", "integrations", "cookieText"]} label="Text" />
