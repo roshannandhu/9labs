@@ -105,13 +105,13 @@ export default function EnquirySheet({ open, slug, onClose }: { open: boolean; s
   };
 
   useEffect(() => {
-    if (!done || e.redirect.mode !== "thanks" || countdown <= 0) return;
+    if (!open || !done || e.redirect.mode !== "thanks" || countdown <= 0) return; // closed: the countdown stops, WhatsApp doesn't open later
     const t = window.setTimeout(() => {
       if (countdown === 1) window.open(done.chat, e.redirect.newTab ? "_blank" : "_self", "noopener");
       setCountdown((c) => c - 1);
     }, 1000);
     return () => window.clearTimeout(t);
-  }, [done, countdown, e.redirect.mode, e.redirect.newTab]);
+  }, [open, done, countdown, e.redirect.mode, e.redirect.newTab]);
 
   const blockOk = (key: "name" | EnquiryFieldKey) => !tried || !missing.includes(key);
   const BLOCKS: Record<EnquiryFieldKey, React.ReactNode> = {

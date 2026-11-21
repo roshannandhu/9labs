@@ -12,15 +12,24 @@ export const dynamic = "force-dynamic";
 export const POST = route(async (req: Request) => {
   if (req.headers.get("authorization") !== `Bearer ${env().CRON_SECRET}`) throw new HttpError(401, "Not authorized.");
 
-  after(async () => {
-    await retryPendingDeliveries(8);
-    await db().from("rate_hits").delete().lt("window_start", new Date(Date.now() - 2 * 86_400_000).toISOString());
-    await db().from("ai_calls").delete().lt("at", new Date(Date.now() - 30 * 86_400_000).toISOString());
-    if (isBackupSlot(new Date())) console.log("[backup]", await runDailyBackup().catch((err: unknown) => `failed: ${err instanceof Error ? err.message : String(err)}`));
-    if (isArchiveSlot(new Date())) {
-      const run = await runArchive().catch((err: unknown) => ({ skipped: err instanceof Error ? err.message : String(err) }));
-      console.log("[archive]", JSON.stringify(run));
+  const at = new Date(); // decide the slots once, at the tick — not after the slower jobs have run
+  // each job on its own: one failing (DB or R2 hiccup) must not skip the others, least of all the nightly backup
+  const job = async (name: string, fn: () => Promise<unknown>) => {
+    try {
+      const out = await fn();
+      if (out !== undefined) console.log(`[${name}]`, typeof out === "string" ? out : JSON.stringify(out));
+    } catch (err) {
+      console.error(`[${name}] failed:`, err instanceof Error ? err.message : err);
     }
+  };
+  after(async () => {
+    await job("ebooks", () => retryPendingDeliveries(8));
+    await job("prune", async () => {
+      await db().from("rate_hits").delete().lt("window_start", new Date(Date.now() - 2 * 86_400_000).toISOString());
+      await db().from("ai_calls").delete().lt("at", new Date(Date.now() - 30 * 86_400_000).toISOString());
+    });
+    if (isBackupSlot(at)) await job("backup", runDailyBackup);
+    if (isArchiveSlot(at)) await job("archive", runArchive);
   });
 
   return json({ started: true });

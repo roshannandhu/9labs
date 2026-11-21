@@ -1,7 +1,6 @@
 import "server-only";
 import { cache } from "react";
 import { checkWorkspace } from "@/lib/checks";
-import { autoLabel, diffDeep } from "@/lib/diff";
 import { resolveSiteFiles } from "@/lib/resolveFiles";
 import { normalizeWorkspace } from "@/lib/workspace";
 import { defaultWorkspace } from "@/content/defaults";
@@ -9,9 +8,9 @@ import { toSite } from "@/content/toSite";
 import type { AdminRole, Workspace } from "@/content/types";
 import { db } from "./db";
 import { removeUnusedBookFiles } from "./bookFiles";
-import { purgeSiteCache } from "./purge";
+import { purgeAfterContentChange } from "./purge";
 import { HttpError } from "./http";
-import { firstForbiddenChange } from "@/lib/permissions";
+import { editorSlice } from "@/lib/permissions";
 
 type WorkspaceRow = "draft" | "published";
 
@@ -23,9 +22,9 @@ export async function readWorkspace(id: WorkspaceRow): Promise<{ data: Workspace
 }
 
 let publishedMemo: { ws: Workspace; at: number } | null = null;
-const MEMO_MS = 60_000;
+const MEMO_MS = 20_000; // must stay below purge.ts SECOND_PURGE_MS: that purge clears pages rendered from an old copy
 
-/** The live site's content, memoized per Worker instance for up to a minute. */
+/** The live site's content, memoized per Worker instance for up to 20 seconds. */
 export async function getPublished(): Promise<Workspace> {
   if (publishedMemo && Date.now() - publishedMemo.at < MEMO_MS) return publishedMemo.ws;
   const row = await readWorkspace("published");
@@ -49,9 +48,10 @@ export const getPublicContent = cache(async () => {
  * `expectedRev` of 0 means "there is no draft row yet — create it."
  */
 export async function saveDraft(next: Workspace, expectedRev: number, role: AdminRole, updatedBy: string): Promise<{ rev: number }> {
-  const normalized = normalizeWorkspace(next);
+  let normalized = normalizeWorkspace(next);
 
   if (expectedRev === 0) {
+    if (role === "editor") normalized = editorSlice(defaultWorkspace(), normalized);
     const { data, error } = await db().from("workspace").insert({ id: "draft", data: normalized, rev: 1, updated_by: updatedBy }).select("rev").single();
     if (error) {
       if (error.code === "23505") throw new HttpError(409, "The draft already exists — reload.");
@@ -61,12 +61,8 @@ export async function saveDraft(next: Workspace, expectedRev: number, role: Admi
   }
 
   const current = await readWorkspace("draft");
-  if (!current) throw new HttpError(409, "The draft has changed — reload.");
-
-  if (role === "editor") {
-    const forbidden = firstForbiddenChange(role, diffDeep(current.data, normalized));
-    if (forbidden) throw new HttpError(403, `You can't change this: ${autoLabel(forbidden.path)}.`);
-  }
+  if (!current || current.rev !== expectedRev) throw new HttpError(409, "Someone else changed the draft — reload.");
+  if (role === "editor") normalized = editorSlice(current.data, normalized);
 
   const { data, error } = await db()
     .from("workspace")
@@ -83,14 +79,17 @@ export async function saveDraft(next: Workspace, expectedRev: number, role: Admi
 const MAX_VERSIONS = 30;
 
 /** Publishing only ever copies the already-saved draft over — it never trusts a request body's content. */
-export async function publishDraft(summary: string[], expectedRev: number, updatedBy: string): Promise<{ published: Workspace }> {
-  const current = await readWorkspace("draft");
-  if (!current || current.rev !== expectedRev) throw new HttpError(409, "The draft has changed — reload.");
+export async function publishDraft(summary: string[], expectedRev: number, updatedBy: string, role: AdminRole): Promise<{ published: Workspace; purged: boolean }> {
+  const draft = await readWorkspace("draft");
+  if (!draft || draft.rev !== expectedRev) throw new HttpError(409, "The draft has changed — reload.");
+
+  const before = (await readWorkspace("published"))?.data ?? null;
+  // an editor publishes their books and quiz only; anyone else's unpublished edits stay in the draft
+  const current = { ...draft, data: role === "editor" ? editorSlice(before ?? defaultWorkspace(), draft.data) : draft.data };
 
   const issues = checkWorkspace(current.data);
   if (issues.some((i) => i.level === "error")) throw new HttpError(422, "This can't be published yet.", { issues });
 
-  const before = (await readWorkspace("published"))?.data ?? null;
   const { error: upsertErr } = await db().from("workspace").upsert({ id: "published", data: current.data, rev: current.rev, updated_by: updatedBy, updated_at: new Date().toISOString() });
   if (upsertErr) throw upsertErr;
 
@@ -103,7 +102,7 @@ export async function publishDraft(summary: string[], expectedRev: number, updat
   if (old?.length) await db().from("versions").delete().in("id", old.map((v) => v.id as string));
 
   setPublishedMemo(current.data);
-  await purgeSiteCache();
-  await removeUnusedBookFiles(before, current.data, current.data);
-  return { published: current.data };
+  const purged = await purgeAfterContentChange();
+  await removeUnusedBookFiles(before, current.data, draft.data);
+  return { published: current.data, purged };
 }

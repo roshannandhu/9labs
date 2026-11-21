@@ -37,8 +37,11 @@ async function sendViaResend(apiKey: string, from: string, input: SendMailInput,
 /** Always writes the outbox row itself, so no call site has to remember to. */
 export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
   if (!smtpConfigured()) {
-    await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: "logged" });
-    return { ok: true };
+    // Local development: log it to the outbox and carry on. Live: nothing was sent, so say so — otherwise
+    // e-book requests are marked "sent" and never retried.
+    const live = process.env.NODE_ENV === "production";
+    await insertOutbox({ kind: input.kind, to: input.to, subject: input.subject, html: input.html, text: input.text, status: live ? "failed" : "logged", error: live ? "E-mail isn't set up (SMTP_HOST is empty)." : undefined });
+    return live ? { ok: false, error: "E-mail isn't set up yet." } : { ok: true };
   }
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_FROM_NAME, MAIL_REPLY_TO } = env();

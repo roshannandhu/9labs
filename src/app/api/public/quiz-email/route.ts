@@ -39,13 +39,18 @@ export const POST = route(async (req: Request) => {
   const existing = await findQuizResultByRef(body.ref);
   const input = existing ? { answers: existing.answers, other: existing.other ?? {} } : cleanQuizInput(published.site, body.answers, body.other);
   const lead = quizLeadFields(published.site, input.answers, input.other, existing?.ai ? { ai: existing.ai, source: existing.source } : undefined);
-  if (lead.ai) {
+  // one plan mail per finished quiz: a replayed ref can't be used to mail address after address
+  const alreadyMailed = Boolean(existing?.email);
+  let sent = true;
+  if (lead.ai && !alreadyMailed) {
     const mail = buildQuizPlanMail(published.site, lead.ai, lead.lines);
-    await sendMail({ kind: "quiz-plan", to: body.email, subject: mail.subject, html: mail.html, text: mail.text });
+    sent = (await sendMail({ kind: "quiz-plan", to: body.email, subject: mail.subject, html: mail.html, text: mail.text })).ok;
   }
 
   if (existing) await updateQuizResultByRef(body.ref, { email: body.email, action: "email" });
   else await insertQuizResultIfNew({ ref: body.ref, top: lead.top, matches: lead.matches, summary: lead.summary, answers: input.answers, other: input.other, ai: lead.ai, source: lead.source, action: "email", email: body.email });
 
+  // the lead is saved either way; a failed send shows in the admin's outbox as "failed"
+  if (!sent) throw new HttpError(502, "We couldn't send the e-mail just now — please try again later.");
   return json({ ok: true });
 });

@@ -3,6 +3,33 @@
 import { useEffect, type RefObject } from "react";
 import { getLenis } from "@/lib/scroll";
 
+let locks = 0;
+let saved = { body: "", html: "" };
+
+/**
+ * Locks page scroll (and Lenis) until the returned function is called. Counted, so two windows open at
+ * once (the e-book dialog, then the quiz on top) unlock only when the last one closes — each restoring
+ * its own "before" value used to leave the page stuck on `overflow: hidden`.
+ */
+export function lockScroll(): () => void {
+  const html = document.documentElement;
+  if (locks++ === 0) {
+    saved = { body: document.body.style.overflow, html: html.style.overscrollBehavior };
+    document.body.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    getLenis()?.stop();
+  }
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    if (--locks > 0) return;
+    document.body.style.overflow = saved.body;
+    html.style.overscrollBehavior = saved.html;
+    getLenis()?.start();
+  };
+}
+
 const FOCUSABLE = "a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
 /**
@@ -19,12 +46,7 @@ export function useModalLock(
   useEffect(() => {
     if (!open) return;
     const last = document.activeElement as HTMLElement | null;
-    const lenis = getLenis();
-    lenis?.stop();
-    const html = document.documentElement;
-    const prev = { body: document.body.style.overflow, html: html.style.overscrollBehavior };
-    document.body.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
+    const unlock = lockScroll();
 
     const t = window.setTimeout(() => {
       const el = panel.current;
@@ -58,9 +80,7 @@ export function useModalLock(
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev.body;
-      html.style.overscrollBehavior = prev.html;
-      lenis?.start();
+      unlock();
       last?.focus?.({ preventScroll: true });
     };
   }, [open, panel, onClose, focusFirst, delay]);

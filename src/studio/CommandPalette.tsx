@@ -88,8 +88,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           onClose();
           void (async () => {
             try {
-              await publish(humanizeDiff(diffDeep(published, draft), autoLabel).slice(0, 40));
-              toast("ok", "Published — the website is up to date.");
+              toast("ok", await publish(humanizeDiff(diffDeep(published, draft), autoLabel).slice(0, 40)));
             } catch (err) {
               if (err instanceof ApiError && err.status === 409) toast("bad", "Someone else changed the draft — reload.");
               else toast("bad", err instanceof Error ? err.message : "Could not publish.");

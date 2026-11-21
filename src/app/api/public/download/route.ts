@@ -1,7 +1,6 @@
 import { checkDownload, consumeDownload } from "@/server/ebooks";
 import { clientIp, overLimit } from "@/server/guard";
 import { HttpError, json, route } from "@/server/http";
-import { getObject } from "@/server/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +26,7 @@ export const POST = route(async (req: Request) => {
   const used = await consumeDownload(token);
   if (!used.ok) return Response.redirect(new URL(`/download/?t=${encodeURIComponent(token)}`, req.url), 303);
 
-  const file = await getObject(used.pdfKey);
-  if (file.status !== 200 || !file.body) return new Response(null, { status: 404 });
-
-  return new Response(file.body, {
+  return new Response(used.file.body, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

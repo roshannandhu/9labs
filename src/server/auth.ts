@@ -25,7 +25,8 @@ export async function requireAdmin(req: Request, roles?: AdminRole[]): Promise<A
   let admin = await findAdminByEmail(email);
 
   if (!admin) {
-    const { count } = await db().from("admins").select("id", { count: "exact", head: true });
+    const { count, error: countErr } = await db().from("admins").select("id", { count: "exact", head: true });
+    if (countErr) throw countErr; // never read a failed count as "no admins yet" — that would hand out owner
     // With no allowlist configured, the first sign-in bootstraps as owner (common for a fresh self-hosted install); once ADMIN_EMAILS is set, it's enforced.
     const allowed = adminEmails().length === 0 || adminEmails().includes(email);
     if ((count ?? 0) === 0 && allowed) {
@@ -47,7 +48,7 @@ export async function requireAdmin(req: Request, roles?: AdminRole[]): Promise<A
 }
 
 export async function findAdminByEmail(email: string): Promise<AdminRow | null> {
-  const { data, error } = await db().from("admins").select("id, email, name, role, active").ilike("email", email).maybeSingle();
+  const { data, error } = await db().from("admins").select("id, email, name, role, active").eq("email", email.toLowerCase()).maybeSingle();
   if (error) throw error;
   return data as AdminRow | null;
 }

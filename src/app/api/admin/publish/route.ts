@@ -15,7 +15,7 @@ export const POST = route(async (req: Request) => {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) throw new HttpError(422, "Please check the request and try again.");
 
-  const { published } = await publishDraft(parsed.data.summary, parsed.data.rev, session.email);
+  const { published, purged } = await publishDraft(parsed.data.summary, parsed.data.rev, session.email, session.role);
   after(() => retryPendingDeliveries(8, true)); // a newly published PDF sends its waiting requests now
-  return json({ published });
+  return json({ published, purged });
 });

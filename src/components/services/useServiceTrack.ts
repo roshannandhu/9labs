@@ -442,6 +442,9 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       isMouseDown = false;
       if (!hasDragged) {
         el.style.scrollSnapType = "";
+        // a press that stopped an autoplay slide mid-way: finish onto the nearest card
+        const pos = posOf(el, step);
+        if (Math.abs(pos - Math.round(pos)) > 0.01) tweenTo(Math.round(pos), 0.48);
         return;
       }
       const currentPos = posOf(el, step);

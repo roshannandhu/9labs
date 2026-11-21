@@ -41,8 +41,7 @@ export function PublishBar() {
     setBusy(true);
     try {
       const summary = humanizeDiff(diffDeep(published, draft), autoLabel);
-      await publish(summary.slice(0, 40));
-      toast("ok", "Published — the website is up to date.");
+      toast("ok", await publish(summary.slice(0, 40)));
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) toast("bad", "Someone else changed the draft — reload.");
       else if (err instanceof ApiError && err.status === 422) toast("bad", `Can't publish yet: ${((err.details?.issues as Issue[] | undefined) ?? [])[0]?.message ?? err.message}`);

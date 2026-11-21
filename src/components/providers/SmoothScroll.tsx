@@ -66,10 +66,15 @@ export function SmoothScroll() {
     };
     document.addEventListener("click", onClick);
 
-    // Honour a hash on first load once layout (and pinning) has settled.
+    // Honour a hash on first load once layout (and pinning) has settled — only when the link was
+    // opened. On a refresh or back/forward the browser has already put the visitor back where they
+    // were, and the hash is just left over from an earlier anchor tap (#ebooks after "Download our
+    // free e-books"), so jumping there would yank them away from where they were reading.
     const hash = window.location.hash.slice(1);
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    const opened = !nav || nav.type === "navigate";
     let t: number | undefined;
-    if (hash) t = window.setTimeout(() => scrollToId(hash, { immediate: true }), 600);
+    if (hash && opened) t = window.setTimeout(() => scrollToId(hash, { immediate: true }), 600);
     return () => {
       document.removeEventListener("click", onClick);
       if (t) window.clearTimeout(t);

@@ -10,7 +10,7 @@ import { useTheme } from "@/components/layout/ThemeToggle";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { publicHref } from "@/lib/site-href";
 import { checkWorkspace } from "@/lib/checks";
-import { refreshLeads, signOut, startAuth } from "@/studio/store";
+import { hasUnsavedEdits, refreshLeads, signOut, startAuth } from "@/studio/store";
 import { setAdminTheme } from "./theme";
 import { CommandPalette } from "./CommandPalette";
 import { Icon } from "./Icon";
@@ -368,7 +368,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (sync === "saved") return;
+      if (!hasUnsavedEdits()) return; // also covers an edit still in the 0.8 s save delay
       e.preventDefault();
       e.returnValue = "";
     };

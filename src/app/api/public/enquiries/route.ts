@@ -35,7 +35,7 @@ export const POST = route(async (req: Request) => {
 
   const missing: string[] = [];
   if (!enquiryNameOk(body.answers)) missing.push("name");
-  missing.push(...enquiryMissingFields(published.site, body.answers as EnquiryAnswers));
+  missing.push(...enquiryMissingFields(published.site, body.answers as EnquiryAnswers, svc.needs));
   if (missing.length) throw new HttpError(422, "Please fill in everything marked.", { missing });
 
   await insertEnquiry({ ref: body.ref, name: body.answers.name.trim(), company: body.answers.company.trim(), service: svc.slug, serviceTitle: svc.title, needs: body.answers.needs, budget: body.answers.budget, timeline: body.answers.timeline, message: body.answers.message.trim(), channel: body.channel });

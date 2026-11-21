@@ -6,8 +6,7 @@ import { fill, type Ebook } from "@/content/site";
 import { useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { useQuiz } from "@/components/providers/QuizProvider";
-import { getLenis } from "@/lib/scroll";
-import { useModalLock } from "@/lib/useModalLock";
+import { lockScroll, useModalLock } from "@/lib/useModalLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { Book3D } from "./Book3D";
 import { BookCover } from "./BookCover";
@@ -72,7 +71,7 @@ function ChaptersDisclosure({ book }: { book: Ebook }) {
   );
 }
 
-export function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues | null; onBack: () => void }) {
+export function Success({ book, lead, onBack, closeForQuiz }: { book: Ebook; lead: LeadValues | null; onBack: () => void; closeForQuiz?: () => void }) {
   const quiz = useQuiz();
   const site = useSite();
   const f = site.ebookForm;
@@ -92,7 +91,11 @@ export function Success({ book, lead, onBack }: { book: Ebook; lead: LeadValues 
         {after}
       </p>
       <div className="mt-auto flex w-full flex-col gap-2.5">
-        <button type="button" className="btn btn-primary btn-sm w-full" onClick={() => quiz.open()}>
+        <button type="button" className="btn btn-primary btn-sm w-full" onClick={() => {
+            // the quiz opens on its own: close the book first, or it would sit hidden behind it
+            closeForQuiz?.();
+            quiz.open();
+          }}>
           {site.quiz.cta}
         </button>
         <button type="button" className="btn btn-outline btn-sm w-full" onClick={onBack}>
@@ -144,10 +147,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
   useEffect(() => {
     if (!wide) return; // the phone page has its own lock (useModalLock)
     const prev = document.activeElement as HTMLElement | null;
-    const lenis = getLenis();
-    lenis?.stop();
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     const t = window.setTimeout(() => closeBtn.current?.focus({ preventScroll: true }), 50);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeRef.current();
@@ -169,8 +169,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-      lenis?.start();
+      unlock();
       prev?.focus?.({ preventScroll: true });
     };
   }, [wide]);
@@ -231,7 +230,7 @@ export function BookDialog({ book, onClose }: { book: Ebook; onClose: () => void
                   <LeadForm book={book} onDone={setLead} />
                 </div>
               }
-              underPage={turned ? <Success book={book} lead={lead} onBack={close} /> : null}
+              underPage={turned ? <Success book={book} lead={lead} onBack={close} closeForQuiz={onClose} /> : null}
             />
           </motion.div>
       </div>
@@ -308,7 +307,7 @@ function BookPage({ book, onClose, reduced }: { book: Ebook; onClose: () => void
 
           {lead ? (
             <div className="mt-2 rounded-3xl border border-white/10 p-1">
-              <Success book={book} lead={lead} onBack={onClose} />
+              <Success book={book} lead={lead} onBack={onClose} closeForQuiz={onClose} />
             </div>
           ) : (
             <LeadForm book={book} onDone={setLead} />

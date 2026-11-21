@@ -22,7 +22,7 @@ export function submitEnquiry(site: SiteData, serviceSlug: string, answers: Enqu
   const svc = site.services.find((s) => s.slug === serviceSlug) ?? site.services[0];
   const missing: ("name" | EnquiryFieldKey)[] = [];
   if (!enquiryNameOk(answers)) missing.push("name");
-  missing.push(...enquiryMissingFields(site, answers));
+  missing.push(...enquiryMissingFields(site, answers, svc.needs));
   if (missing.length) return { ok: false, missing };
 
   const ref = site.enquiry.refCode ? shortRef() : "";

@@ -5,6 +5,22 @@ import { db } from "./db";
 export const newId = (prefix: string): string => `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
 const LIST_CAP = 5000;
+const PAGE = 1000; // PostgREST's default max rows per response
+
+/** Case-insensitive, but literal: `%`, `_` and `\` in an e-mail must not act as LIKE wildcards. */
+const exactLike = (s: string) => s.replace(/[\\%_]/g, (c) => "\\" + c);
+
+/** Every row (newest first, up to LIST_CAP), fetched a page at a time — one request is silently capped at 1000 rows. */
+async function selectAll<T>(table: string, columns = "*"): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < LIST_CAP; from += PAGE) {
+    const { data, error } = await db().from(table).select(columns).order("created_at", { ascending: false }).order("id").range(from, from + PAGE - 1);
+    if (error) throw error;
+    out.push(...((data ?? []) as T[]));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Enquiries                                                           */
@@ -30,9 +46,7 @@ type EnquiryRow = {
 const enquiryFromRow = (r: EnquiryRow): Enquiry => ({ id: r.id, ref: r.ref, name: r.name, company: r.company, service: r.service, serviceTitle: r.service_title, needs: r.needs, budget: r.budget, timeline: r.timeline, message: r.message, channel: r.channel, status: r.status, notes: r.notes, createdAt: r.created_at });
 
 export async function listEnquiries(): Promise<Enquiry[]> {
-  const { data, error } = await db().from("enquiries").select("*").order("created_at", { ascending: false }).limit(LIST_CAP);
-  if (error) throw error;
-  return (data as EnquiryRow[]).map(enquiryFromRow);
+  return (await selectAll<EnquiryRow>("enquiries")).map(enquiryFromRow);
 }
 
 export async function insertEnquiry(input: Omit<Enquiry, "id" | "status" | "notes" | "createdAt">): Promise<Enquiry> {
@@ -72,9 +86,7 @@ export type BookRequestRow = {
 export const bookRequestFromRow = (r: BookRequestRow): BookRequest => ({ id: r.id, name: r.name, email: r.email, phone: r.phone, company: r.company, bookSlug: r.book_slug, status: r.status, deliveryUsed: r.delivery_used, sentAt: r.sent_at, expiresAt: r.expires_at, downloads: r.downloads, linkDownloads: r.link_downloads, tokenVersion: r.token_version, error: r.error, notes: r.notes, consent: r.consent, source: r.source, createdAt: r.created_at });
 
 export async function listBookRequests(): Promise<BookRequest[]> {
-  const { data, error } = await db().from("book_requests").select("*").order("created_at", { ascending: false }).limit(LIST_CAP);
-  if (error) throw error;
-  return (data as BookRequestRow[]).map(bookRequestFromRow);
+  return (await selectAll<BookRequestRow>("book_requests")).map(bookRequestFromRow);
 }
 
 export async function findBookRequest(id: string): Promise<BookRequestRow | null> {
@@ -85,7 +97,7 @@ export async function findBookRequest(id: string): Promise<BookRequestRow | null
 
 /** A still-open request for the same book from the same e-mail within the window — the "asked again" case. */
 export async function findRecentBookRequest(email: string, bookSlug: string, sinceIso: string): Promise<BookRequestRow | null> {
-  const { data, error } = await db().from("book_requests").select("*").ilike("email", email).eq("book_slug", bookSlug).neq("status", "rejected").gte("created_at", sinceIso).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await db().from("book_requests").select("*").ilike("email", exactLike(email)).eq("book_slug", bookSlug).neq("status", "rejected").gte("created_at", sinceIso).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data as BookRequestRow | null;
 }
@@ -136,7 +148,7 @@ export async function pendingBookRequestsForRetry(limit: number, now = false): P
     .lt("attempts", 5)
     .gte("created_at", notOlderThan)
     .or(`last_attempt_at.is.null,last_attempt_at.lt.${retryAfter}`)
-    .order("created_at", { ascending: true })
+    .order("last_attempt_at", { ascending: true, nullsFirst: true }) // least recently tried first: requests waiting on a PDF can't starve the rest
     .limit(limit);
   if (error) throw error;
   return data as BookRequestRow[];
@@ -151,9 +163,7 @@ type QuizResultRow = { id: string; ref: string; top: string; matches: string; su
 const quizResultFromRow = (r: QuizResultRow): QuizResult => ({ id: r.id, ref: r.ref, top: r.top, matches: r.matches, summary: r.summary, answers: r.answers, other: r.other ?? {}, name: r.name ?? "", phone: r.phone ?? "", ai: r.ai ?? null, source: r.source ?? "none", action: r.action, email: r.email, status: r.status, notes: r.notes, createdAt: r.created_at });
 
 export async function listQuizResults(): Promise<QuizResult[]> {
-  const { data, error } = await db().from("quiz_results").select("*").order("created_at", { ascending: false }).limit(LIST_CAP);
-  if (error) throw error;
-  return (data as QuizResultRow[]).map(quizResultFromRow);
+  return (await selectAll<QuizResultRow>("quiz_results")).map(quizResultFromRow);
 }
 
 export async function findQuizResultByRef(ref: string): Promise<QuizResultRow | null> {
@@ -175,7 +185,7 @@ export async function updateQuizResultByRef(ref: string, patch: Partial<{ action
 }
 
 export async function recentQuizEmailCount(email: string, sinceIso: string): Promise<number> {
-  const { count, error } = await db().from("quiz_results").select("id", { count: "exact", head: true }).ilike("email", email).gte("created_at", sinceIso);
+  const { count, error } = await db().from("quiz_results").select("id", { count: "exact", head: true }).ilike("email", exactLike(email)).gte("created_at", sinceIso);
   if (error) throw error;
   return count ?? 0;
 }
@@ -195,6 +205,7 @@ export async function clearSampleLeads(): Promise<void> {
     db().from("enquiries").delete().like("id", "%_sample_%"),
     db().from("book_requests").delete().like("id", "%_sample_%"),
     db().from("quiz_results").delete().like("id", "%_sample_%"),
+    db().from("outbox").delete().like("id", "%_sample_%"),
   ]);
 }
 
@@ -211,9 +222,7 @@ type OutboxRow = { id: string; kind: OutboxKind; to_email: string; subject: stri
 const outboxFromRow = (r: OutboxRow): OutboxMail => ({ id: r.id, kind: r.kind, to: r.to_email, subject: r.subject, html: r.html, text: r.text, createdAt: r.created_at, status: r.status, error: r.error || undefined });
 
 export async function listOutbox(): Promise<OutboxMail[]> {
-  const { data, error } = await db().from("outbox").select("id, kind, to_email, subject, text, status, error, created_at").order("created_at", { ascending: false }).limit(LIST_CAP);
-  if (error) throw error;
-  return (data as Omit<OutboxRow, "html">[]).map((r) => outboxFromRow({ ...r, html: "" }));
+  return (await selectAll<Omit<OutboxRow, "html">>("outbox", "id, kind, to_email, subject, text, status, error, created_at")).map((r) => outboxFromRow({ ...r, html: "" }));
 }
 
 export async function findOutboxHtml(id: string): Promise<string | null> {
@@ -224,7 +233,7 @@ export async function findOutboxHtml(id: string): Promise<string | null> {
 
 /** The most recent outbox mail of this kind sent to this address — for "the e-mail they received". */
 export async function findLatestOutboxByEmailKind(email: string, kind: OutboxKind): Promise<OutboxMail | null> {
-  const { data, error } = await db().from("outbox").select("*").ilike("to_email", email).eq("kind", kind).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await db().from("outbox").select("*").ilike("to_email", exactLike(email)).eq("kind", kind).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data ? outboxFromRow(data as OutboxRow) : null;
 }
@@ -267,8 +276,19 @@ export async function upsertOutboxRows(rows: OutboxMail[]): Promise<void> {
   if (error) throw error;
 }
 
-export async function deleteLeadsNotIn(table: "enquiries" | "book_requests" | "quiz_results", ids: string[]): Promise<void> {
-  const query = db().from(table).delete();
-  const { error } = ids.length ? await query.not("id", "in", `(${ids.map((id) => `"${id}"`).join(",")})`) : await query.neq("id", "");
-  if (error) throw error;
+/** Deletes the rows whose id isn't in `keep`, in small batches (one `not.in.(…)` list of every id overflows the URL). */
+export async function deleteLeadsNotIn(table: "enquiries" | "book_requests" | "quiz_results", keep: string[]): Promise<void> {
+  const keepSet = new Set(keep);
+  const ids: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db().from(table).select("id").order("id").range(from, from + PAGE - 1);
+    if (error) throw error;
+    ids.push(...(data ?? []).map((r) => r.id as string));
+    if (!data || data.length < PAGE) break;
+  }
+  const gone = ids.filter((id) => !keepSet.has(id));
+  for (let i = 0; i < gone.length; i += 100) {
+    const { error } = await db().from(table).delete().in("id", gone.slice(i, i + 100));
+    if (error) throw error;
+  }
 }

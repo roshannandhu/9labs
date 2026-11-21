@@ -223,8 +223,13 @@ const RETRY_DELAYS_MS = [5000, 15000, 30000];
 
 function scheduleFlush() {
   clearTimeout(flushTimer);
+  flushPending = true;
   flushTimer = setTimeout(() => void flushDraft(), 800);
 }
+
+let flushPending = false; // an edit is waiting out the 0.8 s save delay
+/** True while an edit hasn't reached the server yet — including the short delay before a save starts. */
+export const hasUnsavedEdits = (): boolean => flushPending || state.sync !== "saved";
 
 /** Saves the current draft, with optimistic-concurrency retry/offline handling. One request at a time. */
 export async function flushDraft(): Promise<void> {
@@ -235,13 +240,16 @@ export async function flushDraft(): Promise<void> {
   }
   flushing = true;
   clearTimeout(flushTimer);
+  flushPending = false;
   setState({ sync: "saving" });
   try {
     const { rev } = await api<{ rev: number }>("/api/admin/draft", { method: "PUT", json: { draft: state.draft, rev: state.draftRev } });
     retryAttempt = 0;
     setState({ draftRev: rev, sync: "saved" });
   } catch (err) {
-    if (err instanceof ApiError && err.status === 409) {
+    if (err instanceof ApiError && (err.status === 409 || err.status === 403)) {
+      // 409: someone else saved. 403: this account may no longer save (role changed or turned off).
+      // Neither gets better by retrying, so never show these as "offline — retrying".
       setState({ sync: "conflict" });
     } else {
       setState({ sync: "offline" });
@@ -258,12 +266,19 @@ export async function flushDraft(): Promise<void> {
   }
 }
 
-/** Flushes first, so Publish never ships a draft the server hasn't seen yet. Throws ApiError(422) with `.details.issues` when blocked. */
-export async function publish(summary: string[]): Promise<void> {
+/**
+ * Flushes first, so Publish never ships a draft the server hasn't seen yet. Throws ApiError(422) with
+ * `.details.issues` when blocked. Resolves to the message to show: it says so when the site's cache
+ * couldn't be refreshed (visitors may see the old version for a while).
+ */
+export async function publish(summary: string[]): Promise<string> {
   await flushDraft();
   if (state.sync !== "saved") throw new Error("Can't publish right now — fix the sync issue first.");
-  const { published } = await api<{ published: Workspace }>("/api/admin/publish", { json: { rev: state.draftRev, summary } });
+  const { published, purged } = await api<{ published: Workspace; purged?: boolean }>("/api/admin/publish", { json: { rev: state.draftRev, summary } });
   setState({ published: normalizeWorkspace(published) });
+  return purged === false
+    ? "Published, but the site's cache couldn't be refreshed — some visitors may see the old version for up to a day. Check CF_PURGE_TOKEN."
+    : "Published — the website is up to date.";
 }
 
 export function discardDraft(): void {
