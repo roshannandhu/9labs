@@ -8,6 +8,7 @@ import { toSite } from "@/content/toSite";
 import type { AdminRole, Workspace } from "@/content/types";
 import { db } from "./db";
 import { removeUnusedBookFiles } from "./bookFiles";
+import { pruneKbForServices } from "./ai/kb";
 import { purgeAfterContentChange } from "./purge";
 import { HttpError } from "./http";
 import { editorSlice } from "@/lib/permissions";
@@ -104,5 +105,7 @@ export async function publishDraft(summary: string[], expectedRev: number, updat
   setPublishedMemo(current.data);
   const purged = await purgeAfterContentChange();
   await removeUnusedBookFiles(before, current.data, draft.data);
+  // a deleted service must take its AI knowledge rows with it (no FK cascade in the DB)
+  await pruneKbForServices(current.data.site.services.map((s) => s.slug)).catch((err) => console.warn("kb prune failed:", err instanceof Error ? err.message : err));
   return { published: current.data, purged };
 }

@@ -99,6 +99,25 @@ export async function deleteKbEntry(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Drop every knowledge entry tied to a service that no longer exists (called on publish), so a
+ * deleted service leaves nothing behind for the AI to cite. Company-wide notes (`service_slug` null)
+ * are left alone. No-op, never throws loud, when the KB table isn't set up yet.
+ */
+export async function pruneKbForServices(liveSlugs: string[]): Promise<number> {
+  const { data, error } = await db().from("kb_entries").select("id, service_slug").not("service_slug", "is", null);
+  if (error) {
+    if (error.code === "PGRST205" || error.code === "42P01") return 0; // KB tables not created yet
+    throw error;
+  }
+  const live = new Set(liveSlugs);
+  const orphans = (data as { id: string; service_slug: string | null }[]).filter((r) => r.service_slug && !live.has(r.service_slug)).map((r) => r.id);
+  if (!orphans.length) return 0;
+  const { error: delErr } = await db().from("kb_entries").delete().in("id", orphans);
+  if (delErr) throw delErr;
+  return orphans.length;
+}
+
 /** Re-embeds every entry (after a model change, or entries saved before a key was set). */
 export async function reindexKb(): Promise<{ total: number; indexed: number }> {
   const { data, error } = await db().from("kb_entries").select("id, title, body, tags");

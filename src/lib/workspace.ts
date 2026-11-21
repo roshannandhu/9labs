@@ -4,7 +4,7 @@ import { migrateQuizOptionsInPlace } from "@/lib/quiz/migrate";
 
 /** Lays a freshly loaded workspace over today's defaults, so an older save never crashes a newer build. */
 export function normalizeWorkspace(saved: unknown): Workspace {
-  migrateQuizOptionsInPlace(saved); // weights → pointsTo, once, before anything reads site.quiz
+  migrateQuizOptionsInPlace(saved); // backfill own-words + default "what we say" lines, before anything reads site.quiz
   const d = defaultWorkspace();
   if (!saved || typeof saved !== "object") return d;
   const s = saved as Partial<Workspace>;

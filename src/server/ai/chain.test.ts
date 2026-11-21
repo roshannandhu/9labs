@@ -75,8 +75,9 @@ test("runChain: AI off, or no keys → straight to backup, no provider called", 
   assert.equal((await runChain(site, answers, {}, deps({ groq: boom, gemini: boom, configured: { groq: false, gemini: false } }))).outcome, "backup");
 });
 
-test("runChain: nothing points anywhere and no AI → last resort (none)", async () => {
-  const bare = { ...site, quiz: { ...site.quiz, ai: { ...site.quiz.ai, enabled: false }, questions: site.quiz.questions.map((q) => ({ ...q, options: q.options.map((o) => ({ ...o, pointsTo: null })) })) } };
+test("runChain: nothing the visitor said matches any service and no AI → last resort (none)", async () => {
+  // blank every answer's words, so the offline matcher can find no service at all
+  const bare = { ...site, quiz: { ...site.quiz, ai: { ...site.quiz.ai, enabled: false }, questions: site.quiz.questions.map((q) => ({ ...q, q: "", label: "", options: q.options.map((o) => ({ ...o, label: "", solves: "" })) })) } };
   const o = await runChain(bare, answers, {}, deps({}));
   assert.equal(o.outcome, "none");
   assert.equal(o.result, null);

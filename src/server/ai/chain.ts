@@ -35,6 +35,7 @@ const TONE = {
   friendly: "warm, plain and encouraging — like a helpful person, not a brochure",
   professional: "clear, confident and professional",
   short: "very brief and direct — short sentences, no filler",
+  casual: "relaxed and conversational — like texting a friend who knows their stuff; everyday words, contractions, no corporate speak",
 } as const;
 
 /** Client text goes in as quoted data; angle brackets can't close the wrapper tag. */

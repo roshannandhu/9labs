@@ -7,7 +7,7 @@ import { AiKeysManager, AiQuota } from "./AiKeys";
 import { BarList } from "./charts";
 import { relativeTime } from "./ui";
 
-export const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Scoring (AI stepped aside)", none: "Last resort" } as const;
+export const OUTCOME_LABEL = { ok: "AI answered", failover: "Rescued by the second AI", backup: "Instant match (AI stepped aside)", none: "Last resort" } as const;
 const REASON_LABEL: Record<string, string> = { limit: "Limit reached", slow: "Too slow", bad: "Bad answer", key: "Key invalid", down: "Service down", blocked: "Blocked content" };
 
 function KeyChip({ name, set }: { name: string; set: boolean }) {
@@ -16,13 +16,13 @@ function KeyChip({ name, set }: { name: string; set: boolean }) {
 
 /** One line on top: is the AI actually answering visitors right now? */
 function verdict(h: AiHealth, enabled: boolean): { tone: string; text: string } {
-  if (!enabled) return { tone: "text-st-warn", text: "Scoring only — every visitor gets the scoring result. Switch to “AI + scoring” in Quiz → AI." };
-  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key in use — every visitor gets the scoring result. Add a Groq or Gemini key under Quiz → Insights → AI keys." };
+  if (!enabled) return { tone: "text-st-warn", text: "Instant results only — every visitor gets a result matched from their answers. Switch to “AI results” in Quiz → Result page." };
+  if (!h.keys.groq && !h.keys.gemini) return { tone: "text-st-danger", text: "No AI key in use — every visitor gets an instant matched result. Add a Groq or Gemini key under Quiz → Insights → AI keys." };
   const t = h.today;
   if (t.total === 0) return { tone: "text-st-sub", text: "AI ready — no quiz results yet today." };
   const aiShare = Math.round(((t.ok + t.failover) / t.total) * 100);
   if (aiShare >= 90) return { tone: "text-st-good", text: `AI working — ${aiShare}% of today's results came from the AI.` };
-  return { tone: "text-st-warn", text: `AI struggling — only ${aiShare}% of today's results came from the AI; the rest automatically got the scoring result. See the reasons below.` };
+  return { tone: "text-st-warn", text: `AI struggling — only ${aiShare}% of today's results came from the AI; the rest instantly got a matched result. See the reasons below.` };
 }
 
 /**
@@ -62,6 +62,10 @@ export function AiHealthView({ enabled, geminiLimit, manageKeys = false }: { ena
       <p className={`text-[13px] font-medium ${v.tone}`} role="status">
         {v.text}
       </p>
+      <p className="text-[12px] text-st-dim">
+        AI results today: <strong className="text-st-ink">{health.today.total}</strong> of {health.cap} daily cap
+        {health.today.geminiEmbeds > 0 && <> · {health.today.geminiEmbeds} Gemini search embeddings</>}
+      </p>
       <p className="flex flex-wrap gap-1.5">
         <KeyChip name="Groq" set={health.keys.groq} />
         <KeyChip name="Gemini" set={health.keys.gemini} />
@@ -96,7 +100,7 @@ export function AiHealthView({ enabled, geminiLimit, manageKeys = false }: { ena
       </dl>
       <div className="border-t border-st-border pt-3">
         <p className="st-micro mb-2">{manageKeys ? "AI keys & quota" : "AI quota"}</p>
-        {manageKeys ? <AiKeysManager geminiUsed={health.today.geminiCalls} geminiLimit={geminiLimit} /> : <AiQuota geminiUsed={health.today.geminiCalls} geminiLimit={geminiLimit} />}
+        {manageKeys ? <AiKeysManager geminiUsed={health.today.geminiCalls} geminiEmbeds={health.today.geminiEmbeds} geminiLimit={geminiLimit} /> : <AiQuota geminiUsed={health.today.geminiCalls} geminiEmbeds={health.today.geminiEmbeds} geminiLimit={geminiLimit} />}
       </div>
       {reasons.length > 0 && (
         <p className="flex flex-wrap gap-1.5">

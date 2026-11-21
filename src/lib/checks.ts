@@ -4,18 +4,6 @@ import type { Path } from "./path";
 
 export type Issue = { path: Path; message: string; level: "error" | "warning" };
 
-const ACTIVITY_LABELS: Record<string, string> = {
-  social: "Social media",
-  advertising: "Advertising",
-  content: "Content & creative",
-  photo: "Photo & filming",
-  events: "Events",
-  pr: "PR & comms",
-  strategy: "Strategy",
-  ai: "AI consultancy",
-  it: "IT consultancy",
-};
-
 function checkQuiz(ws: Workspace): Issue[] {
   const out: Issue[] = [];
   const qs = ws.site.quiz.questions;
@@ -23,15 +11,9 @@ function checkQuiz(ws: Workspace): Issue[] {
     out.push({ path: ["site", "quiz", "questions"], message: "Add at least one quiz question.", level: "error" });
     return out;
   }
-  const reachable = new Set<string>();
   qs.forEach((q, qi) => {
     if (q.options.length < 2) out.push({ path: ["site", "quiz", "questions", qi], message: `"${q.q || `Question ${qi + 1}`}" needs at least two answers.`, level: "error" });
-    for (const o of q.options) if (o.pointsTo) reachable.add(o.pointsTo);
   });
-  // a warning, not an error: the AI result doesn't depend on pointsTo, only the non-AI backup does
-  for (const [key, label] of Object.entries(ACTIVITY_LABELS)) {
-    if (!reachable.has(key)) out.push({ path: ["site", "quiz", "questions"], message: `No answer points to ${label} — the backup could never recommend it.`, level: "warning" });
-  }
   const roles = qs.filter((q) => q.role).map((q) => q.role);
   if (new Set(roles).size !== roles.length) out.push({ path: ["site", "quiz", "questions"], message: "Only one question should be marked for each part of the result sentence (who / goal / timing).", level: "warning" });
   return out;

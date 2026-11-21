@@ -1,4 +1,4 @@
-import { fill, type IconKey, type QuizQuestion, type Service } from "@/content/site";
+import { fill, type QuizOption, type QuizQuestion, type Service } from "@/content/site";
 import type { SiteData } from "@/content/types";
 import type { AiQuizResult, QuizAnswerRow, QuizAnswers, QuizOther } from "./types";
 
@@ -10,11 +10,82 @@ const byRole = (questions: QuizQuestion[], role: QuizQuestion["role"], a: QuizAn
 /** `fit` by rank — no percentages, just "how sure are we." */
 const FIT: AiQuizResult["matches"][number]["fit"][] = ["best", "also", "consider"];
 
-/** 3-6 short phrases in the client's own words — a cheap, non-AI "representation" of what they
- *  said: the label of every answer that actually pointed somewhere, plus any typed "Other" text,
- *  in the order they answered, deduplicated, capped at 6. No LLM involved — this is quoting, not
- *  understanding, which is exactly why the real AI result (once built) can do better here: it can
- *  read meaning into the Other text instead of just echoing it verbatim. */
+/* ─────────────────────────── the offline matcher (pure JS, no AI) ───────────────────────────
+ * When the AI is off or unreachable, services are picked by keyword overlap — no admin ever maps
+ * an answer to a service by hand (that was the old `pointsTo` vote, now gone). Each answer's text
+ * (the option label, its optional "what we say" line, and any typed words) is matched against each
+ * service's own words (title, short, description, tags, needs). A vague or typed-only answer that
+ * matches nothing specific falls back to its QUESTION's words — the question + all its answers —
+ * so "when" questions point nowhere and a typed "we copy orders by hand" still lands on AI/IT via
+ * the tech question it sits under. This is a safety net, not the showpiece (docs/AI_RAG_SYSTEM.md §6).
+ */
+
+// Short filler words that carry no service meaning; dropped before matching.
+const STOP = new Set([
+  "the", "and", "for", "you", "our", "are", "was", "who", "why", "how", "now", "get", "got", "let", "use", "set", "per", "via", "out", "off", "all", "any", "can", "may", "not", "but", "its", "has", "had", "did", "new", "one", "two", "way", "too", "yet", "own", "see", "say", "put", "top", "few", "lot", "bit", "far", "big", "end", "day", "yes",
+  "every", "night", "with", "that", "have", "this", "from", "into", "your", "they", "what", "when", "want", "need", "some", "more", "just", "like", "make", "much", "also", "will", "very", "them", "then", "than", "well", "been", "were", "here", "over", "most", "even", "such", "only", "both", "each",
+  "would", "about", "there", "their", "which", "these", "those", "where", "while", "could", "should", "right", "still", "thing", "being",
+]);
+// Two-letter words worth keeping because they name a service domain ("it" dropped — collides with the pronoun).
+const KEEP2 = new Set(["ai", "pr"]);
+
+/** The meaningful word-stems in a blob of text (first 5 letters of each 3+ letter word, fillers removed). */
+function terms(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (KEEP2.has(w)) out.add(w);
+    else if (w.length >= 3 && !STOP.has(w)) out.add(w.slice(0, 5));
+  }
+  return out;
+}
+
+// Each service's word-set, built once (services are stable objects for the life of a render).
+const profileCache = new WeakMap<Service, Set<string>>();
+const profileOf = (s: Service): Set<string> => {
+  let p = profileCache.get(s);
+  if (!p) profileCache.set(s, (p = terms([s.title, s.short, s.description, ...s.tags, ...s.needs].join(" "))));
+  return p;
+};
+
+const overlap = (words: Set<string>, profile: Set<string>): number => {
+  let n = 0;
+  for (const w of words) if (profile.has(w)) n++;
+  return n;
+};
+
+/** How well a blob of text fits each service, by shared words. Services with zero overlap are left out. */
+export function scoreServices(text: string, services: Service[]): Map<string, number> {
+  const t = terms(text);
+  const out = new Map<string, number>();
+  if (!t.size) return out;
+  for (const s of services) {
+    const n = overlap(t, profileOf(s));
+    if (n > 0) out.set(s.slug, n);
+  }
+  return out;
+}
+
+/** One answer → service scores: the specific signal (picks + typed) if it matches anything, else the
+ *  question's own words as a domain anchor (so a vague/typed-only answer still routes sensibly). */
+function scoreAnswer(q: QuizQuestion, picks: QuizOption[], typed: string, services: Service[]): Map<string, number> {
+  const specific = scoreServices([...picks.map((o) => o.label), ...picks.map((o) => o.solves ?? ""), typed].join(" "), services);
+  if (specific.size) return specific;
+  return scoreServices([q.q, q.label, ...q.options.flatMap((o) => [o.label, o.solves ?? ""])].join(" "), services);
+}
+
+/** The single best service for a score map (ties break toward the lower service card number). */
+const topSlug = (scores: Map<string, number>, services: Service[]): string | null => {
+  let best: Service | undefined;
+  let top = 0;
+  for (const s of services) {
+    const v = scores.get(s.slug) ?? 0;
+    if (v > top) [best, top] = [s, v];
+  }
+  return best?.slug ?? null;
+};
+
+/** 3-6 short phrases in the client's own words: every picked answer's label plus any typed text, in
+ *  order, deduplicated, capped at 6. Quoting, not understanding — the AI result reads meaning instead. */
 function highlightsFor(questions: QuizQuestion[], answers: QuizAnswers, other: QuizOther): string[] {
   const out: string[] = [];
   const add = (s: string | undefined) => {
@@ -22,88 +93,56 @@ function highlightsFor(questions: QuizQuestion[], answers: QuizAnswers, other: Q
     if (t && !out.includes(t)) out.push(t);
   };
   for (const q of questions) {
-    for (const o of chosen(q, answers)) if (o.pointsTo) add(o.label);
+    for (const o of chosen(q, answers)) add(o.label);
     add(other[q.id]);
   }
   return out.slice(0, 6);
 }
 
-const COMMON = new Set(["every", "night", "with", "that", "have", "this", "from", "into", "your", "they", "what", "when", "want", "need", "some", "more", "just", "like", "make", "would", "about", "there", "their", "will", "very", "much", "also"]);
-const stems = (t: string) => new Set((t.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !COMMON.has(w)).map((w) => w.slice(0, 5)));
-
-/** The service whose title/tags/needs share the most words with what they typed — a cheap,
- *  non-AI reading of "Other" text. ponytail: word-stem overlap, the AI does the real reading. */
-export function guessService(services: Service[], typed: string, min = 1): Service | undefined {
-  const words = stems(typed);
-  let best: Service | undefined;
-  let top = min - 1;
-  for (const s of services) {
-    let n = 0;
-    for (const w of stems([s.title, s.short, s.description, ...s.tags, ...s.needs].join(" "))) if (words.has(w)) n++;
-    if (n > top) [best, top] = [s, n];
-  }
-  return best;
-}
-
-/** One row per answered question: their pick(s) or own words → how we solve it. Option `solves`
- *  text first, else the service's description; typed-only answers are matched by `guessService`. */
+/** One row per answered question: their pick(s)/own words → the service it fits and how we help. The
+ *  "how" is the option's own "what we say" line when set, else the matched service's description. */
 export function answerRows(site: QuizSite, answers: QuizAnswers, other: QuizOther): QuizAnswerRow[] {
   const rows: QuizAnswerRow[] = [];
   for (const q of site.quiz.questions) {
     const picks = chosen(q, answers);
     const typed = other[q.id]?.trim() ?? "";
     if (!picks.length && !typed) continue;
-    const lead = picks.find((o) => o.pointsTo) ?? picks[0];
-    // typed words: first among the services this question is about, then a strong match anywhere,
-    // else the question's own first service (an answer to "tech" is about tech)
-    const own = site.services.filter((sv) => q.options.some((o) => o.pointsTo === sv.icon));
-    const svc = lead?.pointsTo
-      ? site.services.find((s) => s.icon === lead.pointsTo)
-      : typed
-        ? (guessService(own, typed) ?? guessService(site.services, typed, 2) ?? own[0])
-        : undefined;
-    // a pick that points nowhere ("No events planned") gives way to what they typed next to it
-    const how = (lead?.pointsTo || !typed ? lead?.solves?.trim() : "") || svc?.description || "We'll take this into our first call and shape the plan around it.";
-    rows.push({ q: q.id, said: [...picks.map((o) => o.label), ...(typed ? [`“${typed}”`] : [])].join(" · "), own: Boolean(typed) || undefined, how, slug: svc?.slug ?? null });
+    const slug = topSlug(scoreAnswer(q, picks, typed, site.services), site.services);
+    const svc = site.services.find((s) => s.slug === slug);
+    const lead = picks[0];
+    const how = lead?.solves?.trim() || svc?.description || "We'll take this into our first call and shape the plan around it.";
+    rows.push({ q: q.id, said: [...picks.map((o) => o.label), ...(typed ? [`“${typed}”`] : [])].join(" · "), own: Boolean(typed) || undefined, how, slug });
   }
   return rows;
 }
 
 /**
- * The quiz worked out without AI: every chosen option casts one vote for the activity it points
- * to (`pointsTo` — see migrate.ts), the most-voted win, ties break toward the lower service card
- * number (the same rule `scoreQuiz` used for weight totals). This is layer 3 of the AI chain's
- * fallback (docs/AI_RAG_SYSTEM.md §6) — a safety net, not the showpiece: `highlights` is quoted
- * verbatim (see `highlightsFor` above), not understood. "Other" text votes only through the
- * keyword guess in `answerRows` (one vote for the service it names, when there is one).
+ * The quiz worked out without AI (layer 3 of the chain, docs/AI_RAG_SYSTEM.md §6). Every answer is
+ * matched to the services it fits by keyword overlap (`scoreAnswer`); the scores add up across the
+ * quiz and the highest-scoring services win, ties breaking toward the lower service card number.
+ * Pure JS, runs on the client too (the overlay's own fallback when the API call fails).
  *
- * Returns `null` only when no option anywhere in the quiz has a `pointsTo` — not just "nothing was
- * answered" — because that's the one case even a zero-vote ranking would be pure noise (layer 4,
- * the true last resort, per §6).
+ * Returns `null` only when NOTHING the visitor said matches any service at all — the one case a
+ * ranking would be pure noise, so the overlay shows the "here's what you told us" screen instead
+ * (layer 4, the true last resort).
  */
 export function runBackup(site: QuizSite, answers: QuizAnswers, other: QuizOther): AiQuizResult | null {
   const { questions, result: r } = site.quiz;
-  const configured = questions.some((q) => q.options.some((o) => o.pointsTo));
-  if (!configured) return null;
 
-  const votes = new Map<IconKey, number>();
-  const vote = (k: IconKey) => votes.set(k, (votes.get(k) ?? 0) + 1);
+  const tally = new Map<string, number>();
   for (const q of questions) {
-    for (const o of chosen(q, answers)) if (o.pointsTo) vote(o.pointsTo);
+    const picks = chosen(q, answers);
+    const typed = other[q.id]?.trim() ?? "";
+    if (!picks.length && !typed) continue;
+    for (const [slug, n] of scoreAnswer(q, picks, typed, site.services)) tally.set(slug, (tally.get(slug) ?? 0) + n);
   }
-  const rows = answerRows(site, answers, other);
-  for (const row of rows) {
-    // typed words vote only where no pick already pointed somewhere (no double counting)
-    const typedOnly = row.own && !chosen(questions.find((q) => q.id === row.q), answers).some((o) => o.pointsTo);
-    const s = typedOnly && row.slug ? site.services.find((x) => x.slug === row.slug) : undefined;
-    if (s) vote(s.icon);
-  }
+  if (!tally.size) return null;
 
   const n = Math.min(5, Math.max(1, r.matches || 3));
   const ranked = site.services
-    .map((s) => ({ s, v: votes.get(s.icon) ?? 0 }))
+    .map((s) => ({ s, v: tally.get(s.slug) ?? 0 }))
     .sort((x, y) => y.v - x.v || x.s.n - y.s.n)
-    .filter((x, i) => i === 0 || x.v > 0) // never pad the list with services nothing pointed to
+    .filter((x) => x.v > 0) // never pad the list with services nothing matched
     .slice(0, n);
 
   const matches = ranked.map(({ s }, i): AiQuizResult["matches"][number] => ({ slug: s.slug, fit: FIT[Math.min(i, FIT.length - 1)], how: s.description }));
@@ -126,7 +165,7 @@ export function runBackup(site: QuizSite, answers: QuizAnswers, other: QuizOther
   return {
     wants,
     highlights: highlightsFor(questions, answers, other),
-    answers: rows,
+    answers: answerRows(site, answers, other),
     matches,
     steps,
     tags: { who: byRole(questions, "who", answers), goal: byRole(questions, "goal", answers), when },

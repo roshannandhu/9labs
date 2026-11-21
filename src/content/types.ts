@@ -162,7 +162,7 @@ export interface SiteData {
      *  live in the database, outside this versioned content. */
     ai: {
       enabled: boolean;
-      tone: "friendly" | "professional" | "short";
+      tone: "friendly" | "professional" | "short" | "casual";
       /** Free text about Nine Labs injected into the prompt. */
       notes: string;
       maxOtherChars: number;

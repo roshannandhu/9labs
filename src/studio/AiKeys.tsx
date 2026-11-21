@@ -140,12 +140,14 @@ const sum = (ms: QuotaMeter[]): QuotaMeter => ({
 function QuotaSummary({
   data,
   geminiUsed,
+  geminiEmbeds,
   geminiLimit,
   busy,
   onCheck,
 }: {
   data: KeysReply;
   geminiUsed: number;
+  geminiEmbeds: number;
   geminiLimit: number;
   busy: boolean;
   onCheck: () => void;
@@ -158,9 +160,11 @@ function QuotaSummary({
   const req = sum(groqChecks.map((c) => c.requests!));
   const tok = sum(groqChecks.map((c) => c.tokens!));
   const gemKeys = on("gemini").length;
+  // real Gemini usage = text replies + the embedding each quiz run spends on retrieval
+  const gemUsed = geminiUsed + geminiEmbeds;
   const gem: QuotaMeter = {
     limit: geminiLimit * gemKeys,
-    left: Math.max(0, geminiLimit * gemKeys - geminiUsed),
+    left: Math.max(0, geminiLimit * gemKeys - gemUsed),
     resetAt: null,
   };
   const left = req.left + gem.left;
@@ -182,7 +186,7 @@ function QuotaSummary({
             </>
           ) : (
             <span className="text-st-sub">
-              No working AI key — every visitor gets the scoring result.
+              No working AI key — every visitor gets an instant matched result.
             </span>
           )}
         </p>
@@ -217,7 +221,7 @@ function QuotaSummary({
         <Meter
           label={`Gemini — today (estimate${gemKeys > 1 ? `, ${gemKeys} keys` : ""})`}
           m={gem}
-          foot={`Gemini doesn't report its quota — this counts today's calls against ${fmt(geminiLimit)} a day per key (Quiz → Result page → How the AI writes → More options).`}
+          foot={`Today: ${fmt(geminiUsed)} replies + ${fmt(geminiEmbeds)} search embeddings, against ${fmt(geminiLimit)} a day per key. Gemini doesn't report its real quota (set the estimate in Quiz → Result page → How the AI writes → More options).`}
         />
       )}
     </div>
@@ -227,9 +231,11 @@ function QuotaSummary({
 /** For the Dashboard / AI health: the quota summary alone. */
 export function AiQuota({
   geminiUsed,
+  geminiEmbeds,
   geminiLimit,
 }: {
   geminiUsed: number;
+  geminiEmbeds: number;
   geminiLimit: number;
 }) {
   const { data, err, busy, load } = useAiKeys();
@@ -240,6 +246,7 @@ export function AiQuota({
     <QuotaSummary
       data={data}
       geminiUsed={geminiUsed}
+      geminiEmbeds={geminiEmbeds}
       geminiLimit={geminiLimit}
       busy={busy}
       onCheck={() => void load()}
@@ -505,9 +512,11 @@ function AddKey({
 /** Quiz → Insights: quota summary, every key with its status and own quota, and adding a key. */
 export function AiKeysManager({
   geminiUsed,
+  geminiEmbeds,
   geminiLimit,
 }: {
   geminiUsed: number;
+  geminiEmbeds: number;
   geminiLimit: number;
 }) {
   const { data, err, busy, load, setCheck } = useAiKeys();
@@ -518,6 +527,7 @@ export function AiKeysManager({
       <QuotaSummary
         data={data}
         geminiUsed={geminiUsed}
+        geminiEmbeds={geminiEmbeds}
         geminiLimit={geminiLimit}
         busy={busy}
         onCheck={() => void load()}

@@ -55,7 +55,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         {/* Pre-paint: the theme, and whether the logo landing animation plays (first visit this session). */}
         <BootScript code={themeBootScript(site.theme.default, site.theme.toggle) + (site.theme.intro ? INTRO_BOOT_SCRIPT : "")} />
       </head>
-      <body>
+      {/* suppressHydrationWarning: browser extensions (e.g. Monica) inject attributes on <body> before React hydrates */}
+      <body suppressHydrationWarning>
         <a href="#main" className="sr-only z-[200] rounded-full bg-white px-4 py-2 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
           Skip to content
         </a>

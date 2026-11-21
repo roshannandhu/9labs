@@ -36,15 +36,14 @@ export type Service = {
 };
 
 /**
- * The 9 Quiz: each answer points to one activity (or none) — the AI chain uses it as a hint, and
- * it's the whole vote when the AI is unavailable (src/lib/quiz/backup.ts). Replaces the old
- * per-activity numeric weights (archive/quiz-scoring-legacy).
+ * The 9 Quiz: a tap-card answer. The service each answer fits is worked out from its own words —
+ * by the AI, or by the offline keyword matcher (src/lib/quiz/backup.ts) — so no answer is mapped to
+ * a service by hand. `solves` is an optional line the admin can write to steer and show the reply.
  */
 export type QuizOption = {
   id: string;
   label: string;
-  pointsTo?: IconKey | null;
-  /** One line, "how we help" with this answer — shown on the result when the AI is off or skips it. Empty = the service's short name. */
+  /** Optional "what we say" line for this answer — shown on the result when the AI is off, and read by the matcher. Empty = the matched service's description. */
   solves?: string;
   /** In a "pick all" question, choosing this clears the others (e.g. "Nothing yet"). */
   only?: boolean;
@@ -367,8 +366,8 @@ export const site: SiteData = {
     ai: { enabled: false, tone: "friendly", notes: "", maxOtherChars: 300, allowPrices: false, geminiDailyLimitEstimate: 1000 },
     text: "Nine quick questions, about a minute. Tap your answers and see which of our nine activities fit your business best.",
     cta: "Start The 9 Quiz",
-    // pointsTo computed once via derivePointsTo() (highest weight, ties → lower service card number) —
-    // see archive/quiz-scoring-legacy/README.md. weights stays until every reader moves off it (Phase 5).
+    // No answer is mapped to a service by hand. Each `solves` line both shows on the result (when the
+    // AI is off) and feeds the offline keyword matcher (src/lib/quiz/backup.ts) that picks the services.
     questions: [
       {
         id: "who",
@@ -377,11 +376,11 @@ export const site: SiteData = {
         q: "What best describes you?",
         allowOther: true,
         options: [
-          { id: "startup", label: "A new business or startup", pointsTo: "strategy", solves: "We shape your brand, offer and launch plan so you start on the right foot." },
-          { id: "small", label: "A small business that wants to grow", pointsTo: "social", solves: "We turn your social pages into a steady source of new customers." },
-          { id: "established", label: "An established company", pointsTo: "pr", solves: "We tell your story in the press and media so your name carries more weight." },
-          { id: "brand", label: "A brand launching a product", pointsTo: "advertising", solves: "We build the launch campaign that puts your product in front of the right buyers." },
-          { id: "events", label: "An organiser, exhibitor or venue", pointsTo: "events", solves: "We plan, build and run stands and events that pull people in." },
+          { id: "startup", label: "A new business or startup", solves: "We shape your brand, offer and launch plan so you start on the right foot." },
+          { id: "small", label: "A small business that wants to grow", solves: "We turn your social pages into a steady source of new customers." },
+          { id: "established", label: "An established company", solves: "We tell your story in the press and media so your name carries more weight." },
+          { id: "brand", label: "A brand launching a product", solves: "We build the launch campaign that puts your product in front of the right buyers." },
+          { id: "events", label: "An organiser, exhibitor or venue", solves: "We plan, build and run stands and events that pull people in." },
         ],
       },
       {
@@ -391,11 +390,11 @@ export const site: SiteData = {
         q: "What is your main goal right now?",
         allowOther: true,
         options: [
-          { id: "sales", label: "More customers and sales", pointsTo: "advertising", solves: "Targeted ads that reach people ready to buy, measured on real sales." },
-          { id: "known", label: "Make our brand known", pointsTo: "social", solves: "Regular, on-brand content that gets your name seen and remembered." },
-          { id: "launch", label: "Launch something new", pointsTo: "events", solves: "A launch moment, with event, content and buzz, so people notice from day one." },
-          { id: "event", label: "Run an event or exhibition", pointsTo: "events", solves: "Full event and exhibition production, from concept to the last guest." },
-          { id: "smarter", label: "Work smarter with AI and tech", pointsTo: "ai", solves: "We find where AI saves your team time and set it up for you." },
+          { id: "sales", label: "More customers and sales", solves: "Targeted ads that reach people ready to buy, measured on real sales." },
+          { id: "known", label: "Make our brand known", solves: "Regular, on-brand content that gets your name seen and remembered." },
+          { id: "launch", label: "Launch something new", solves: "A launch moment, with event, content and buzz, so people notice from day one." },
+          { id: "event", label: "Run an event or exhibition", solves: "Full event and exhibition production, from concept to the last guest." },
+          { id: "smarter", label: "Work smarter with AI and tech", solves: "We find where AI saves your team time and set it up for you." },
         ],
       },
       {
@@ -404,11 +403,11 @@ export const site: SiteData = {
         q: "Where do your customers find you?",
         allowOther: true,
         options: [
-          { id: "social", label: "On social media", pointsTo: "social", solves: "We meet your customers where they scroll, with content made for each platform." },
-          { id: "search", label: "Searching on Google", pointsTo: "advertising", solves: "Search ads and landing pages that catch people the moment they look for you." },
-          { id: "b2b", label: "Other businesses (B2B)", pointsTo: "strategy", solves: "A clear B2B plan: who to reach, what to say and where to say it." },
-          { id: "local", label: "Nearby, in person", pointsTo: "social", solves: "Local targeting and community content that brings nearby people through your door." },
-          { id: "unsure", label: "We are not sure yet", pointsTo: "strategy", solves: "We find out where your customers really are before you spend on anything." },
+          { id: "social", label: "On social media", solves: "We meet your customers where they scroll, with content made for each platform." },
+          { id: "search", label: "Searching on Google", solves: "Search ads and landing pages that catch people the moment they look for you." },
+          { id: "b2b", label: "Other businesses (B2B)", solves: "A clear B2B plan: who to reach, what to say and where to say it." },
+          { id: "local", label: "Nearby, in person", solves: "Local targeting and community content that brings nearby people through your door." },
+          { id: "unsure", label: "We are not sure yet", solves: "We find out where your customers really are before you spend on anything." },
         ],
       },
       {
@@ -417,10 +416,10 @@ export const site: SiteData = {
         q: "How is your online presence today?",
         allowOther: true,
         options: [
-          { id: "zero", label: "We are starting from zero", pointsTo: "content", solves: "We build your presence from scratch: the look, the pages and the first content." },
-          { id: "quiet", label: "We have pages, but they are quiet", pointsTo: "content", solves: "Fresh photos, videos and posts that bring quiet pages back to life." },
-          { id: "flat", label: "Active, but not growing", pointsTo: "advertising", solves: "Paid reach and sharper targeting to break through the plateau." },
-          { id: "strong", label: "Strong, and we want to scale", pointsTo: "advertising", solves: "We scale what is working with bigger campaigns and tighter tracking." },
+          { id: "zero", label: "We are starting from zero", solves: "We build your presence from scratch: the look, the pages and the first content." },
+          { id: "quiet", label: "We have pages, but they are quiet", solves: "Fresh photos, videos and posts that bring quiet pages back to life." },
+          { id: "flat", label: "Active, but not growing", solves: "Paid reach and sharper targeting to break through the plateau." },
+          { id: "strong", label: "Strong, and we want to scale", solves: "We scale what is working with bigger campaigns and tighter tracking." },
         ],
       },
       {
@@ -429,11 +428,11 @@ export const site: SiteData = {
         q: "What do you need made most?",
         allowOther: true,
         options: [
-          { id: "photo", label: "Photos and video", pointsTo: "photo", solves: "Our crew shoots the photos and video your brand needs." },
-          { id: "posts", label: "Social posts and reels", pointsTo: "content", solves: "A steady stream of posts and reels, made by our creative team." },
-          { id: "ads", label: "Ads and campaigns", pointsTo: "advertising", solves: "Campaign creative and ad management under one roof." },
-          { id: "press", label: "Press and PR stories", pointsTo: "pr", solves: "Press releases, media contacts and stories journalists want to run." },
-          { id: "advice", label: "Nothing yet, advice first", pointsTo: "strategy", solves: "We start with a strategy session, so you know exactly what to do first." },
+          { id: "photo", label: "Photos and video", solves: "Our crew shoots the photos and video your brand needs." },
+          { id: "posts", label: "Social posts and reels", solves: "A steady stream of posts and reels, made by our creative team." },
+          { id: "ads", label: "Ads and campaigns", solves: "Campaign creative and ad management under one roof." },
+          { id: "press", label: "Press and PR stories", solves: "Press releases, media contacts and stories journalists want to run." },
+          { id: "advice", label: "Nothing yet, advice first", solves: "We start with a strategy session, so you know exactly what to do first." },
         ],
       },
       {
@@ -442,10 +441,10 @@ export const site: SiteData = {
         q: "Do you have an event coming up?",
         allowOther: true,
         options: [
-          { id: "soon", label: "Yes, within 3 months", pointsTo: "events", solves: "We can start planning right away: stand, staging and promotion." },
-          { id: "later", label: "Later this year", pointsTo: "events", solves: "Time to plan it properly and build buzz well ahead of the day." },
-          { id: "regular", label: "We run events regularly", pointsTo: "photo", solves: "Photo and video coverage that turns every event into content." },
-          { id: "none", label: "No events planned", pointsTo: null, solves: "No event needed: we focus on your everyday marketing." },
+          { id: "soon", label: "Yes, within 3 months", solves: "We can start planning right away: stand, staging and promotion." },
+          { id: "later", label: "Later this year", solves: "Time to plan it properly and build buzz well ahead of the day." },
+          { id: "regular", label: "We run events regularly", solves: "Photo and video coverage that turns every event into content." },
+          { id: "none", label: "No events planned", solves: "No event needed: we focus on your everyday marketing." },
         ],
       },
       {
@@ -454,10 +453,10 @@ export const site: SiteData = {
         q: "How does your team use tech and AI?",
         allowOther: true,
         options: [
-          { id: "little", label: "Hardly at all", pointsTo: "it", solves: "We set up the basic tools and systems your team needs." },
-          { id: "manual", label: "Basic tools, lots of manual work", pointsTo: "ai", solves: "We automate the repetitive work so your team can focus on customers." },
-          { id: "ai", label: "We want automation and AI", pointsTo: "ai", solves: "We design and build the AI and automation you have in mind." },
-          { id: "systems", label: "We need better systems or IT support", pointsTo: "it", solves: "IT support and systems that keep your business running smoothly." },
+          { id: "little", label: "Hardly at all", solves: "We set up the basic tools and systems your team needs." },
+          { id: "manual", label: "Basic tools, lots of manual work", solves: "We automate the repetitive work so your team can focus on customers." },
+          { id: "ai", label: "We want automation and AI", solves: "We design and build the AI and automation you have in mind." },
+          { id: "systems", label: "We need better systems or IT support", solves: "IT support and systems that keep your business running smoothly." },
         ],
       },
       {
@@ -466,11 +465,11 @@ export const site: SiteData = {
         q: "What monthly budget can you put into growth?",
         allowOther: true,
         options: [
-          { id: "lt5", label: "Under AED 5,000", pointsTo: "social", solves: "We focus your budget on the few things that bring the most back." },
-          { id: "5to20", label: "AED 5,000 – 20,000", pointsTo: "social", solves: "Enough for steady social growth plus some paid reach." },
-          { id: "20to50", label: "AED 20,000 – 50,000", pointsTo: "advertising", solves: "Room for a full campaign mix across ads and content." },
-          { id: "gt50", label: "AED 50,000+", pointsTo: "advertising", solves: "A full-scale, multi-channel plan with room to test and grow." },
-          { id: "unsure", label: "Not sure yet", pointsTo: "strategy", solves: "We help you set a budget that matches your goals." },
+          { id: "lt5", label: "Under AED 5,000", solves: "We focus your budget on the few things that bring the most back." },
+          { id: "5to20", label: "AED 5,000 – 20,000", solves: "Enough for steady social growth plus some paid reach." },
+          { id: "20to50", label: "AED 20,000 – 50,000", solves: "Room for a full campaign mix across ads and content." },
+          { id: "gt50", label: "AED 50,000+", solves: "A full-scale, multi-channel plan with room to test and grow." },
+          { id: "unsure", label: "Not sure yet", solves: "We help you set a budget that matches your goals." },
         ],
       },
       {
@@ -480,10 +479,10 @@ export const site: SiteData = {
         q: "When would you like to start?",
         allowOther: true,
         options: [
-          { id: "asap", label: "As soon as possible", pointsTo: null, solves: "We will book your discovery call as soon as you message us." },
-          { id: "month", label: "Within a month", pointsTo: null, solves: "We plan now, so everything is ready when you are." },
-          { id: "quarter", label: "In 1–3 months", pointsTo: null, solves: "We map out the plan now and start when you are ready." },
-          { id: "exploring", label: "Just exploring for now", pointsTo: "strategy", solves: "No pressure: a free chat to explore your options." },
+          { id: "asap", label: "As soon as possible", solves: "We will book your discovery call as soon as you message us." },
+          { id: "month", label: "Within a month", solves: "We plan now, so everything is ready when you are." },
+          { id: "quarter", label: "In 1–3 months", solves: "We map out the plan now and start when you are ready." },
+          { id: "exploring", label: "Just exploring for now", solves: "No pressure: a free chat to explore your options." },
         ],
       },
     ] satisfies QuizQuestion[],

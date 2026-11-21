@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { fill } from "@/content/site";
 import { useSite, useWhatsApp } from "@/components/providers/SiteProvider";
@@ -425,121 +425,109 @@ export default function QuizOverlay({ open, first, onClose }: { open: boolean; f
                   </motion.div>
                 ) : (
                   result && (
-                    <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
-                      <p className="label-mono !text-[color:var(--brand-a)]">{t.label}</p>
-                      <h2 className="mt-2 text-[clamp(1.8rem,5vw,2.8rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white">
-                        {t.heading}
-                      </h2>
-                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-[var(--chip-bg)] px-2.5 py-1 text-[11.5px] font-medium text-white/75">
-                        <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]" aria-hidden="true" />
-                        {result.source === "backup" ? "Matched from your answers" : "Written for you by our AI"}
-                      </p>
-                      <p className="mt-3 text-[16px] leading-relaxed text-nl-ink">{result.wants}</p>
-                      {result.visual && <AiVisual visual={result.visual} services={site.services} brand={site.shortName} reduced={reduced} />}
-                      <SolutionMap rows={rows} questions={questions} services={site.services} brand={site.shortName} reduced={reduced} />
-
-                      <p className="label-mono mt-8 !text-white/55">Where we&apos;d start</p>
-                      <ul className="mt-3 grid gap-3">
-                        {result.matches.map((m, i) => {
-                          const s = site.services.find((sv) => sv.slug === m.slug);
-                          if (!s) return null;
-                          return (
-                            <motion.li
-                              key={m.slug}
-                              initial={{ opacity: 0, y: 14 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.15 + i * 0.1, duration: 0.5, ease }}
-                              className="flex items-start gap-4 rounded-2xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5"
-                            >
-                              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white">
-                                <ActivityIcon icon={s.icon} size={26} play />
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="flex items-center justify-between gap-3">
-                                  <span className="font-display text-[16px] font-semibold text-white sm:text-[17px]">
-                                    {i + 1}. {s.title}
-                                  </span>
-                                  <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
-                                </span>
-                                {saidFor(s.slug).length > 0 && (
-                                  <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-white/55">
-                                    You said
-                                    {saidFor(s.slug).map((said) => (
-                                      <span key={said} className="max-w-full break-words rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-white/85">
-                                        {said}
-                                      </span>
-                                    ))}
-                                  </span>
-                                )}
-                                <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.how}</span>
-                                {s.tags.length > 0 && (
-                                  <span className="mt-2.5 flex flex-wrap gap-1.5">
-                                    {s.tags.map((tag) => (
-                                      <span key={tag} className="rounded-full border border-white/12 px-2 py-0.5 text-[11px] text-white/65">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </span>
-                                )}
-                              </span>
-                            </motion.li>
-                          );
-                        })}
-                      </ul>
-
-                      <PlanLine steps={result.steps} reduced={reduced} />
-
-                      <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--chip-bg)] p-4 sm:p-5">
-                        <WhatsAppStep cta={t.whatsappCta} onSend={sendWhatsApp} />
-                        {!t.emailEnabled ? null : sent ? (
-                          <p className="mt-3 text-[15px] text-white" role="status">
-                            ✓ {fill(t.emailSent, { email })}
+                    <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+                      {/* Band — what you want */}
+                      <Band i={0} reduced={reduced} divider={false}>
+                        <p className="label-mono !text-[color:var(--brand-a)]">{t.label}</p>
+                        <h2 className="mt-2 text-[clamp(2rem,6.2vw,3.1rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white">{t.heading}</h2>
+                        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-[var(--chip-bg)] px-2.5 py-1 text-[11.5px] font-medium text-white/75">
+                          <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[color:var(--brand-a)] to-[color:var(--brand-b)]" aria-hidden="true" />
+                          {result.source === "backup" ? "Matched from your answers" : "Written for you by our AI"}
+                        </p>
+                        <p className="mt-4 text-[clamp(1.05rem,2.6vw,1.3rem)] font-medium leading-relaxed text-white/90">{result.wants}</p>
+                        {result.highlights.length > 0 && (
+                          <p className="mt-4 flex flex-wrap gap-1.5">
+                            {result.highlights.map((h, i) => (
+                              <motion.span
+                                key={h}
+                                initial={{ opacity: 0, scale: reduced ? 1 : 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: reduced ? 0 : 0.3 + i * 0.07, duration: 0.4, ease }}
+                                className="rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2.5 py-1 text-[12px] font-medium text-white/90"
+                              >
+                                {h}
+                              </motion.span>
+                            ))}
                           </p>
-                        ) : (
-                          <form
-                            className="mt-3 flex flex-col gap-2.5 sm:flex-row"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              if (!/^\S+@\S+\.\S+$/.test(email) || sending) return;
-                              setSending(true);
-                              const res = submitQuizEmail(ref.current, email, answers, other);
-                              setSending(false);
-                              if (res.ok) setSent(true);
-                            }}
-                          >
-                            <label htmlFor="quiz-email" className="sr-only">
-                              Email address
-                            </label>
-                            <input
-                              id="quiz-email"
-                              type="email"
-                              required
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder={t.emailPlaceholder}
-                              className="min-h-[48px] flex-1 rounded-full border border-white/12 bg-transparent px-5 text-[16px] text-white placeholder:text-white/35 focus:border-nl-purple/70 focus:outline-none"
-                            />
-                            <button type="submit" disabled={sending} className="btn btn-outline btn-sm !min-h-[48px] disabled:opacity-60">
-                              {t.emailCta}
-                            </button>
-                          </form>
                         )}
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <button type="button" className="btn btn-sm text-white/60 hover:text-white" onClick={() => go(0)}>
-                            {t.retake}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm text-white/60 hover:text-white"
-                            onClick={() => {
-                              onClose();
-                              window.setTimeout(() => scrollToId("ebooks"), 450);
-                            }}
-                          >
-                            {t.ebooksCta}
-                          </button>
+                      </Band>
+
+                      {/* Band — the picture (AI only) */}
+                      {result.visual && (
+                        <Band i={1} reduced={reduced}>
+                          <AiVisual visual={result.visual} services={site.services} brand={site.shortName} reduced={reduced} />
+                        </Band>
+                      )}
+
+                      {/* Band — your answers, solved */}
+                      <Band i={result.visual ? 2 : 1} reduced={reduced}>
+                        <SolutionMap rows={rows} questions={questions} services={site.services} brand={site.shortName} reduced={reduced} />
+                      </Band>
+
+                      {/* Band — where we'd start */}
+                      <Band i={result.visual ? 3 : 2} reduced={reduced} eyebrow="Where we'd start">
+                        <MatchList matches={result.matches} services={site.services} saidFor={saidFor} reduced={reduced} />
+                      </Band>
+
+                      {/* Band — your plan */}
+                      <Band i={result.visual ? 4 : 3} reduced={reduced} eyebrow="Your plan">
+                        <PlanLine steps={result.steps} reduced={reduced} bare />
+                      </Band>
+
+                      {/* Band — let's talk */}
+                      <Band i={result.visual ? 5 : 4} reduced={reduced} eyebrow="Let's talk">
+                        <div className="mt-3 rounded-3xl border border-[color:var(--brand-a)]/25 bg-gradient-to-br from-[color:var(--brand-a)]/[0.1] to-[color:var(--brand-b)]/[0.04] p-4 sm:p-6">
+                          <WhatsAppStep cta={t.whatsappCta} onSend={sendWhatsApp} />
+                          {!t.emailEnabled ? null : sent ? (
+                            <p className="mt-3 text-[15px] text-white" role="status">
+                              ✓ {fill(t.emailSent, { email })}
+                            </p>
+                          ) : (
+                            <form
+                              className="mt-3 flex flex-col gap-2.5 sm:flex-row"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!/^\S+@\S+\.\S+$/.test(email) || sending) return;
+                                setSending(true);
+                                const res = submitQuizEmail(ref.current, email, answers, other);
+                                setSending(false);
+                                if (res.ok) setSent(true);
+                              }}
+                            >
+                              <label htmlFor="quiz-email" className="sr-only">
+                                Email address
+                              </label>
+                              <input
+                                id="quiz-email"
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder={t.emailPlaceholder}
+                                className="min-h-[48px] flex-1 rounded-full border border-white/12 bg-transparent px-5 text-[16px] text-white placeholder:text-white/35 focus:border-nl-purple/70 focus:outline-none"
+                              />
+                              <button type="submit" disabled={sending} className="btn btn-outline btn-sm !min-h-[48px] disabled:opacity-60">
+                                {t.emailCta}
+                              </button>
+                            </form>
+                          )}
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <button type="button" className="btn btn-sm text-white/60 hover:text-white" onClick={() => go(0)}>
+                              {t.retake}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm text-white/60 hover:text-white"
+                              onClick={() => {
+                                onClose();
+                                window.setTimeout(() => scrollToId("ebooks"), 450);
+                              }}
+                            >
+                              {t.ebooksCta}
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </Band>
                     </motion.div>
                   )
                 )}
@@ -607,10 +595,80 @@ function WhatsAppStep({ cta, onSend, className = "" }: { cta: string; onSend: (c
   );
 }
 
+/** One cinematic section of the result: a hairline divider, then its content, revealed as a block
+ *  (staggered after the bands above). Reduced-motion shows everything at once. */
+function Band({ i, reduced, eyebrow, divider = true, children }: { i: number; reduced: boolean; eyebrow?: string; divider?: boolean; children: ReactNode }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: reduced ? 0 : 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: reduced ? 0 : 0.1 + i * 0.22, duration: 0.6, ease }}
+      className={divider ? "mt-9 border-t border-white/10 pt-8" : ""}
+    >
+      {eyebrow && <p className="label-mono !text-white/55">{eyebrow}</p>}
+      {children}
+    </motion.section>
+  );
+}
+
+/** "Where we'd start": the top service as a big hero card, the rest as smaller cards beneath. */
+function MatchList({ matches, services, saidFor, reduced }: { matches: AiQuizResult["matches"]; services: Service[]; saidFor: (slug: string) => string[]; reduced: boolean }) {
+  const resolved = matches
+    .map((m) => ({ m, s: services.find((sv) => sv.slug === m.slug) }))
+    .filter((x): x is { m: AiQuizResult["matches"][number]; s: Service } => Boolean(x.s));
+  if (!resolved.length) return null;
+  const card = ({ m, s }: { m: AiQuizResult["matches"][number]; s: Service }, idx: number, hero: boolean) => (
+    <motion.div
+      key={s.slug}
+      initial={{ opacity: 0, y: reduced ? 0 : 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: reduced ? 0 : 0.15 + idx * 0.1, duration: 0.5, ease }}
+      className={`flex items-start gap-4 rounded-2xl border p-4 ${hero ? "border-[color:var(--brand-a)]/35 bg-gradient-to-br from-[color:var(--brand-a)]/[0.12] to-[color:var(--brand-b)]/[0.04] sm:p-5" : "border-white/10 bg-[var(--chip-bg)]"}`}
+    >
+      <span className={`grid shrink-0 place-items-center rounded-xl border border-[color:var(--brand-a)]/35 bg-[color:var(--brand-a)]/10 text-white ${hero ? "h-14 w-14" : "h-11 w-11"}`}>
+        <ActivityIcon icon={s.icon} size={hero ? 30 : 22} play />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-3">
+          <span className={`font-display font-semibold text-white ${hero ? "text-[18px] sm:text-[20px]" : "text-[15px]"}`}>{s.title}</span>
+          <span className="shrink-0 font-digits text-[10px] font-black uppercase tracking-wide text-[color:var(--brand-a)]">{FIT_LABEL[m.fit]}</span>
+        </span>
+        {saidFor(s.slug).length > 0 && (
+          <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-white/55">
+            You said
+            {saidFor(s.slug).map((said) => (
+              <span key={said} className="max-w-full break-words rounded-full border border-[color:var(--brand-a)]/30 bg-[color:var(--brand-a)]/10 px-2 py-0.5 text-white/85">
+                {said}
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="mt-2.5 block text-[14px] leading-relaxed text-nl-ink">{m.how}</span>
+        {hero && s.tags.length > 0 && (
+          <span className="mt-2.5 flex flex-wrap gap-1.5">
+            {s.tags.map((tag) => (
+              <span key={tag} className="rounded-full border border-white/12 px-2 py-0.5 text-[11px] text-white/65">
+                {tag}
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
+    </motion.div>
+  );
+  const [first, ...rest] = resolved;
+  return (
+    <div className="mt-3 grid gap-3">
+      {card(first, 0, true)}
+      {rest.length > 0 && <div className="grid gap-3 md:grid-cols-2">{rest.map((x, i) => card(x, i + 1, false))}</div>}
+    </div>
+  );
+}
+
 /**
  * The result as a picture: every answer on the left, a line across, and how Nine Labs solves that
  * exact point on the right (stacked, joined by a short line, on phones). Below it, "your mix": one
- * bar per service, sized by how many answers lead there. The same drawing for AI and scoring.
+ * bar per service, sized by how many answers lead there. The same drawing for AI and the offline match.
  */
 function SolutionMap({ rows, questions, services, brand, reduced }: { rows: QuizAnswerRow[]; questions: QuizQuestion[]; services: Service[]; brand: string; reduced: boolean }) {
   if (!rows.length) return null;
@@ -696,11 +754,11 @@ function SolutionMap({ rows, questions, services, brand, reduced }: { rows: Quiz
 }
 
 /** The plan as a line of numbered stops: a vertical line on phones, one column per step on wider screens. */
-function PlanLine({ steps, reduced }: { steps: AiQuizResult["steps"]; reduced: boolean }) {
+function PlanLine({ steps, reduced, bare = false }: { steps: AiQuizResult["steps"]; reduced: boolean; bare?: boolean }) {
   if (!steps.length) return null;
   return (
-    <div className="mt-8">
-      <p className="label-mono !text-white/55">Your plan</p>
+    <div className={bare ? "mt-3" : "mt-8"}>
+      {!bare && <p className="label-mono !text-white/55">Your plan</p>}
       <ol className="mt-3 grid gap-3 sm:[grid-template-columns:var(--cols)] sm:gap-4" style={{ ["--cols" as string]: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((s, i) => (
           <motion.li

@@ -8,13 +8,11 @@ test("a fresh default workspace has no blocking errors", () => {
   assert.deepEqual(issues.filter((i) => i.level === "error"), []);
 });
 
-test("an activity no answer points to is flagged — a warning, since the AI result doesn't need pointsTo", () => {
+test("a question with fewer than two answers blocks publish", () => {
   const ws = defaultWorkspace();
-  ws.site.quiz.questions = ws.site.quiz.questions.map((q) => ({ ...q, options: q.options.map((o) => ({ ...o, pointsTo: null })) }));
+  ws.site.quiz.questions[0].options = ws.site.quiz.questions[0].options.slice(0, 1);
   const issues = checkWorkspace(ws);
-  const warnings = issues.filter((i) => i.level === "warning" && i.message.includes("could never recommend"));
-  assert.equal(warnings.length, 9); // every one of the nine activities is now unreachable by the backup
-  assert.deepEqual(issues.filter((i) => i.level === "error"), []); // never blocks publish
+  assert.ok(issues.some((i) => i.level === "error" && i.message.includes("at least two answers")));
 });
 
 test("an empty WhatsApp number blocks publish", () => {

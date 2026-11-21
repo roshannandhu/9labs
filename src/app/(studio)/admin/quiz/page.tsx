@@ -39,31 +39,10 @@ function More({ children, label = "More options" }: { children: React.ReactNode;
 type Tab = (typeof TABS)[number][0];
 
 function OptionEditor({ qi, oi, o, q }: { qi: number; oi: number; o: QuizOption; q: QuizQuestion }) {
-  const draft = useDraft();
-  const services = draft.site.services;
-  const svc = services.find((s) => s.icon === o.pointsTo);
   return (
     <div className="grid gap-2.5 rounded-xl border border-st-border p-3">
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <TextField path={["site", "quiz", "questions", qi, "options", oi, "label"]} label={`Answer ${oi + 1}`} placeholder="Answer" />
-        <label className="block min-w-0">
-          <span className="st-label">Solved by</span>
-          <select
-          className="st-field mt-1.5 w-full"
-          value={o.pointsTo ?? ""}
-          onChange={(e) => {
-            checkpoint();
-            setDraft(["site", "quiz", "questions", qi, "options", oi, "pointsTo"] as Path, e.target.value || null);
-          }}
-        >
-          <option value="">— no service —</option>
-          {services.map((s) => (
-            <option key={s.slug} value={s.icon}>
-              {s.title}
-            </option>
-          ))}
-        </select>
-        </label>
         <Button
           variant="ghost"
           className="justify-self-start text-st-danger sm:mb-0.5"
@@ -79,9 +58,9 @@ function OptionEditor({ qi, oi, o, q }: { qi: number; oi: number; o: QuizOption;
       </div>
       <TextField
         path={["site", "quiz", "questions", qi, "options", oi, "solves"]}
-        label="How we help (shown on the result)"
-        placeholder={svc ? svc.description : "One sentence: what Nine Labs does about this answer"}
-        help="The AI rewrites this for each visitor when it's on; scoring shows it as written. Empty = the service's description."
+        label="What we say (optional)"
+        placeholder="One sentence: what Nine Labs does about this answer"
+        help="Shown on the result when the AI is off, and it helps match this answer to the right service. Leave empty and the AI/matcher writes it."
       />
       {q.multi && (
         <label className="flex items-center gap-1.5 text-[11.5px] text-st-sub">
@@ -187,7 +166,6 @@ function BuildTab() {
               {qi + 1}. {q.q || "New question"}{" "}
               <span className="font-normal text-st-dim">
                 — {q.options.length} answers{q.allowOther ? " + own words" : ""}
-                {q.options.some((o) => !o.pointsTo && !o.solves) ? " · some answers have no service" : ""}
               </span>
             </summary>
             <div className="mt-3.5">
@@ -403,11 +381,11 @@ function TestTab() {
             </>
           )}
         </Box>
-        <Box title="Scoring result" help="What visitors get in “Scoring only” mode, or when the AI is out of quota or fails — from each answer's “Solved by” and “How we help”.">
+        <Box title="Instant match" help="What visitors get in “Instant results” mode, or whenever the AI is off, out of quota or fails — each answer matched to the services it fits, no hand-mapping.">
           {!answered ? (
-            <p className="text-[13px] text-st-sub">Pick some answers to see the scoring result.</p>
+            <p className="text-[13px] text-st-sub">Pick some answers to see the instant result.</p>
           ) : !backup ? (
-            <p className="text-[13px] text-st-sub">No answer is solved by a service yet — set “Solved by” on the Questions tab.</p>
+            <p className="text-[13px] text-st-sub">Nothing here matched a service yet — add a little more wording to the answers on the Questions tab.</p>
           ) : (
             <ResultView result={backup} services={draft.site.services} />
           )}
@@ -914,14 +892,14 @@ function ModeSwitch() {
           setOn(v === "ai");
         }}
         options={[
-          { value: "ai", label: "AI + scoring" },
-          { value: "scoring", label: "Scoring only" },
+          { value: "ai", label: "AI results" },
+          { value: "scoring", label: "Instant results" },
         ]}
       />
       <p className="st-help">
         {on
-          ? "The AI writes each visitor's plan from their answers and your knowledge base. If it hits its daily limit, is slow or fails, that visitor automatically gets the scoring result instead — they never see an error."
-          : "Every visitor gets the scoring result: each answer votes for the activity its “Points to” names, the most-voted win. No AI calls, no limits."}
+          ? "The AI writes each visitor's plan from their answers and your knowledge base. If it's off, over its daily limit, slow or fails, that visitor instantly gets a result matched from their answers instead — they never see an error."
+          : "Every visitor instantly gets a result matched from their answers — the quiz reads each answer and picks the services that fit. No AI, no limits, no waiting."}
       </p>
     </div>
   );
@@ -957,16 +935,17 @@ function ResultTab() {
         </Row>
         <NumField path={["site", "quiz", "result", "matches"]} label="Services to recommend" help="Shown under the answer-by-answer picture." min={1} max={5} />
         <More>
-          <AreaField path={["site", "quiz", "result", "summary"]} label="Opening sentence (scoring mode)" rows={2} help="{who} {goal} {when} are replaced. The AI writes its own." />
+          <AreaField path={["site", "quiz", "result", "summary"]} label="Opening sentence (when AI is off)" rows={2} help="{who} {goal} {when} are replaced. The AI writes its own." />
           <TextField path={["site", "quiz", "result", "why"]} label="“Why” line" help="{answers} becomes their own answers." />
         </More>
       </Box>
-      <Box title="How the AI writes" help="Used when the mode is “AI + scoring”. The API keys are Worker secrets, never stored here.">
+      <Box title="How the AI writes" help="Used when the mode is “AI results”. The API keys are managed under Insights → AI keys.">
         <SelectField
           path={["site", "quiz", "ai", "tone"]}
           label="Tone"
           options={[
             { value: "friendly", label: "Friendly" },
+            { value: "casual", label: "Casual" },
             { value: "professional", label: "Professional" },
             { value: "short", label: "Short and direct" },
           ]}
@@ -978,7 +957,7 @@ function ResultTab() {
           <CheckField path={["site", "quiz", "ai", "allowPrices"]} label="Allow prices" help="Even when on, the AI only quotes prices from facts marked “allow prices”." />
         </More>
       </Box>
-      <Box title="The three-step plan" help="In scoring mode: {first} {firstDescription} {next} are replaced. The AI writes its own steps.">
+      <Box title="The three-step plan" help="When the AI is off: {first} {firstDescription} {next} are replaced. The AI writes its own steps.">
         {steps.map((s, i) => (
           <div key={i} className="grid gap-2">
             <TextField path={["site", "quiz", "result", "steps", i, "title"]} label={`Step ${i + 1} title`} />

@@ -2,6 +2,7 @@ import "server-only";
 import type { SiteData } from "@/content/site";
 import type { QuizAnswers, QuizOther } from "@/lib/quiz/types";
 import { db } from "../db";
+import { env } from "../env";
 import { aiReady } from "./keys";
 import { HttpError } from "../http";
 import { newId } from "../leads";
@@ -35,6 +36,8 @@ async function logAiCall(o: ChainOutcome, ref: string): Promise<void> {
       rl_remaining_tokens: groq?.rate?.remainingTokens ?? null,
       rl_reset_at: groq?.rate?.resetAt ?? null,
       retrieval: o.retrieved.mode,
+      // one Gemini embedding request is spent whenever retrieval actually embedded the query
+      embed_requests: o.retrieved.mode === "vector" ? 1 : 0,
       tried: o.attempts.map((a) => a.provider),
       ref,
     });
@@ -43,7 +46,9 @@ async function logAiCall(o: ChainOutcome, ref: string): Promise<void> {
 
 export type AiHealth = {
   keys: { groq: boolean; gemini: boolean };
-  today: { total: number; ok: number; failover: number; backup: number; none: number; groqCalls: number; geminiCalls: number; tokensIn: number; tokensOut: number };
+  /** Whole-site AI-result cap per day (env AI_DAILY_CAP) — the exact ceiling behind the quota view. */
+  cap: number;
+  today: { total: number; ok: number; failover: number; backup: number; none: number; groqCalls: number; geminiCalls: number; geminiEmbeds: number; tokensIn: number; tokensOut: number };
   week: { total: number; ok: number; failover: number; backup: number; none: number };
   reasons: Record<string, number>;
   latency: { median: number; p95: number };
@@ -51,13 +56,15 @@ export type AiHealth = {
   recentFailures: { at: string; provider: string; outcome: string; reason: string; detail: string; ref: string }[];
 };
 
-type CallRow = { tried: string[] | null; at: string; provider: string; outcome: "ok" | "failover" | "backup" | "none"; reason: string; detail: string; latency_ms: number; tokens_in: number; tokens_out: number; rl_remaining_requests: number | null; rl_remaining_tokens: number | null; rl_reset_at: string | null; ref: string };
+type CallRow = { tried: string[] | null; at: string; provider: string; outcome: "ok" | "failover" | "backup" | "none"; reason: string; detail: string; latency_ms: number; tokens_in: number; tokens_out: number; embed_requests: number | null; rl_remaining_requests: number | null; rl_remaining_tokens: number | null; rl_reset_at: string | null; ref: string };
 
 export async function aiHealth(): Promise<AiHealth> {
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  const { data, error } = await db().from("ai_calls").select("tried, at, provider, outcome, reason, detail, latency_ms, tokens_in, tokens_out, rl_remaining_requests, rl_remaining_tokens, rl_reset_at, ref").gte("at", since).order("at", { ascending: false }).limit(5000);
+  const { data, error } = await db().from("ai_calls").select("tried, at, provider, outcome, reason, detail, latency_ms, tokens_in, tokens_out, embed_requests, rl_remaining_requests, rl_remaining_tokens, rl_reset_at, ref").gte("at", since).order("at", { ascending: false }).limit(5000);
   // the log table comes from migration 0004 — say so instead of a bare 500
   if (error?.code === "PGRST205" || error?.code === "42P01") throw new HttpError(503, "AI log table missing — run supabase/migrations/0004_ai_calls.sql in Supabase.");
+  // the embed_requests column comes from migration 0006
+  if (error?.code === "42703" || error?.code === "PGRST204") throw new HttpError(503, "AI quota column missing — run supabase/migrations/0006_ai_embed_telemetry.sql in Supabase.");
   if (error) throw error;
   const rows = data as CallRow[];
   const dayStart = new Date();
@@ -71,7 +78,8 @@ export async function aiHealth(): Promise<AiHealth> {
   const rate = rows.find((r) => r.rl_remaining_requests != null);
   return {
     keys: await aiReady(),
-    today: { ...count(today), groqCalls: today.filter((r) => r.tried?.includes("groq")).length, geminiCalls: today.filter((r) => r.tried?.includes("gemini")).length, tokensIn: today.reduce((n, r) => n + r.tokens_in, 0), tokensOut: today.reduce((n, r) => n + r.tokens_out, 0) },
+    cap: env().AI_DAILY_CAP,
+    today: { ...count(today), groqCalls: today.filter((r) => r.tried?.includes("groq")).length, geminiCalls: today.filter((r) => r.tried?.includes("gemini")).length, geminiEmbeds: today.reduce((n, r) => n + (r.embed_requests ?? 0), 0), tokensIn: today.reduce((n, r) => n + r.tokens_in, 0), tokensOut: today.reduce((n, r) => n + r.tokens_out, 0) },
     week: count(rows),
     reasons,
     latency: { median: pick(0.5), p95: pick(0.95) },

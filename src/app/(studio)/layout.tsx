@@ -16,7 +16,8 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
         {/* Pre-paint: the admin's own light/dark choice — a separate key from the public site's, so switching one never changes the other */}
         <BootScript code={adminThemeBootScript()} />
       </head>
-      <body>{children}</body>
+      {/* suppressHydrationWarning: browser extensions inject attributes on <body> before React hydrates */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
