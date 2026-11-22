@@ -188,12 +188,24 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       }
     };
 
+    /**
+     * Instant jump of the row. The cards are drawn for the new position first: a card drawn round the
+     * ring sits away from its own slot, and with mandatory snap (phones) the browser snaps a jump onto
+     * a slot whose card is missing to the spare slot next door, which shows the other end of the loop.
+     * At rest by card 1/9 that bounced the row between them for ever (card 9 ↔ card 1 flicker).
+     */
+    const jumpTo = (left: number) => {
+      const p = left / step - 1;
+      paint(p, p);
+      el.scrollTo({ left, behavior: "instant" });
+    };
+
     /** at rest in (or swiped into) a spare slot: move the row nine cards, which looks exactly the same */
     const normalize = () => {
       const pos = posOf(el, step);
       const shift = pos > N - 0.5 ? -N : pos < -0.5 ? N : 0;
       if (shift) {
-        el.scrollTo({ left: el.scrollLeft + shift * step, behavior: "instant" });
+        jumpTo(el.scrollLeft + shift * step);
         wheelAnchorIdx += shift;
         startScrollLeft += shift * step;
       }
@@ -216,7 +228,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
 
     const finishLoop = (commit: number) => {
       looping = false;
-      el.scrollTo({ left: scrollFor(commit, step), behavior: "instant" });
+      jumpTo(scrollFor(commit, step));
       el.style.scrollSnapType = loop.prevSnap || "";
       sync();
     };
@@ -265,7 +277,7 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       // the same view, nine cards along, may leave room for the trip — move there first
       const alt = dest > N ? -N : dest < -1 ? N : 0;
       if (alt && from + alt >= -1 && from + alt <= N) {
-        el.scrollTo({ left: el.scrollLeft + alt * step, behavior: "instant" });
+        jumpTo(el.scrollLeft + alt * step);
         sp += alt;
         from += alt;
         dest += alt;
@@ -312,10 +324,10 @@ export function useServiceTrack(scrollerRef: RefObject<HTMLElement | null>, serv
       cancelActiveLoop();
       gsap.killTweensOf(el);
       step = cardStep(el);
-      el.scrollTo({ left: scrollFor(activeRef.current, step), behavior: "instant" });
+      jumpTo(scrollFor(activeRef.current, step));
       sync();
     };
-    el.scrollTo({ left: scrollFor(activeRef.current, step), behavior: "instant" });
+    jumpTo(scrollFor(activeRef.current, step));
 
     const onResize = () => {
       if (el.clientWidth === width) return; // phone URL bar showing/hiding: nothing moved sideways
