@@ -38,7 +38,7 @@ const ICON_INDEX: Record<IconKey, number> = {
 };
 
 /** Subtle horizontal condense factor; the flat "9" keeps it so it matches the sampled particle "9". */
-const CONDENSE_X = 0.88;
+const CONDENSE_X = 0.96;
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const smooth01 = (x: number) => {
@@ -245,7 +245,7 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
   const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 4;
   const phone = window.innerWidth < 760;
   // Dense particle cloud (always exact multiple of 9) for rich seamless streaming
-  const PER_LOGO = phone ? 300 : cores >= 8 && mem >= 8 ? 640 : cores >= 4 ? 460 : 320;
+  const PER_LOGO = phone ? 220 : cores >= 8 && mem >= 8 ? 640 : cores >= 4 ? 460 : 320;
   const N = PER_LOGO * 9;
 
   // Normalized coordinates of the condensed 9 (`S9`) & each service icon (`SL`)
@@ -305,7 +305,11 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
   const T_SCATTER = 8.85; // 7.95..8.85   tiles release & scatter multi-directionally across frame
   const CYCLE = 10.30; //    8.85..10.30  wide scattered field sweeps inward back to solid 3D "9"
 
-  let clock = T_SCATTER; // open on the seamless gather (phase 6), skipping the one-time edge-sweep that rendered a rectangular "frame"
+  // Open on the SOLID 9 already formed (phase 1), then run the normal loop. The landing intro
+  // (LogoIntro) already played its reveal, so the hero shows the 9 at rest instead of firing a heavy
+  // particle gather on first paint right after the intro (that back-to-back work read as "laggy").
+  // Still skips the one-time edge-sweep frame; the particle forming now happens later in the loop only.
+  let clock = T_FORM;
   let hoveredIdx = -1;
   let mx = -999;
   let my = -999;
@@ -315,6 +319,10 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
   let built = false;
   let builtDark = false;
   let pal: Pal = palette(isDark());
+  // measureGrid() does 11 getBoundingClientRect reads (canvas + slot + 9 icons). Calling it every frame
+  // thrashed layout and was the main cause of phone jank. The positions are scroll-invariant (canvas and
+  // grid move together; cx/cy are canvas-relative) and only change on resize, so measure once and cache.
+  let metricsCache: ReturnType<typeof measureGrid> = null;
   const rotX = 0; // flat 2D "9": no perspective rotation (kept at 0 so particle projection stays flat)
   const rotY = 0;
   let lastStage: SplitStage | null = null;
@@ -454,6 +462,7 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    metricsCache = measureGrid() || metricsCache; // refresh the cached grid rects on resize only (keep old if layout isn't ready yet)
   }
 
   function update(dt: number) {
@@ -472,7 +481,8 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
       }
     }
 
-    const metrics = measureGrid();
+    if (!metricsCache) metricsCache = measureGrid(); // first successful measure; thereafter refreshed only on resize()
+    const metrics = metricsCache;
     const cx = metrics ? metrics.cx : W * 0.5;
     const cy = metrics ? metrics.cy : H * 0.5;
     const nineScale = metrics ? metrics.scale : Math.min(W, H) * 0.72;
@@ -631,7 +641,11 @@ export function createSplitHero(canvas: HTMLCanvasElement, opts: SplitHeroOpts):
         const b = nineC[i * 3 + 2] + (logoC[i * 3 + 2] - nineC[i * 3 + 2]) * colM;
         // Soften alpha where a wide particle glides across the left copy / bottom caption — a GRADUAL
         // ramp, not a hard cutoff, so the fade never draws a straight box edge through the cloud.
-        const copyFade = phone ? 1 : 0.36 + 0.64 * clamp01((px - (cx - nineScale * 1.04)) / (nineScale * 0.34));
+        // Phone stacks the copy ABOVE the slot, so the swarm (which spreads upward from the slot
+        // centre) climbed over the headline — fade particles out above the "9" so they never cover text.
+        const copyFade = phone
+          ? clamp01((py - (cy - nineScale * 1.05)) / (nineScale * 0.4))
+          : 0.36 + 0.64 * clamp01((px - (cx - nineScale * 1.04)) / (nineScale * 0.34));
         const capFade = 0.42 + 0.58 * (1 - clamp01((py - (cy + nineScale * 0.62)) / (nineScale * 0.34)));
         g2.globalAlpha = swarmOp * 0.92 * copyFade * capFade;
         g2.fillStyle = `rgb(${r | 0},${gg | 0},${b | 0})`;

@@ -79,7 +79,7 @@ export function ParticleStage() {
     const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 4;
     // more particles for the denser 3D swarm, scaled to the machine; phones stay low (fill-bound) and
     // the adaptive `keep` governor still trims the drawn share if any device can't keep up
-    const N = phone ? 4800 : pc && cores >= 12 && mem >= 8 ? 16000 : pc && cores >= 8 ? 13000 : pc && cores >= 4 ? 9000 : 5200;
+    const N = phone ? 3400 : pc && cores >= 12 && mem >= 8 ? 16000 : pc && cores >= 8 ? 13000 : pc && cores >= 4 ? 9000 : 5200;
     const dustDpr = 1;
     const r = rng(9001);
 

@@ -97,7 +97,7 @@ export function SignalMap() {
     };
 
     const r = () => Math.max(0.8, (W / 104) * 0.3);
-    const dotColour = () => (dark ? "rgba(214,210,240,0.30)" : "rgba(40,32,80,0.22)");
+    const dotColour = () => (dark ? "rgba(214,210,240,0.42)" : "rgba(40,32,80,0.34)");
 
     const paintLand = () => {
       if (!dots) return;
