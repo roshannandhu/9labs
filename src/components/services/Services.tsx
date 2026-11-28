@@ -7,7 +7,6 @@ import { sectionNo, useSite } from "@/components/providers/SiteProvider";
 import { useDemo } from "@/components/providers/DemoSettings";
 import { SectionLabel } from "@/components/layout/SectionLabel";
 import { SpringHeading } from "@/components/layout/SpringHeading";
-import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { StaticDigit } from "@/components/particles/StaticDigit";
 import { useServiceTrack } from "./useServiceTrack";
 import { OrbitArc, OrbitFloorTrack, OrbitCapsuleDock } from "./OrbitNav";
@@ -21,6 +20,7 @@ import { Scene7Strategy } from "./scenes/Scene7Strategy";
 import { Scene8AI } from "./scenes/Scene8AI";
 import { Scene9IT } from "./scenes/Scene9IT";
 import { ServiceCard } from "./ServiceCard";
+import { SignalMap } from "./SignalMap";
 
 /**
  * Each activity's scene (and its own flourish — the ad echoes, the PR headline…) is tied to
@@ -74,26 +74,14 @@ export function Services() {
 
 type Part = { heading: React.ReactNode; services: Service[]; t: SiteData["servicesSection"] };
 
-/** "All nine. One team." + the 3×3 grid of the nine activities. */
-function Finale({ services, t, gap = "" }: Omit<Part, "heading"> & { gap?: string }) {
+/** "Nine teams. One vision." + the signal map: Dubai South connected to nine ends of the world. */
+function Finale({ t, gap = "" }: Pick<Part, "t"> & { gap?: string }) {
   return (
     <>
       <h3 className={`${gap} font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]`}>
         {t.outro} {t.outroAccent && <span className="font-accent text-gradient">{t.outroAccent}</span>}
       </h3>
-      <ul className="mt-8 grid w-full max-w-[760px] grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
-        {services.map((s) => (
-          <li key={s.slug}>
-            <a
-              href={`#service-${s.slug}`}
-              className="finale-tile flex h-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-nl-blue-soft transition-colors hover:border-nl-purple/50 hover:bg-nl-purple/[0.06] sm:gap-3 sm:rounded-3xl sm:py-6"
-            >
-              <ActivityIcon icon={s.icon} size={30} play={false} />
-              <span className="text-[11.5px] font-medium leading-tight text-white/80 sm:text-sm">{s.short}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+      <SignalMap />
     </>
   );
 }
@@ -195,7 +183,7 @@ function ServicesTrack({ heading, services, t }: Part) {
         <div className="h-24 w-24 sm:h-32 sm:w-28" aria-hidden="true">
           <div data-particle-slot="finale" className="relative h-full w-full" />
         </div>
-        <Finale services={services} t={t} gap="mt-3" />
+        <Finale t={t} gap="mt-3" />
       </div>
     </section>
   );
@@ -219,7 +207,7 @@ function ServicesList({ heading, services, t }: Part) {
         </ol>
       </div>
       <div className="container-x flex flex-col items-center pb-20 pt-14 text-center sm:pb-28 sm:pt-20">
-        <Finale services={services} t={t} />
+        <Finale t={t} />
       </div>
     </section>
   );

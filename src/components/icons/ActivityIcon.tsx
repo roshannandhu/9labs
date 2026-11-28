@@ -1,6 +1,7 @@
 import type { IconKey } from "@/content/site";
 
-const P = "var(--nl-purple)";
+// per-service accent (set via --icon-accent on the card/tile), falling back to the brand purple
+const P = "var(--icon-accent, var(--nl-purple))";
 
 const heart = "M0 2.2C0 .9 1 0 2.1 0c.8 0 1.5.5 1.9 1.1C4.4.5 5.1 0 5.9 0 7 0 8 .9 8 2.2 8 4.6 4 7 4 7S0 4.6 0 2.2z";
 

@@ -2,7 +2,7 @@
 
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
-import { Hero } from "@/components/hero/Hero";
+import { HeroSplit } from "@/components/hero/HeroSplit";
 import { Services } from "@/components/services/Services";
 import { About } from "@/components/about/About";
 import { QuizBlock } from "@/components/quiz/QuizBlock";
@@ -34,7 +34,7 @@ export default function Home() {
       <Nav />
       <main id="main" className="relative z-10 overflow-x-clip">
         <ParticleStage />
-        <Hero />
+        <HeroSplit />
         {sections.map((s) => SECTIONS[s])}
       </main>
       <Footer />

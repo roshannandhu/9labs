@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { runBackup, scoreServices } from "./backup.ts";
 import { buildQuizLines, buildQuizWhatsappText } from "./whatsapp.ts";
 import { site } from "../../content/site.ts";
+import type { QuizAnswers, QuizOther } from "./types.ts";
 
 const topOf = (scores: Map<string, number>) => [...scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
@@ -64,6 +65,46 @@ test("runBackup: match count follows result.matches (up to 5), best first, never
 test("runBackup: nothing the visitor said matches any service → null (the true last resort)", () => {
   const blank = { services: site.services, quiz: { ...site.quiz, questions: [{ id: "x", label: "", q: "", options: [{ id: "a", label: "" }, { id: "b", label: "" }] }] } };
   assert.equal(runBackup(blank, { x: ["a"] }, {}), null);
+});
+
+test("runBackup: fuzz — no input ever crashes it or yields an invalid result (the AI-off safety net)", () => {
+  const qs = site.quiz.questions;
+  const slugs = new Set(site.services.map((s) => s.slug));
+  // real keywords, empties, whitespace, an injection string, non-latin, a long phrase, pure gibberish
+  const words = ["sales", "photography", "ads", "website", "brand", "video", "press release", "ai", "app", "", "   ", "<script>alert(1)</script>", "我们需要帮助", "we copy orders by hand into excel", "qwxz zzz"];
+  // deterministic RNG (LCG) so any failure reproduces exactly
+  let seed = 1234567;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const pick = <T>(a: T[]): T => a[Math.floor(rnd() * a.length)];
+
+  const check = (answers: QuizAnswers, other: QuizOther) => {
+    const r = runBackup(site, answers, other);
+    if (r === null) return; // the valid "nothing matched" last-resort screen
+    assert.equal(r.source, "backup");
+    assert.ok(r.wants.length > 0, "empty wants");
+    assert.ok(r.steps.length > 0, "no steps");
+    assert.ok(r.matches.length >= 1 && r.matches.length <= 5, `matches length ${r.matches.length}`);
+    assert.equal(r.matches[0].fit, "best");
+    assert.equal(new Set(r.matches.map((m) => m.slug)).size, r.matches.length, "duplicate match");
+    for (const m of r.matches) assert.ok(slugs.has(m.slug), `bad match slug ${m.slug}`);
+    for (const a of r.answers) assert.ok(a.slug == null || slugs.has(a.slug), `bad answer slug ${a.slug}`);
+  };
+
+  for (const q of qs) for (const o of q.options) check({ [q.id]: [o.id] }, {}); // every option alone
+  for (const q of qs) for (const w of words) check({}, { [q.id]: w }); // typed-only, incl. junk, per question
+  for (let i = 0; i < 500; i++) { // random pick/typed mixes, with a stray bad question id
+    const answers: QuizAnswers = {};
+    const other: QuizOther = {};
+    for (const q of qs) {
+      if (rnd() < 0.5) answers[q.id] = [pick(q.options).id];
+      if (rnd() < 0.3) other[q.id] = pick(words);
+    }
+    if (rnd() < 0.2) answers["not_a_question"] = ["nope"];
+    check(answers, other);
+  }
+  check(Object.fromEntries(qs.map((q) => [q.id, q.options.map((o) => o.id)])), {}); // everything selected
+  check({}, {}); // nothing
+  check({ ghost: ["x"] }, { ghost: "???" }); // only bad ids
 });
 
 test("buildQuizWhatsappText: no percentages, just numbered titles between the admin's intro/outro", () => {

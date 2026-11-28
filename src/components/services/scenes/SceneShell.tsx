@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import type { Service } from "@/content/site";
+import type { CSSProperties, ReactNode } from "react";
+import { type Service, ICON_COLORS } from "@/content/site";
 import { SceneCaption } from "./SceneCaption";
 
 /**
@@ -12,7 +12,13 @@ import { SceneCaption } from "./SceneCaption";
  */
 export function SceneShell({ s, flourish, captionClassName = "" }: { s: Service; flourish?: ReactNode; captionClassName?: string }) {
   return (
-    <section id={`service-${s.slug}`} aria-roledescription="slide" aria-label={`${s.n} of 9: ${s.title}`} className="scene-section scene-card">
+    <section
+      id={`service-${s.slug}`}
+      aria-roledescription="slide"
+      aria-label={`${s.n} of 9: ${s.title}`}
+      className="scene-section scene-card"
+      style={{ "--card-accent": ICON_COLORS[s.icon], "--icon-accent": ICON_COLORS[s.icon] } as CSSProperties}
+    >
       {/* sized from the card's own height, so the caption and its CTA always fit below it */}
       <div className="relative mx-auto aspect-square w-full max-w-[min(260px,calc(var(--card-h)_-_175px))] sm:max-w-[min(260px,calc(var(--card-h)_-_320px))]">
         {/* laptop: a soft halo ring behind the picture while its card is in focus (CSS only) */}

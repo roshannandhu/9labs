@@ -21,6 +21,23 @@ export type IconKey =
   | "ai"
   | "it";
 
+/**
+ * Each activity's signature colour. Keyed by icon (not stored in the editable service data) so every
+ * card is tinted the same whatever the admin saved. Drives the per-service card chrome + icon accent;
+ * the hero particle art keeps the shared brand palette.
+ */
+export const ICON_COLORS: Record<IconKey, string> = {
+  social: "#5a48f5",
+  advertising: "#f97316",
+  content: "#ec4899",
+  photo: "#14b8a6",
+  events: "#a855f7",
+  pr: "#3b82f6",
+  strategy: "#eab308",
+  ai: "#6366f1",
+  it: "#06b6d4",
+};
+
 export type Service = {
   n: number;
   slug: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { Service } from "@/content/site";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type Service, ICON_COLORS } from "@/content/site";
 import { ActivityIcon } from "@/components/icons/ActivityIcon";
 import { useEnquiry } from "@/components/enquiry/EnquiryProvider";
 import { useSite } from "@/components/providers/SiteProvider";
@@ -28,6 +28,7 @@ export function ServiceCard({ service: s, className = "" }: { service: Service; 
       ref={ref}
       id={`service-${s.slug}`}
       data-on={inView ? "true" : "false"}
+      style={{ "--card-accent": ICON_COLORS[s.icon], "--icon-accent": ICON_COLORS[s.icon] } as CSSProperties}
       className={`svc-card group relative flex flex-col overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(160deg,var(--surface-1)_0%,var(--surface-2)_60%)] p-5 sm:p-8 ${className}`}
     >
       <span className="svc-glow pointer-events-none absolute inset-0 rounded-[inherit]" aria-hidden="true" />

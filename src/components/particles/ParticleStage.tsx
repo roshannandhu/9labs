@@ -8,7 +8,7 @@ import { onIntroDone } from "@/components/intro/introBus";
 import { palette, colorKey, KEY_HEX, COLOR_KEYS } from "./palette";
 import { digitShape, pictureShape, rng, type Shape } from "./targets";
 import { PICTURES } from "./pictures";
-import { particleBus, heroTarget, allNineTarget, picTarget, sameTarget, targetKey, type ParticleTarget } from "./bus";
+import { particleBus, heroTarget, allNineTarget, picTarget, heroPicTarget, sameTarget, targetKey, type ParticleTarget } from "./bus";
 import type { IconKey } from "@/content/site";
 import { useSite } from "@/components/providers/SiteProvider";
 
@@ -59,7 +59,8 @@ export function ParticleStage() {
     /** each service card has its own slot (`stage-<n>`); a card reordered in the admin keeps its icon's picture */
     const STAGES = services.map((s) => ({ name: `stage-${s.n}` as SlotName, pic: picTarget(s.icon) }));
     const ICON_SLOT = new Map<IconKey, SlotName>(services.map((s) => [s.icon, `stage-${s.n}` as SlotName]));
-    const slotFor = (t: ParticleTarget): SlotName => (t.kind === "hero" ? "hero" : t.kind === "all9" ? "finale" : (ICON_SLOT.get(t.icon) ?? "stage-1"));
+    const slotFor = (t: ParticleTarget): SlotName =>
+      t.kind === "hero" || t.kind === "heroPic" ? "hero" : t.kind === "all9" ? "finale" : (ICON_SLOT.get(t.icon) ?? "stage-1");
 
     if (reduced) return;
     const wrap = wrapRef.current;
@@ -75,7 +76,10 @@ export function ParticleStage() {
     // up steps the drawn share down (see `keep`), so more particles never means a stutter
     const pc = !phone && window.matchMedia("(pointer: fine) and (min-width: 1024px)").matches;
     const cores = navigator.hardwareConcurrency || 4;
-    const N = phone ? 4400 : pc && cores >= 8 ? 8000 : pc && cores >= 4 ? 6000 : 4500;
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 4;
+    // more particles for the denser 3D swarm, scaled to the machine; phones stay low (fill-bound) and
+    // the adaptive `keep` governor still trims the drawn share if any device can't keep up
+    const N = phone ? 4800 : pc && cores >= 12 && mem >= 8 ? 16000 : pc && cores >= 8 ? 13000 : pc && cores >= 4 ? 9000 : 5200;
     const dustDpr = 1;
     const r = rng(9001);
 
@@ -102,6 +106,7 @@ export function ParticleStage() {
     }
     const px = new Float32Array(N);
     const py = new Float32Array(N);
+    const pz = new Float32Array(N); // per-particle perspective scale (depth cue), 1 when flat
     const bucket = new Uint16Array(N);
     const order = new Uint32Array(N);
     const counts = new Int32Array(COLOR_KEYS + 1);
@@ -118,6 +123,23 @@ export function ParticleStage() {
     let started = false;
     let assembling = false;
     let heroT0 = 0;
+    // hero idle preview loop + 3D state (all internal to frame(); the idle loop never writes particleBus)
+    let idlePhase: "off" | "hold" | "morph" = "off";
+    let idleI = -1; // -1 = the "9", 0..8 = the service shown in the hero slot
+    let idleNext = 0;
+    let idleT0 = 0;
+    const HOLD_MS = 1400;
+    const MORPH_MS = 900;
+    const cur = (k: number): ParticleTarget => (k < 0 ? heroTarget : heroPicTarget(services[k].icon));
+    const labelEl = document.querySelector<HTMLElement>("[data-hero-label]");
+    let labelShownI = -2;
+    let rotX = 0;
+    let rotY = 0;
+    let ptrX = -1;
+    let ptrY = -1;
+    const CURSOR_R = 90;
+    const CURSOR_R2 = CURSOR_R * CURSOR_R;
+    const CURSOR_PUSH = 18;
     let visible = true;
     let dpr = 1;
     let family = "";
@@ -246,6 +268,24 @@ export function ParticleStage() {
       s.c.style.transform = `translate(-50%, calc(-50% + ${off}px))`;
     };
 
+    // 3D sway/lean applied to a slot's *resting* crisp canvas (holds draw no dust, so the "9"/picture
+    // tilts via a CSS transform using the same eased rotX/rotY the flying dust is projected with)
+    const tiltState = new Map<SlotName, boolean>();
+    const applyTilt = (name: SlotName, on: boolean) => {
+      const s = rest.get(name);
+      if (!s) return;
+      if (on) {
+        const off = name === "hero" || Number.isNaN(s.drift) ? 0 : s.drift;
+        const focal = Math.max(240, s.side || 300) * 2;
+        s.c.style.transform = `translate(-50%, calc(-50% + ${off}px)) perspective(${focal}px) rotateY(${rotY.toFixed(4)}rad) rotateX(${(-rotX).toFixed(4)}rad)`;
+        tiltState.set(name, true);
+      } else if (tiltState.get(name)) {
+        const off = name === "hero" || Number.isNaN(s.drift) ? 0 : s.drift;
+        s.c.style.transform = `translate(-50%, calc(-50% + ${off}px))`;
+        tiltState.set(name, false);
+      }
+    };
+
     // setting canvas.width/height (even to the same value) clears it, but — unlike clearRect — also
     // forces a layout recalc, which the live picture would otherwise pay every single frame for no
     // reason (its size is only ever actually different after a resize or a breakpoint change)
@@ -265,7 +305,7 @@ export function ParticleStage() {
       const s = rest.get(name);
       if (!s || !gm) return;
       const px2 = Math.max(2, Math.round(gm.side * dpr));
-      if (target.kind === "pic") {
+      if (target.kind === "pic" || target.kind === "heroPic") {
         if (still) {
           const key = `g|${target.icon}|${px2}|${pal.ink}`;
           if (s.key === key) return;
@@ -328,7 +368,7 @@ export function ParticleStage() {
     };
 
     const shapeFor = (t: ParticleTarget, dark: boolean): Shape =>
-      t.kind === "pic" ? pictureShape(t.icon, N, PICTURES[t.icon], dark) : digitShape("9", N, family, dark); // hero + all9 are both "9"
+      t.kind === "pic" || t.kind === "heroPic" ? pictureShape(t.icon, N, PICTURES[t.icon], dark) : digitShape("9", N, family, dark); // hero + all9 are both "9"
 
     let curFromKey = "";
     let curToKey = "";
@@ -359,6 +399,67 @@ export function ParticleStage() {
         to = heroTarget;
         u = 0;
       }
+
+      // hero idle preview loop: while parked at the top (bus resting on the hero, not scrolled), cycle
+      // the hero 9 through all nine service pictures in place, then reform — an internal override that
+      // never writes particleBus, so useServiceTrack stays the sole bus writer and scroll yields instantly.
+      let idleActive = false;
+      const parkedHero =
+        rest.has("hero") && !assembling && particleBus.from.kind === "hero" && particleBus.u <= 0.001 && window.scrollY < window.innerHeight * 0.5;
+      if (parkedHero) {
+        if (idlePhase === "off") {
+          idlePhase = "hold";
+          idleI = -1;
+          idleNext = 0;
+          idleT0 = now;
+        }
+        if (idlePhase === "hold") {
+          from = cur(idleI);
+          to = cur(idleI);
+          u = 0;
+          if (now - idleT0 >= HOLD_MS) {
+            idlePhase = "morph";
+            idleT0 = now;
+          }
+        }
+        if (idlePhase === "morph") {
+          from = cur(idleI);
+          to = cur(idleNext);
+          u = clamp01((now - idleT0) / MORPH_MS);
+          if (u >= 1) {
+            idleI = idleNext;
+            idleNext = idleI >= services.length - 1 ? -1 : idleI + 1;
+            idlePhase = "hold";
+            idleT0 = now;
+            from = to = cur(idleI);
+            u = 0;
+          }
+        }
+        idleActive = true;
+        // float the current service's name in, sliding/fading on each change (blank on the "9")
+        if (labelEl && idleI !== labelShownI) {
+          labelShownI = idleI;
+          const name = idleI < 0 ? "" : services[idleI].short;
+          labelEl.textContent = name;
+          labelEl.dataset.show = name ? "true" : "false";
+          if (name) {
+            labelEl.animate(
+              [
+                { opacity: 0, transform: "translateY(10px)" },
+                { opacity: 1, transform: "none" },
+              ],
+              { duration: 460, easing: "cubic-bezier(.16,1,.3,1)", fill: "both" },
+            );
+          }
+        }
+      } else {
+        idlePhase = "off";
+        if (labelEl && labelShownI !== -2) {
+          labelShownI = -2;
+          labelEl.dataset.show = "false";
+          labelEl.textContent = "";
+        }
+      }
       const resting = !assembling && sameTarget(from, to);
 
       // skip the (layout-forcing) geometry read entirely when nothing could have moved: at rest,
@@ -378,8 +479,44 @@ export function ParticleStage() {
       const shown = (match: (t: ParticleTarget) => boolean) =>
         resting ? (match(to) ? 1 : 0) : (match(from) ? earlyOp(u) : 0) + (match(to) ? lateOp(u) : 0);
 
-      drawFormed("hero", heroTarget, pal, geoms.get("hero") ?? null);
-      setOpacity("hero", assembling ? heroFade : from.kind === "hero" || to.kind === "hero" ? shown((t) => t.kind === "hero") : 1);
+      // the hero slot can show the "9" or any service picture (heroPic) — it's one canvas, so draw
+      // whichever endpoint is most visible this frame (earlyOp/lateOp never overlap, so no clash)
+      const heroGm = geoms.get("hero") ?? null;
+      if (from.kind === "hero" || to.kind === "hero" || from.kind === "heroPic" || to.kind === "heroPic") {
+        let best: ParticleTarget = heroTarget;
+        let bestOp = -1;
+        const consider = (t: ParticleTarget) => {
+          const op = resting ? (sameTarget(t, to) ? 1 : 0) : (sameTarget(t, from) ? earlyOp(u) : 0) + (sameTarget(t, to) ? lateOp(u) : 0);
+          if (op > bestOp) {
+            bestOp = op;
+            best = t;
+          }
+        };
+        if (from.kind === "hero" || to.kind === "hero") consider(heroTarget);
+        if (from.kind === "heroPic") consider(from);
+        if (to.kind === "heroPic") consider(to);
+        drawFormed("hero", best, pal, heroGm);
+        setOpacity("hero", assembling ? heroFade : bestOp < 0 ? 0 : bestOp);
+      } else {
+        // the swarm is off in the services section; keep the hero 9 fully formed underneath
+        drawFormed("hero", heroTarget, pal, heroGm);
+        setOpacity("hero", 1);
+      }
+
+      // 3D sway + cursor lean, eased every frame so the resting crisp canvas tilts too; the hero 9,
+      // idle pictures and finale 9 get it — pure card-to-card flights stay flat (phone pays nothing)
+      const use3D = !(from.kind === "pic" && to.kind === "pic");
+      if (use3D) {
+        const nx = ptrX >= 0 ? (ptrX / window.innerWidth) * 2 - 1 : 0;
+        const ny = ptrY >= 0 ? (ptrY / window.innerHeight) * 2 - 1 : 0;
+        rotY += (Math.sin(now * 0.0003) * 0.22 + nx * 0.38 - rotY) * 0.08;
+        rotX += (-ny * 0.3 - rotX) * 0.08;
+      } else {
+        rotY += (0 - rotY) * 0.1;
+        rotX += (0 - rotX) * 0.1;
+      }
+      applyTilt("hero", use3D && (from.kind === "hero" || from.kind === "heroPic" || to.kind === "hero" || to.kind === "heroPic"));
+      applyTilt("finale", use3D && (from.kind === "all9" || to.kind === "all9"));
 
       const fin = shown((t) => t.kind === "all9");
       if (fin > 0) drawFormed("finale", allNineTarget, pal, geoms.get("finale") ?? null);
@@ -538,6 +675,16 @@ export function ParticleStage() {
         for (let i = 0; i < N; i++) if (bucket[i] < COLOR_KEYS) order[start[bucket[i]]++] = i;
       }
 
+      // 3D projection constants for this flight (cheap: computed once per frame, used per particle)
+      const cY = Math.cos(rotY);
+      const sYr = Math.sin(rotY);
+      const cX = Math.cos(rotX);
+      const sXr = Math.sin(rotX);
+      const mcx = A.cx + (B.cx - A.cx) * u;
+      const mcy = A.cy + (B.cy - A.cy) * u;
+      const msc = A.h + (B.h - A.h) * u;
+      const FOCAL = msc * 2.2 || 1;
+
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
@@ -564,11 +711,38 @@ export function ParticleStage() {
         const ve = 1 - ue;
         let x = ve * ve * ax + 2 * ve * ue * mx + ue * ue * bx;
         let y = ve * ve * ay + 2 * ve * ue * my + ue * ue * by;
+        // 3D: rotate this point about the morph centre using its blended signed depth, then
+        // perspective-project. Only for hero/idle/finale shapes (use3D); pz carries the depth cue.
+        if (use3D) {
+          const zc = (SA.zc[i] * (1 - u) + SB.zc[i] * u) * msc;
+          const rxp = x - mcx;
+          const ryp = y - mcy;
+          const x1 = rxp * cY + zc * sYr;
+          const z1 = -rxp * sYr + zc * cY;
+          const y1 = ryp * cX - z1 * sXr;
+          const z2 = ryp * sXr + z1 * cX;
+          const persp = FOCAL / (FOCAL - z2);
+          x = mcx + x1 * persp;
+          y = mcy + y1 * persp;
+          pz[i] = persp;
+        } else pz[i] = 1;
         if (asm < 1) {
           const p = clamp01(asm * 1.5 - delay[i]);
           const e = 1 - (1 - p) * (1 - p) * (1 - p);
           x = sx[i] * W + (x - sx[i] * W) * e;
           y = sy[i] * H + (y - sy[i] * H) * e;
+        }
+        // cursor parts the swarm during an idle morph
+        if (idleActive && ptrX >= 0) {
+          const ddx = x - ptrX;
+          const ddy = y - ptrY;
+          const dd2 = ddx * ddx + ddy * ddy;
+          if (dd2 < CURSOR_R2) {
+            const dd = Math.sqrt(dd2) || 1;
+            const f = (1 - dd / CURSOR_R) * CURSOR_PUSH;
+            x += (ddx / dd) * f;
+            y += (ddy / dd) * f;
+          }
         }
         px[i] = x;
         py[i] = y;
@@ -579,11 +753,13 @@ export function ParticleStage() {
       }
 
       // a denser PC swarm uses finer dots, so it reads as more detail rather than a heavier mass
-      const size = Math.max(1.2, Math.min(phone || N >= 9000 ? 2.6 : 3.0, (A.h + (B.h - A.h) * u) * (phone ? 0.0088 : N >= 9000 ? 0.0047 : 0.0056)));
+      const size = Math.max(1.2, Math.min(phone || N >= 9000 ? 2.6 : 3.0, (A.h + (B.h - A.h) * u) * (phone ? 0.0088 : N >= 14000 ? 0.004 : N >= 9000 ? 0.0047 : 0.0056)));
       const g = S.g;
       g.setTransform(dustDpr, 0, 0, dustDpr, -ox * dustDpr, -oy * dustDpr);
       g.globalAlpha = dustAlpha;
       const half = size / 2;
+      // depth cue: scale each dot by its perspective factor (desktop only; phones keep uniform dots)
+      const depthCue = use3D && !phone;
       // `start[b]` now marks the end of bucket b, so bucket b runs from end-count to end
       for (let b = 0; b < COLOR_KEYS; b++) {
         const n = counts[b];
@@ -591,7 +767,13 @@ export function ParticleStage() {
         g.fillStyle = KEY_HEX[b];
         for (let j = start[b] - n; j < start[b]; j++) {
           const i = order[j];
-          g.fillRect(px[i] - half, py[i] - half, size, size);
+          if (depthCue) {
+            const sz = size * pz[i];
+            const h2 = sz / 2;
+            g.fillRect(px[i] - h2, py[i] - h2, sz, sz);
+          } else {
+            g.fillRect(px[i] - half, py[i] - half, size, size);
+          }
         }
       }
       g.globalAlpha = 1;
@@ -607,8 +789,10 @@ export function ParticleStage() {
       }
     };
 
-    // only run while the hero or the services are near the screen
-    const watched = ["home", "services"].map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    // only run while the services are near the screen. The hero (#home) no longer uses this swarm —
+    // HeroSplit has its own canvas — so observing #home just burned a full RAF loop over the hero for
+    // zero output. Gating to #services keeps the top of the page to a single (hero) loop.
+    const watched = ["services"].map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const seen = new Map<Element, boolean>();
     const io = new IntersectionObserver(
       (entries) => {
@@ -635,9 +819,14 @@ export function ParticleStage() {
     const bumpActivity = () => {
       lastActivity = performance.now();
     };
+    const onPtr = (e: PointerEvent) => {
+      ptrX = e.clientX;
+      ptrY = e.clientY;
+      lastActivity = performance.now();
+    };
     window.addEventListener("scroll", bumpActivity, { passive: true });
     window.addEventListener("wheel", bumpActivity, { passive: true });
-    window.addEventListener("pointermove", bumpActivity, { passive: true });
+    window.addEventListener("pointermove", onPtr, { passive: true });
 
     const ric = window as Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
@@ -719,9 +908,13 @@ export function ParticleStage() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", bumpActivity);
       window.removeEventListener("wheel", bumpActivity);
-      window.removeEventListener("pointermove", bumpActivity);
+      window.removeEventListener("pointermove", onPtr);
       for (const s of rest.values()) s.c.remove();
       tcv.remove();
+      if (labelEl) {
+        labelEl.dataset.show = "false";
+        labelEl.textContent = "";
+      }
     };
   }, [reduced, services]);
 

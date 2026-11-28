@@ -3,6 +3,9 @@ import type { SiteData } from "@/content/types";
 /** Structured data for search engines (Organization + ProfessionalService + the nine services + e-books). */
 export function buildJsonLd(site: SiteData) {
   const orgId = `${site.url}/#organization`;
+  const abs = (u: string) => (u.startsWith("http") ? u : `${site.url}${u.startsWith("/") ? "" : "/"}${u}`);
+  // the uploaded logo if the admin set one, otherwise the built-in "9" mark served at /icon.svg
+  const logo = abs(site.logo || "/icon.svg");
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -10,7 +13,10 @@ export function buildJsonLd(site: SiteData) {
         "@type": ["Organization", "ProfessionalService"],
         "@id": orgId,
         name: site.name,
+        alternateName: site.shortName,
         url: site.url,
+        logo,
+        image: logo,
         description: site.hero.sub,
         slogan: site.about.statement.replace(/\*/g, ""),
         email: site.contact.email,

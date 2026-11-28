@@ -25,7 +25,8 @@
   --nl-indigo: #3530d0;
   --nl-lavender: #e9ddeb; /* the logo's paper colour (= --nl-bg) */
   --nl-purple-deep: #7c4dff;
-  --nl-ink: #474156;
+  --nl-ink: #474156; /* body text */
+  --nl-sub: #3530d0; /* small labels (label-mono): the brand indigo */
   --nl-dim: #776f86;
   --surface-1: #ffffff;
   --surface-2: #f4eef5;
@@ -53,10 +54,11 @@
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --fg-rgb: 255 255 255;
+  --fg-rgb: 245 243 250; /* headings: soft white with a lavender tint, no glare on black */
   --nl-bg: #050507;
   --nl-panel: #0a0b10;
   --nl-ink: #b8bcc8;
+  --nl-sub: #a99ff9;
   --nl-dim: #7a8090;
   --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 58%, #fff);
   --surface-1: #0d0f17;
@@ -76,8 +78,9 @@ html[data-theme="dark"] {
 }
 .on-dark {
   color-scheme: dark;
-  --fg-rgb: 255 255 255;
+  --fg-rgb: 245 243 250;
   --nl-ink: #b8bcc8;
+  --nl-sub: #a99ff9;
   --nl-dim: #7a8090;
   --nl-blue-soft: color-mix(in oklab, var(--nl-blue) 58%, #fff);
 }
@@ -85,6 +88,7 @@ html[data-theme="dark"] {
 .paper {
   --fg-rgb: 14 12 32;
   --nl-ink: #474156;
+  --nl-sub: #3530d0;
   --nl-dim: #776f86;
 }
 
@@ -189,7 +193,7 @@ html.lenis body {
   line-height: 1.2;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgb(var(--fg-rgb) / 0.62); /* 0.62: passes WCAG 4.5:1 even on the footer's darker lilac */
+  color: var(--nl-sub);
 }
 
 @utility font-accent {
@@ -626,10 +630,10 @@ html[data-motion="reduce"] *::after {
 }
 .svc-card[data-on="true"] .svc-icon,
 .svc-card:hover .svc-icon {
-  border-color: color-mix(in srgb, var(--nl-purple) 40%, transparent);
+  border-color: color-mix(in srgb, var(--card-accent, var(--nl-purple)) 45%, transparent);
 }
 .svc-icon-glow {
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--nl-blue) 40%, transparent), transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--card-accent, var(--nl-blue)) 45%, transparent), transparent);
   filter: blur(12px);
   opacity: 0.35;
   transition: opacity 0.6s ease;
@@ -1108,7 +1112,7 @@ html[data-intro="playing"] [data-logo-9] {
   }
   .scene-card[data-active="true"] {
     box-shadow:
-      0 40px 80px -40px rgb(90 72 245 / 0.55),
+      0 40px 80px -40px color-mix(in srgb, var(--card-accent, #5a48f5) 55%, transparent),
       0 18px 40px -28px rgb(92 224 230 / 0.35);
   }
   /* the turning rim: a conic gradient shown only in a 2px ring (mask), fading in on focus */
@@ -1134,7 +1138,7 @@ html[data-intro="playing"] [data-logo-9] {
     inset: 0;
     z-index: -1;
     border-radius: inherit;
-    background: radial-gradient(420px circle at var(--mx) var(--my), rgb(140 83 254 / 0.12), transparent 65%);
+    background: radial-gradient(420px circle at var(--mx) var(--my), color-mix(in srgb, var(--card-accent, #8c53fe) 14%, transparent), transparent 65%);
     opacity: 0;
     transition: opacity 0.6s ease;
     pointer-events: none;
@@ -1155,8 +1159,8 @@ html[data-intro="playing"] [data-logo-9] {
     border-radius: 50%;
     pointer-events: none;
     background:
-      radial-gradient(closest-side, rgb(140 83 254 / 0.16), rgb(92 224 230 / 0.06) 62%, transparent 72%);
-    box-shadow: inset 0 0 0 1px rgb(140 83 254 / 0.14);
+      radial-gradient(closest-side, color-mix(in srgb, var(--card-accent, #8c53fe) 20%, transparent), rgb(92 224 230 / 0.06) 62%, transparent 72%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-accent, #8c53fe) 16%, transparent);
     opacity: 0;
     transform: scale(0.82);
     transition: opacity 0.9s ease, transform 1.2s var(--ease-out-expo);
@@ -1441,6 +1445,74 @@ html[data-motion-resolved="reduce"] .scene-halo {
 /* every scene's particle-formed picture sits natively without multi-pass CSS shadow filters */
 .particle-rest:not(.particle-rest--hero) {
   filter: none;
+}
+/* the service name that floats in under the hero 9 as the idle loop previews each service */
+.hero-idle-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2.6rem;
+  text-align: center;
+  font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+  line-height: 1.1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hero-idle-label[data-show="true"] {
+  opacity: 1;
+}
+/* split-hero ("9 → 3×3 .finale-tile") transitions synced cleanly to the canvas loop */
+.hero-split-grid {
+  transition: opacity 0.28s ease;
+}
+.hero-split-grid[data-stage="nine"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.hero-split-grid[data-stage="icons"],
+.hero-split-grid[data-stage="names"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.hero-split-tile {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.hero-split-tile:hover,
+.hero-split-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--icon-accent, var(--nl-purple)) 55%, transparent);
+  background: color-mix(in srgb, var(--icon-accent, var(--nl-purple)) 8%, transparent);
+  transform: translateY(-2px);
+}
+.hero-split-glow {
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--card-accent, var(--nl-purple)) 18%, transparent), transparent 72%);
+}
+.hero-split-grid[data-stage="icons"] .hero-split-glow,
+.hero-split-grid[data-stage="names"] .hero-split-glow {
+  opacity: 0.45;
+}
+.hero-split-tile:hover .hero-split-glow,
+.hero-split-tile:focus-visible .hero-split-glow {
+  opacity: 1;
+}
+.hero-split-grid[data-stage="nine"] .hero-split-icon-wrap,
+.hero-split-grid[data-stage="icons"] .hero-split-icon-wrap {
+  transform: translateY(7px);
+}
+.hero-split-grid[data-stage="names"] .hero-split-icon-wrap {
+  transform: translateY(0);
+  transition-delay: var(--stagger, 0ms);
+}
+.hero-split-grid[data-stage="nine"] .hero-split-name,
+.hero-split-grid[data-stage="icons"] .hero-split-name {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.hero-split-grid[data-stage="names"] .hero-split-name {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: var(--stagger, 0ms);
 }
 /* echo pieces (scene 2's phones, scene 3's frames) — fade/scale in once their scene settles */
 .scene-echo {

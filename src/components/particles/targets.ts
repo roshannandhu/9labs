@@ -23,6 +23,8 @@ export type Shape = {
   rgb: Uint8Array;
   /** fake depth 0..1, used only for the flight (size / path width), not while resting */
   z: Float32Array;
+  /** signed depth in shape-height units, centred ~0 with a gentle front dome — for 3D projection */
+  zc: Float32Array;
   /** the shape's height as a fraction of the sampling canvas */
   hr: number;
   /** the bounding box centre's offset from the canvas centre, as a fraction of the canvas */
@@ -220,6 +222,7 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
     y: new Float32Array(n),
     rgb: new Uint8Array(n * 3),
     z: new Float32Array(n),
+    zc: new Float32Array(n),
     hr: H / S,
     ox: ((minX + maxX) / 2 - S / 2) / S,
     oy: (cy - S / 2) / S,
@@ -244,6 +247,10 @@ function sampleShape(key: string, n: number, seed: number, draw: (ctx: CanvasRen
     shape.rgb[o * 3 + 1] = data[pi + 1];
     shape.rgb[o * 3 + 2] = data[pi + 2];
     shape.z[o] = Math.min(1, edge * 0.55 + r() * 0.45);
+    // signed depth: a gentle front-bulging dome (centre ~+0.14h, rim ~0) + micro-jitter, so a
+    // rotated shape reads as a rounded volume rather than a flat sheet
+    const rr = Math.hypot(shape.x[o], shape.y[o]);
+    shape.zc[o] = (0.5 - Math.min(0.5, rr)) * 0.28 + (r() - 0.5) * 0.06;
   }
   cache.set(key, shape);
   return shape;

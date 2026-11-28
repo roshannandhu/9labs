@@ -21,9 +21,11 @@ export function SmoothScroll() {
       return;
     }
     const lenis = new Lenis({
-      lerp: 0.09,
+      // lerp is the scroll catch-up rate: lower = floatier (felt "laggy / not in flow"), higher =
+      // more connected/direct. Nudged up from 0.09 for a tighter feel. Tune 0.09–0.14 to taste.
+      lerp: 0.11,
       smoothWheel: true,
-      wheelMultiplier: 0.95,
+      wheelMultiplier: 1,
     });
     setLenis(lenis);
     lenis.on("scroll", ScrollTrigger.update);
