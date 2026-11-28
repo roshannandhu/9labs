@@ -7,9 +7,7 @@ import { palette } from "@/components/particles/palette";
 import { ENDS, HUB, MAP_ASPECT, landDots } from "./worldDots";
 
 const EDGE_IN = 0.45; // share of the flight each dot spends moving (the rest is its stagger)
-const LAUNCH_MS = 140; // a new signal this often, working round every country
-// every country once per round, in a scattered (but fixed) order so the signals spread across the map
-const ORDER = ENDS.map((_, i) => i).sort((a, b) => ((a * 7919) % 173) - ((b * 7919) % 173));
+const LAUNCH_MS = 1600; // a new signal this often, round the nine — an unhurried, steady flow
 const TRAIL = 0.32; // trail length, share of the route
 const ARC = 0.3; // arc lift, share of the route length
 
@@ -20,8 +18,8 @@ const ease = (v: number) => 1 - (1 - v) ** 3;
 /**
  * "One vision": a dotted world map below the finale 9. As the carousel scrolls away, the map's dots lift
  * off the card in focus — the same moment the swarm leaves it for the 9 — and fly down onto the map,
- * spreading out from Dubai (scrubbed, reversible). Then signals fly from Dubai South to the centre of
- * every country. Canvas only, no card, no names: just the connections.
+ * spreading out from Dubai (scrubbed, reversible). Then signals flow slowly from Dubai South to the centres of
+ * nine countries round the world (India among them). Canvas only, no card, no names: just the connections.
  * Cheap by design: the map is decoded only near the screen, the land is painted once per size/theme,
  * the flight redraws only while the scroll moves, and the loop runs only while the map is near.
  */
@@ -198,7 +196,7 @@ export function SignalMap() {
     const fire = (i: number, now = performance.now()) => {
       const [x0, y0] = pt(HUB);
       const [x1, y1] = pt(ENDS[i]);
-      sigs.push({ i, t0: now, dur: 900 + (Math.hypot(x1 - x0, y1 - y0) / Math.max(1, W)) * 1400 });
+      sigs.push({ i, t0: now, dur: 2000 + (Math.hypot(x1 - x0, y1 - y0) / Math.max(1, W)) * 3200 });
     };
 
     const paintLive = (now: number) => {
@@ -214,7 +212,7 @@ export function SignalMap() {
 
       if (!reduced && now - lastLaunch > LAUNCH_MS) {
         lastLaunch = now;
-        fire(ORDER[next], now);
+        fire(next, now);
         next = (next + 1) % ENDS.length;
       }
 
@@ -228,7 +226,7 @@ export function SignalMap() {
           continue;
         }
         // the faint trace of the route, fading after the landing
-        const trace = age < 1 ? 0.1 : 0.1 * (1 - (age - 1) / 1.6);
+        const trace = age < 1 ? 0.16 : 0.16 * (1 - (age - 1) / 1.6);
         if (trace > 0) {
           g.strokeStyle = pal.accent;
           g.globalAlpha = trace;
@@ -272,22 +270,22 @@ export function SignalMap() {
       for (let i = 0; i < ENDS.length; i++) {
         const [x, y] = pt(ENDS[i]);
         const since = now - landed[i];
-        const on = since < 2400;
-        if (since < 1100) {
-          const k = since / 1100;
+        const on = since < 3200;
+        if (since < 1800) {
+          const k = since / 1800;
           g.globalAlpha = (1 - k) * 0.7;
           g.strokeStyle = pal.accent;
           g.lineWidth = rad * 1.2;
           g.setLineDash([0.1, spacing]);
           g.beginPath();
-          g.arc(x, y, spacing * (1 + k * 2.5), 0, Math.PI * 2);
+          g.arc(x, y, spacing * (1 + k * 3.5), 0, Math.PI * 2);
           g.stroke();
           g.setLineDash([]);
         }
         g.globalAlpha = on ? 1 : 0.55;
         g.fillStyle = pal.accent;
         g.beginPath();
-        g.arc(x, y, rad * (on ? 1.8 : 1.1), 0, Math.PI * 2);
+        g.arc(x, y, rad * (on ? 2.2 : 1.6), 0, Math.PI * 2);
         g.fill();
       }
       // the hub (Dubai South), breathing
